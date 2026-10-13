@@ -68,7 +68,6 @@ namespace IsoRim
         }
 
         private static readonly Dictionary<long, List<Part>> cache = new Dictionary<long, List<Part>>();
-        private static int builtForLight = -1;
         private static readonly Color32 White = new Color32(255, 255, 255, 255);
 
         // Meshes no longer wanted are destroyed a couple of frames later rather than at once:
@@ -131,7 +130,7 @@ namespace IsoRim
             {
                 return;
             }
-            List<Part> parts = PartsFor(m, tint, swatch, 0);
+            List<Part> parts = PartsFor(m, tint, swatch);
             if (parts.Count == 0)
             {
                 return;
@@ -178,18 +177,21 @@ namespace IsoRim
         }
 
         // Several plain-coloured models, each with its own placing and colour, put together into
-        // one solid mesh and one outline mesh: one draw each instead of one per model. Shaded for
-        // a whole turned the given number of eighths from north. Textures are left off.
+        // one solid mesh and one outline mesh: one draw each instead of one per model. The solid
+        // mesh is lit per pixel by the shader (glowing parts go into a separate unlit mesh), so it
+        // does not depend on the light or on which way the whole is turned (turned is unused).
+        // Textures are left off.
         public static List<Part> BuildMerged(List<Model> models, List<Matrix4x4> locals, List<Color> tints, int turned)
         {
             List<Part> parts = new List<Part>();
             Material solidMat = R3DMaterials.Solid;
-            if (solidMat == null)
+            Material litMat = R3DMaterials.LitModel;
+            if (solidMat == null || litMat == null)
             {
                 return parts;
             }
-            Quaternion facing = Quaternion.AngleAxis(turned * 45f, Vector3.up);
             Lists solid = new Lists();
+            Lists glowing = new Lists();
             Lists outline = new Lists();
             try
             {
@@ -203,8 +205,7 @@ namespace IsoRim
                     {
                         int mi = m.material != null ? m.material[i] : 0;
                         ModelMaterial mm = m.materials != null ? m.materials[mi] : null;
-                        Vector3 normal = facing * local.MultiplyVector(m.normals[i]).normalized;
-                        float shade = mm != null && mm.glow ? 1f : R3DMaterials.Shade(normal);
+                        Lists into = mm != null && mm.glow ? glowing : solid;
                         for (int v = i; v < i + 3; v++)
                         {
                             Color c = m.colors[v];
@@ -212,7 +213,7 @@ namespace IsoRim
                             {
                                 c *= tint;
                             }
-                            solid.Add(local.MultiplyPoint3x4(m.positions[v]), R3DMaterials.Shaded(c, shade), Vector2.zero);
+                            into.Add(local.MultiplyPoint3x4(m.positions[v]), R3DMaterials.Shaded(c, 1f), Vector2.zero);
                             if (m.hull != null)
                             {
                                 outline.Add(local.MultiplyPoint3x4(m.positions[v] + m.hull[v]), R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
@@ -220,22 +221,9 @@ namespace IsoRim
                         }
                     }
                 }
-                if (solid.verts.Count > 0)
-                {
-                    Part p = new Part();
-                    p.mesh = solid.ToMesh();
-                    p.material = solidMat;
-                    parts.Add(p);
-                }
-                Material outlineMat = R3DMaterials.Outline;
-                if (outline.verts.Count > 0 && outlineMat != null)
-                {
-                    Part p = new Part();
-                    p.mesh = outline.ToMesh();
-                    p.material = outlineMat;
-                    p.outline = true;
-                    parts.Add(p);
-                }
+                AddPart(parts, solid, litMat, false);
+                AddPart(parts, glowing, solidMat, false);
+                AddPart(parts, outline, R3DMaterials.Outline, true);
             }
             catch (Exception e)
             {
@@ -244,18 +232,30 @@ namespace IsoRim
             return parts;
         }
 
+        private static void AddPart(List<Part> parts, Lists lists, Material material, bool isOutline)
+        {
+            if (lists == null || lists.verts.Count == 0 || material == null)
+            {
+                return;
+            }
+            Part p = new Part();
+            p.mesh = lists.ToMesh();
+            p.material = material;
+            p.outline = isOutline;
+            parts.Add(p);
+        }
+
         // The same for one part of something that moves as a whole, such as an animal's body
         // or one of its legs. local places the part within the whole, in cells, before the whole
         // is turned by yaw and put at position. The light stays where it is as the whole turns:
-        // the shading is worked out again for each eighth of a turn.
+        // the shader lights every face per pixel for the direction it faces now.
         public static void DrawLocal(Model m, Vector3 position, float yaw, Matrix4x4 local, Color tint, string swatch)
         {
             if (m == null)
             {
                 return;
             }
-            int turned = Mathf.RoundToInt(Mathf.Repeat(yaw, 360f) / 45f) % 8;
-            List<Part> parts = PartsFor(m, tint, swatch, turned);
+            List<Part> parts = PartsFor(m, tint, swatch);
             if (parts.Count == 0)
             {
                 return;
@@ -286,8 +286,9 @@ namespace IsoRim
             }
         }
 
-        // turned: how many eighths of a turn the model is facing away from north, for the shading.
-        private static List<Part> PartsFor(Model m, Color tint, string swatch, int turned)
+        // The ready-made meshes of a model in one colour. They carry no shading (the shader lights
+        // them), so they serve every light and every way the model is turned.
+        private static List<Part> PartsFor(Model m, Color tint, string swatch)
         {
             bool textured = IsoRimMod.Settings.texturedModels && m.materials != null && m.uvs != null && m.material != null;
 
@@ -299,13 +300,11 @@ namespace IsoRim
             t.b = (byte)(t.b & 0xF8);
             t.a = 255;
             tint = t;
-            // Meshes shaded for an old light direction are of no further use once the camera has turned.
-            if (cache.Count > 6000 || builtForLight != R3DMaterials.LightStep)
+            if (cache.Count > 6000)
             {
                 Forget();
-                builtForLight = R3DMaterials.LightStep;
             }
-            long key = ((long)m.id << 34) | ((long)R3DMaterials.LightStep << 31) | ((long)turned << 28) | ((long)(textured ? 1 : 0) << 27) | ((long)R3DTextures.SwatchIndex(swatch) << 24)
+            long key = ((long)m.id << 34) | ((long)(textured ? 1 : 0) << 27) | ((long)R3DTextures.SwatchIndex(swatch) << 24)
                 | (uint)((t.r << 16) | (t.g << 8) | t.b);
 
             List<Part> parts;
@@ -317,7 +316,7 @@ namespace IsoRim
             cache[key] = parts;
             try
             {
-                Build(m, tint, swatch, textured, parts, turned);
+                Build(m, tint, swatch, textured, parts);
             }
             catch (Exception e)
             {
@@ -327,55 +326,53 @@ namespace IsoRim
             return parts;
         }
 
-        // The same three layers ModelBaker writes: a plain solid copy, an enlarged inside-out
-        // copy for the outline, and the textured faces.
-        private static void Build(Model m, Color tint, string swatch, bool textured, List<Part> parts, int turned)
+        // The same three layers ModelBaker writes: a plain solid copy (lit; glowing faces unlit),
+        // an enlarged inside-out copy for the outline, and the textured faces (lit like ModelBaker's,
+        // texture colour * TextureLift; glowing ones unlit).
+        private static void Build(Model m, Color tint, string swatch, bool textured, List<Part> parts)
         {
-            Quaternion facing = Quaternion.AngleAxis(turned * 45f, Vector3.up);
             Material solidMat = R3DMaterials.Solid;
-            if (solidMat == null)
+            Material litMat = R3DMaterials.LitModel;
+            if (solidMat == null || litMat == null)
             {
                 return;
             }
             Lists solid = new Lists();
+            Lists glowing = new Lists();
             Lists outline = new Lists();
-            Lists[] texturedLists = textured ? new Lists[m.materials.Length * ModelBaker.Levels.Length] : null;
-            bool[] looked = textured ? new bool[m.materials.Length * ModelBaker.Levels.Length] : null;
+            Lists[] texturedLists = textured ? new Lists[m.materials.Length] : null;
+            bool[] looked = textured ? new bool[m.materials.Length] : null;
 
             int n = m.positions.Length;
             for (int i = 0; i + 2 < n; i += 3)
             {
-                float shade = R3DMaterials.Shade(turned == 0 ? m.normals[i] : facing * m.normals[i]);
                 int mi = m.material != null ? m.material[i] : 0;
                 ModelMaterial mm = m.materials != null ? m.materials[mi] : null;
-                if (mm != null && mm.glow)
-                {
-                    shade = 1f;   // a flame is as bright on every side
-                }
+                bool glow = mm != null && mm.glow;   // a flame is as bright on every side
 
                 Lists tl = null;
                 if (textured && mm != null && mm.texture != null)
                 {
-                    int level = ModelBaker.LevelOf(shade);
-                    int slot = mi * ModelBaker.Levels.Length + level;
-                    if (!looked[slot])
+                    if (!looked[mi])
                     {
-                        looked[slot] = true;
-                        Color c = mm.color * ModelBaker.Levels[level];
+                        looked[mi] = true;
+                        Color c = mm.color * ModelBaker.TextureLift;
                         if (mm.tinted)
                         {
                             c *= tint;
                         }
-                        Material tmat = R3DTextures.MaterialFor(mm.texture.Replace("{stuff}", swatch), c);
+                        string path = mm.texture.Replace("{stuff}", swatch);
+                        Material tmat = glow ? R3DTextures.MaterialFor(path, c) : R3DMaterials.LitTexture(path, c);
                         if (tmat != null)
                         {
-                            texturedLists[slot] = new Lists();
-                            texturedLists[slot].material = tmat;
+                            texturedLists[mi] = new Lists();
+                            texturedLists[mi].material = tmat;
                         }
                     }
-                    tl = texturedLists[slot];
+                    tl = texturedLists[mi];
                 }
 
+                Lists into = glow ? glowing : solid;
                 for (int k = i; k < i + 3; k++)
                 {
                     Vector3 hull = m.hull != null ? m.hull[k] : Vector3.zero;
@@ -384,7 +381,7 @@ namespace IsoRim
                     {
                         c *= tint;
                     }
-                    solid.Add(tl != null ? m.positions[k] - hull * ModelBaker.Inset : m.positions[k], R3DMaterials.Shaded(c, shade), Vector2.zero);
+                    into.Add(tl != null ? m.positions[k] - hull * ModelBaker.Inset : m.positions[k], R3DMaterials.Shaded(c, 1f), Vector2.zero);
                     if (m.hull != null)
                     {
                         outline.Add(m.positions[k] + hull, R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
@@ -396,35 +393,18 @@ namespace IsoRim
                 }
             }
 
-            if (solid.verts.Count > 0)
-            {
-                Part p = new Part();
-                p.mesh = solid.ToMesh();
-                p.material = solidMat;
-                parts.Add(p);
-            }
-            Material outlineMat = R3DMaterials.Outline;
-            if (outline.verts.Count > 0 && outlineMat != null)
-            {
-                Part p = new Part();
-                p.mesh = outline.ToMesh();
-                p.material = outlineMat;
-                p.outline = true;
-                parts.Add(p);
-            }
+            AddPart(parts, solid, litMat, false);
+            AddPart(parts, glowing, solidMat, false);
+            AddPart(parts, outline, R3DMaterials.Outline, true);
             if (texturedLists != null)
             {
                 for (int i = 0; i < texturedLists.Length; i++)
                 {
                     Lists l = texturedLists[i];
-                    if (l == null || l.verts.Count == 0)
+                    if (l != null)
                     {
-                        continue;
+                        AddPart(parts, l, l.material, false);
                     }
-                    Part p = new Part();
-                    p.mesh = l.ToMesh();
-                    p.material = l.material;
-                    parts.Add(p);
                 }
             }
         }

@@ -46,7 +46,6 @@ namespace IsoRim
 
             // Ready-made meshes of this look, by facing, body or head, and alive or dead.
             public readonly Dictionary<int, List<DynamicModels.Part>> meshes = new Dictionary<int, List<DynamicModels.Part>>();
-            public int builtForLight = -1;
 
             public bool SameAs(Look o)
             {
@@ -74,12 +73,8 @@ namespace IsoRim
         // The body (head = false) or the head of a figure as ready-made meshes.
         private static List<DynamicModels.Part> Merged(Look look, bool headPart, bool dead, int turned)
         {
-            if (look.builtForLight != R3DMaterials.LightStep)
-            {
-                look.Forget();
-                look.builtForLight = R3DMaterials.LightStep;
-            }
-            int key = turned * 4 + (headPart ? 2 : 0) + (dead ? 1 : 0);
+            // The meshes carry no shading (the shader lights them), so one set serves every light and turn.
+            int key = (headPart ? 2 : 0) + (dead ? 1 : 0);
             List<DynamicModels.Part> parts;
             if (look.meshes.TryGetValue(key, out parts))
             {

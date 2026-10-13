@@ -288,6 +288,18 @@ namespace IsoRim
             Patch("buttons for the 3D view and roofs", AccessTools.Method(typeof(PlaySettings), "DoPlaySettingsGlobalControls"),
                 postfix: nameof(PlaySettings_Postfix));
 
+            // In 3D the sun stands in the south at noon (IsoRim's sun lights the faces turned toward
+            // the camera), so the game's shadows have to fall north. This one value feeds the
+            // shadow vector (_CastVect / SunDir: building and tree shadows, animal shadows, Dynamic
+            // Pawn Shadows) and the area the game draws sun shadows for.
+            Patch("shadows falling away from the 3D sun", AccessTools.Method(typeof(GenCelestial), "GetLightSourceInfo", new[] { typeof(Map), typeof(GenCelestial.LightType) }),
+                postfix: nameof(GetLightSourceInfo_Postfix));
+            // The game builds the moving edge of a building's shadow only on its west, east and
+            // south sides (its shadows never point north). In 3D the north side gets one too.
+            Type sunShadows = AccessTools.TypeByName("Verse.SectionLayer_SunShadows");
+            Patch("shadows falling away from the 3D sun", sunShadows == null ? null : AccessTools.DeclaredMethod(sunShadows, "Regenerate"),
+                postfix: nameof(SunShadowsRegenerate_Postfix));
+
             RedirectDrawCalls();
 
             // 1.7 port: one dev-mode line listing which hooks went in and which did not.
@@ -295,6 +307,97 @@ namespace IsoRim
             if (missed.Count > 0)
             {
                 ModLog.Warn("[IsoRim] Hooks missing (" + missed.Count + "): " + string.Join("; ", missed));
+            }
+        }
+
+        // The game's sun is in the north (its shadows always point south); IsoRim's is in the south.
+        // East and west already agree, so in 3D only the north-south part is mirrored.
+        public static void GetLightSourceInfo_Postfix(GenCelestial.LightType type, ref GenCelestial.LightInfo __result)
+        {
+            if (type == GenCelestial.LightType.Shadow && View3D.Active)
+            {
+                __result.vector.y = -__result.vector.y;
+            }
+        }
+
+        private static readonly AccessTools.FieldRef<SectionLayer, Section> sectionOf = AccessTools.FieldRefAccess<SectionLayer, Section>("section");
+
+        // Adds the missing north edges to a block of the game's building shadows (3D only; the
+        // map is rebuilt when the 3D view is switched, so top-down keeps the game's own mesh).
+        // Same layout as the game's other edges: the corners on the building stay (alpha 0), the
+        // outer pair slides along the cast by the building's shadow height (alpha). Wound so it
+        // faces up once slid north; slid south (the game's own sun) it would face away and be culled.
+        public static void SunShadowsRegenerate_Postfix(SectionLayer __instance)
+        {
+            if (!View3D.Active)
+            {
+                return;
+            }
+            try
+            {
+                Section section = sectionOf(__instance);
+                Map map = section != null ? section.map : null;
+                Material mat = MatBases.SunShadow;
+                if (map == null || section == null || mat == null)
+                {
+                    return;
+                }
+                LayerSubMesh sm = __instance.GetSubMesh(mat);
+                if (sm == null || sm.verts.Count == 0)
+                {
+                    return;
+                }
+                Building[] grid = map.edificeGrid.InnerArray;
+                CellIndices idx = map.cellIndices;
+                float y = AltitudeLayer.Shadows.AltitudeFor();
+                Color32 low = new Color32(0, 0, 0, 0);
+                int added = 0;
+                int maxX = Mathf.Min(section.botLeft.x + 17, map.Size.x);
+                int maxZ = Mathf.Min(section.botLeft.z + 17, map.Size.z);
+                for (int i = section.botLeft.x; i < maxX; i++)
+                {
+                    for (int j = section.botLeft.z; j < maxZ; j++)
+                    {
+                        Building b = grid[idx.CellToIndex(i, j)];
+                        if (b == null || !(b.def.staticSunShadowHeight > 0f) || j >= map.Size.z - 1)
+                        {
+                            continue;
+                        }
+                        float h = b.def.staticSunShadowHeight;
+                        Building north = grid[idx.CellToIndex(i, j + 1)];
+                        if (north != null && north.def.staticSunShadowHeight >= h)
+                        {
+                            continue;
+                        }
+                        Color32 high = new Color32(0, 0, 0, (byte)(255f * h));
+                        int n = sm.verts.Count;
+                        sm.verts.Add(new Vector3(i, y, j + 1));
+                        sm.verts.Add(new Vector3(i + 1, y, j + 1));
+                        sm.verts.Add(new Vector3(i, y, j + 1));
+                        sm.verts.Add(new Vector3(i + 1, y, j + 1));
+                        sm.colors.Add(low);
+                        sm.colors.Add(low);
+                        sm.colors.Add(high);
+                        sm.colors.Add(high);
+                        sm.tris.Add(n);
+                        sm.tris.Add(n + 2);
+                        sm.tris.Add(n + 3);
+                        sm.tris.Add(n);
+                        sm.tris.Add(n + 3);
+                        sm.tris.Add(n + 1);
+                        added++;
+                    }
+                }
+                if (added > 0)
+                {
+                    sm.finalized = false;
+                    sm.FinalizeMesh(MeshParts.Verts | MeshParts.Tris | MeshParts.Colors);
+                    sm.mesh.bounds = new Bounds(Vector3.zero, new Vector3(1000f, 1000f, 1000f));
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Adding the north edges of building shadows failed: " + e, 93611171);
             }
         }
 

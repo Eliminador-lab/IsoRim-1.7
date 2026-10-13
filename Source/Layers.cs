@@ -635,17 +635,13 @@ namespace IsoRim
                 LayerSubMesh sm = subMeshes[i];
                 if (sm.finalized && !sm.disabled)
                 {
-                    // The textured courses carry their colour and shading in the material's colour,
-                    // which the dimming has to keep; the plain parts are coloured per corner.
+                    // The textured courses carry their colour in the material's colour, which the
+                    // dimming has to keep (the shader adds the sun on the slope, _LightMode 3);
+                    // the plain parts are coloured per corner.
                     Color baseColor;
                     if (!textureColors.TryGetValue(sm.material, out baseColor))
                     {
                         baseColor = Color.white;
-                    }
-                    int bin;
-                    if (textureBins.TryGetValue(sm.material, out bin))
-                    {
-                        baseColor *= Mathf.Min(1.1f, R3DMaterials.BinShade(bin, 0) * 1.05f);
                     }
                     block.SetColor(colorId, new Color(baseColor.r * glow, baseColor.g * glow, baseColor.b * glow, 1f));
                     Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, sm.material, 0, null, 0, block);
@@ -705,18 +701,14 @@ namespace IsoRim
 
         private static readonly Dictionary<Material, Color> textureColors = new Dictionary<Material, Color>();
         private static readonly Dictionary<int, Material> textureMats = new Dictionary<int, Material>();
-        private const int ShadeSteps = 14;
 
-        // The textured material for a roof colour at one brightness, or null if the texture is missing.
-        // Drawn just after the plain roof underneath it, so it lies over it.
-        // A roof texture for one direction group (see R3DMaterials.Lit). Its brightness is set
-        // each time it is drawn from where the sun is then, so roofs light smoothly too.
-        private static readonly Dictionary<Material, int> textureBins = new Dictionary<Material, int>();
-
+        // The textured material for a roof colour, or null if the texture is missing. Drawn just
+        // after the plain roof underneath it, so it lies over it. The shader lights each slope
+        // from the sun of the frame (_LightMode 3: the model curve * 1.05, at most 1.1, as before);
+        // bin is ignored.
         private static Material TextureMaterial(int style, int bin)
         {
-            int level = bin;
-            int key = style * 32 + level;
+            int key = style;
             Material m;
             if (textureMats.TryGetValue(key, out m))
             {
@@ -725,7 +717,7 @@ namespace IsoRim
             Texture2D tex = R3DTextures.Get("IsoRim/Roofs/" + StyleNames[style]);
             if (tex != null)
             {
-                m = R3DMaterials.Make(R3DMaterials.SolidTexDef, "IsoRim_Roof_" + StyleNames[style] + level, 3601);
+                m = R3DMaterials.Make(R3DMaterials.SolidTexDef, "IsoRim_Roof_" + StyleNames[style], 3601, R3DMaterials.LightRoof);
             }
             if (m != null)
             {
@@ -734,7 +726,6 @@ namespace IsoRim
                 c.a = 1f;
                 m.color = c;
                 textureColors[m] = c;
-                textureBins[m] = bin;
             }
             textureMats[key] = m;
             return m;

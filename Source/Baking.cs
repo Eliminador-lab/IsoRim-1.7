@@ -1512,14 +1512,6 @@ namespace IsoRim
         public const float FaceLift = 0.004f;
         private static readonly Color32 White = new Color32(255, 255, 255, 255);
 
-        // Shading levels for textured faces. Flat steps suit the game's look and keep the number of materials small.
-        public static readonly float[] Levels = { 1.08f, 0.84f, 0.68f, 0.54f };
-
-        public static int LevelOf(float shade)
-        {
-            return shade >= 0.92f ? 0 : (shade >= 0.76f ? 1 : (shade >= 0.60f ? 2 : 3));
-        }
-
         // Writes the model into the block's mesh in place of the thing's sprite. baseHeight is
         // how far above the ground it rests, in cells. Returns false if it could not, in which
         // case the sprite is printed as usual.
@@ -1977,7 +1969,7 @@ namespace IsoRim
         private static readonly LayerSubMesh[] plainPool = new LayerSubMesh[R3DMaterials.Bins];
 
         // Textured faces were drawn a little brighter than their plain colour on the lit side.
-        private const float TextureLift = 1.08f;
+        public const float TextureLift = 1.08f;
     }
 
     // The shadow a 3D tree casts on the ground. (The game's own tree shadow is part of drawing
@@ -1992,8 +1984,9 @@ namespace IsoRim
         // How much the shadow thins out at the crown, on the game's scale of 0 (full) to 255 (gone).
         private const byte CrownFade = 64;
 
-        // Used only if the game's shadow material is missing: a fixed slide and darkness.
-        private static readonly Vector2 FixedCast = new Vector2(1.6f, -2.2f);
+        // Used only if the game's shadow material is missing: a fixed slide (north-west, away from
+        // IsoRim's mid-morning sun) and darkness.
+        private static readonly Vector2 FixedCast = new Vector2(-1.6f, 2.2f);
         private const byte FixedAlpha = 70;
 
         private static LayerSubMesh sm;

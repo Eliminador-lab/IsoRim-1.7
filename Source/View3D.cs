@@ -335,6 +335,9 @@ namespace IsoRim
             camerasOverridden = true;
             haveFrame = true;
 
+            // The shaders work out face normals in true space and turn them toward the camera.
+            R3DMaterials.SetView(-fwd, s);
+
             // Moving something straight toward an orthographic camera does not move it on screen,
             // it only puts it in front. That is how the lighting overlay gets to darken upright things.
             LightingMatrix = Matrix4x4.Translate(new Vector3(-fwd.x * OverlayPull, -fwd.y * OverlayPull / s, -fwd.z * OverlayPull));
@@ -441,9 +444,9 @@ namespace IsoRim
             RegenerateAllMaps();
         }
 
-        // The sun moves smoothly with the time of day. Everything that stays put is lit through
-        // materials whose colour follows it (see R3DMaterials.Lit), so nothing is redrawn as it
-        // moves; moving things remake their meshes once per game hour.
+        // The sun moves smoothly with the time of day. Every face is lit per pixel by the shader
+        // from the sun direction set here each frame (see R3DMaterials.SetSunHour), so nothing is
+        // redrawn or rebuilt as it moves.
         private static void Relight()
         {
             if (!Active)

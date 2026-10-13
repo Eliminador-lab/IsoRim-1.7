@@ -1061,8 +1061,8 @@ namespace IsoRim
         }
     }
 
-    // One shared material for all solid 3D geometry. It reads its colour from the vertices,
-    // so shading and stuff colour are baked into the mesh and no custom shader is needed.
+    // The materials of all solid 3D geometry: colour from the vertices (stuff tint, fixed factors)
+    // times the material colour, lit per pixel by IsoRim's sun (Shaders/IsoRimSolid.frag.glsl).
     [StaticConstructorOnStartup]
     public static class R3DMaterials
     {
@@ -1079,21 +1079,20 @@ namespace IsoRim
         private static readonly Vector3 BaseLight = new Vector3(-0.35f, 0.8f, -0.5f).normalized;
         private static Vector3 LightDir = BaseLight;
         private static Vector2 LightFlat = new Vector2(BaseLight.x, BaseLight.z).normalized;
-        private static int lightStep;
-
-        // Things that move (people, animals, doors) have their shading worked into ready-made
-        // meshes; those meshes are remade when this number changes, once per game hour of
-        // sunlight (and once for the night). Everything that stays put is lit smoothly instead:
-        // see Lit and LitTexture.
-        public static int LightStep
-        {
-            get { return lightStep; }
-        }
-
-        // The direction moving things are shaded for: the sun as it was when the step last changed.
-        private static Vector3 StepLightDir = BaseLight;
-        private static float litHour = -100f;
         private static bool lightSet;
+
+        // The direction toward IsoRim's sun (or moon) right now, in true (unsquashed) space.
+        public static Vector3 SunDir
+        {
+            get
+            {
+                if (!lightSet)
+                {
+                    SetSunHour(10f);
+                }
+                return LightDir;
+            }
+        }
 
         // Where the sun is at a given hour: up in the east at six, high in the south at noon,
         // down in the west at six in the evening, and a fixed moonlight through the night, with
@@ -1128,15 +1127,13 @@ namespace IsoRim
             return new Vector3(Mathf.Sin(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Cos(az) * Mathf.Cos(el)).normalized;
         }
 
-        // Moves the sun to the given hour of the day. Cheap enough to call every frame: the lit
-        // materials are only recoloured when the sun has moved on by about a game minute.
+        private static readonly int isoSunId = Shader.PropertyToID("_IsoSun");
+        private static readonly int isoViewId = Shader.PropertyToID("_IsoView");
+
+        // Moves the sun to the given hour of the day and hands it to the shaders (global _IsoSun),
+        // which light every face per pixel. Cheap enough to call every frame.
         public static void SetSunHour(float hour)
         {
-            if (lightSet && Mathf.Abs(hour - litHour) < 0.02f)
-            {
-                return;
-            }
-            litHour = hour;
             lightSet = true;
             LightDir = SunDirAt(hour);
             LightFlat = new Vector2(LightDir.x, LightDir.z);
@@ -1145,13 +1142,14 @@ namespace IsoRim
                 LightFlat = new Vector2(0f, -1f);
             }
             LightFlat.Normalize();
-            int step = hour < 6f || hour >= 18f ? 99 : Mathf.FloorToInt(hour);
-            if (step != lightStep)
-            {
-                lightStep = step;
-                StepLightDir = LightDir;
-            }
-            RecolourLit();
+            Shader.SetGlobalVector(isoSunId, new Vector4(LightDir.x, LightDir.y, LightDir.z, 0f));
+        }
+
+        // The direction toward the camera in true space, and the squash, for the shaders' face
+        // normals (global _IsoView). Set by View3D every frame while the 3D view is on.
+        public static void SetView(Vector3 towardCamera, float squash)
+        {
+            Shader.SetGlobalVector(isoViewId, new Vector4(towardCamera.x, towardCamera.y, towardCamera.z, squash));
         }
 
         // Kept so older code still compiles: a step of the old six-place sun, as an hour.
@@ -1160,27 +1158,19 @@ namespace IsoRim
             SetSunHour(step >= 6 ? 0f : 6f + (step + 0.5f) * 2f);
         }
 
-        // ---- smoothly lit materials
+        // ---- lit materials
         //
-        // Every face of the map's 3D geometry is sorted into one of these direction groups by
-        // which way it faces: straight up, straight down, or one of eight compass points at
-        // three steepnesses. All the faces in a group share a material whose colour is the
-        // brightness the sun gives that direction right now, so as the sun moves every face
-        // brightens and darkens smoothly without anything being rebuilt.
+        // Faces are lit in the shader (Shaders\IsoRimSolid.frag.glsl): it works out which way each
+        // face points, sorts it into one of these direction groups (straight up, straight down, or
+        // one of eight compass points at three steepnesses) and shades it for this frame's sun.
+        // So one material per shading curve serves every direction, and nothing is recoloured or
+        // rebuilt as the sun moves. BinOf / BinShade remain for CPU-side callers.
         public const int Bins = 26;
+        public const int LightModel = 1;   // _LightMode: model curve (curve 0)
+        public const int LightWall = 2;    // _LightMode: wall and rock curve (curve 1)
+        public const int LightRoof = 3;    // _LightMode: roof slates (model curve * 1.05, at most 1.1)
         private static readonly Vector3[] binNormal = MakeBinNormals();
-        private static readonly Material[,] litSolid = new Material[2, Bins];
-        private static readonly float[,] binShade = new float[2, Bins];
-
-        private class LitEntry
-        {
-            public Material mat;
-            public Color baseColor;
-            public int bin;
-            public int curve;
-        }
-
-        private static readonly List<LitEntry> litEntries = new List<LitEntry>();
+        private static readonly Material[] litSolid = new Material[2];
         private static readonly Dictionary<string, Material> litByKey = new Dictionary<string, Material>();
 
         private static Vector3[] MakeBinNormals()
@@ -1222,45 +1212,55 @@ namespace IsoRim
             return 2 + band * 8 + sector;
         }
 
-        // How bright faces of a group are now. curve 0 is for models, 1 for walls and rock,
-        // which keep a narrower, steadier range (see WallShade).
+        // How bright faces of a group are now, worked out on the CPU the same way as the shader.
+        // curve 0 is for models, 1 for walls and rock (see WallShade).
         public static float BinShade(int bin, int curve)
         {
-            if (!lightSet)
+            Vector3 n = binNormal[Mathf.Clamp(bin, 0, Bins - 1)];
+            Vector3 light = SunDir;
+            if (curve == 1)
             {
-                SetSunHour(10f);
+                return n.y >= 0.92f ? 1f : WallShadeFor(n, LightFlat);
             }
-            return binShade[curve == 1 ? 1 : 0, Mathf.Clamp(bin, 0, Bins - 1)];
+            return ModelShade(n, light);
         }
 
-        // The plain solid material for a direction group: vertex colours times the sun.
+        private static int ModeOf(int curve)
+        {
+            return curve == 1 ? LightWall : LightModel;
+        }
+
+        // The plain solid material lit by the sun: vertex colours times the shade of the face's
+        // direction. bin is ignored now (the shader finds each face's direction itself).
         public static Material Lit(int bin, int curve = 0)
         {
             if (Solid == null)
             {
                 return null;
             }
-            bin = Mathf.Clamp(bin, 0, Bins - 1);
             curve = curve == 1 ? 1 : 0;
-            Material m = litSolid[curve, bin];
+            Material m = litSolid[curve];
             if (m == null)
             {
-                m = new Material(solid);
-                m.name = "IsoRim_Lit_" + curve + "_" + bin;
-                m.color = Grey(BinShade(bin, curve));
-                litSolid[curve, bin] = m;
+                m = Make(SolidDef, curve == 1 ? "IsoRim_LitWall" : "IsoRim_LitModel", -1, ModeOf(curve));
+                litSolid[curve] = m;
             }
             return m;
         }
 
-        // A texture times a colour, lit for a direction group. Shared by every face with the
-        // same texture, colour and direction. Null if the texture is missing.
-        public static Material LitTexture(string path, Color baseColor, int bin, int curve = 0)
+        // The lit plain material for models: pawns, animals, baked models, extruded sides.
+        public static Material LitModel
         {
-            bin = Mathf.Clamp(bin, 0, Bins - 1);
+            get { return Lit(0, 0); }
+        }
+
+        // A texture times a colour, lit by the sun. Shared by every face with the same texture,
+        // colour and curve; bin is ignored (see Lit). Null if the texture is missing.
+        public static Material LitTexture(string path, Color baseColor, int bin = 0, int curve = 0)
+        {
             curve = curve == 1 ? 1 : 0;
             Color32 c = baseColor;
-            string key = path + "|" + c.r + "," + c.g + "," + c.b + "|" + bin + "|" + curve;
+            string key = path + "|" + c.r + "," + c.g + "," + c.b + "|" + curve;
             Material m;
             if (litByKey.TryGetValue(key, out m))
             {
@@ -1269,57 +1269,15 @@ namespace IsoRim
             Texture2D tex = R3DTextures.Get(path);
             if (tex != null)
             {
-                m = Make(SolidTexDef, "IsoRim_LitTex_" + bin);
+                m = Make(SolidTexDef, curve == 1 ? "IsoRim_LitTexWall" : "IsoRim_LitTex", -1, ModeOf(curve));
             }
             if (m != null)
             {
                 m.mainTexture = tex;
-                baseColor.a = 1f;
-                LitEntry e = new LitEntry { mat = m, baseColor = baseColor, bin = bin, curve = curve };
-                litEntries.Add(e);
-                m.color = Tinted(e);
+                m.color = new Color(baseColor.r, baseColor.g, baseColor.b, 1f);
             }
             litByKey[key] = m;
             return m;
-        }
-
-        private static Color Grey(float v)
-        {
-            return new Color(v, v, v, 1f);
-        }
-
-        private static Color Tinted(LitEntry e)
-        {
-            float s = BinShade(e.bin, e.curve);
-            return new Color(e.baseColor.r * s, e.baseColor.g * s, e.baseColor.b * s, 1f);
-        }
-
-        private static void RecolourLit()
-        {
-            for (int b = 0; b < Bins; b++)
-            {
-                Vector3 n = binNormal[b];
-                binShade[0, b] = ModelShade(n, LightDir);
-                binShade[1, b] = b == 0 ? 1f : WallShadeFor(n, LightFlat);
-            }
-            for (int curve = 0; curve < 2; curve++)
-            {
-                for (int b = 0; b < Bins; b++)
-                {
-                    if (litSolid[curve, b] != null)
-                    {
-                        litSolid[curve, b].color = Grey(binShade[curve, b]);
-                    }
-                }
-            }
-            for (int i = 0; i < litEntries.Count; i++)
-            {
-                LitEntry e = litEntries[i];
-                if (e.mat != null)
-                {
-                    e.mat.color = Tinted(e);
-                }
-            }
         }
 
         private static float ModelShade(Vector3 normal, Vector3 light)
@@ -1384,7 +1342,7 @@ namespace IsoRim
 
         // ---- shaders (Defs\ShaderDefs\IsoRim_Shaders.xml). Every IsoRim def runs the same
         // fragment program (vertex colour * _Color [* texture] * shade); the def sets the render
-        // state. _LightMode picks the shade: 0 unlit (all materials for now), 1 model curve, 2 wall curve.
+        // state. _LightMode picks the shade: 0 unlit, 1 model curve, 2 wall curve, 3 roof slates.
         public const string SolidDef = "IsoRimSolid";       // opaque, depth write, cull off, 2000
         public const string SolidTexDef = "IsoRimSolidTex"; // same + texture, cut out at alpha 0.5, 2001
         public const string OutlineDef = "IsoRimOutline";   // opaque, cull front, pushed back in depth
@@ -1570,17 +1528,6 @@ namespace IsoRim
                 return;
             }
             plainShadow = Make(BlendDef, "IsoRim_Shadow", 2900);
-        }
-
-        // Brightness for a face pointing along the given direction: 1 on top, 0.5 in full shade.
-        // (Used for things that move, whose meshes are remade with each LightStep.)
-        public static float Shade(Vector3 normal)
-        {
-            if (!lightSet)
-            {
-                SetSunHour(10f);
-            }
-            return ModelShade(normal, StepLightDir);
         }
 
         public static Color32 Shaded(Color c, float shade)
