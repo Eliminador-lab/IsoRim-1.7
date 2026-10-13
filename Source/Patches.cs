@@ -300,6 +300,19 @@ namespace IsoRim
             Patch("shadows falling away from the 3D sun", sunShadows == null ? null : AccessTools.DeclaredMethod(sunShadows, "Regenerate"),
                 postfix: nameof(SunShadowsRegenerate_Postfix));
 
+            // Night, lamp and indoor light per face (IsoGlow): copy the corner colours of every block
+            // of the game's lighting overlay it rebuilds, and hand them to the shaders before the map
+            // is drawn (after this frame's rebuilds).
+            Type lightingOverlay = AccessTools.TypeByName("Verse.SectionLayer_LightingOverlay");
+            Patch("night and indoor light on raised things", lightingOverlay == null ? null : AccessTools.Method(lightingOverlay, "GenerateLightingOverlay"),
+                postfix: nameof(GenerateLightingOverlay_Postfix));
+            Patch("night and indoor light on raised things", AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"),
+                prefix: nameof(DrawMapMesh_Prefix));
+            if (Prefs.DevMode && GenCommandLine.CommandLineArgPassed("isorim3d"))
+            {
+                IsoGlow.Benchmark();
+            }
+
             RedirectDrawCalls();
 
             // 1.7 port: one dev-mode line listing which hooks went in and which did not.
@@ -307,6 +320,31 @@ namespace IsoRim
             if (missed.Count > 0)
             {
                 ModLog.Warn("[IsoRim] Hooks missing (" + missed.Count + "): " + string.Join("; ", missed));
+            }
+        }
+
+        // __0 map, __1 subMesh, __2 rect, __3 ref firstCenterInd, __4 centered, __5 filter.
+        public static void GenerateLightingOverlay_Postfix(Map __0, LayerSubMesh __1, CellRect __2, bool __4, Predicate<int> __5)
+        {
+            try
+            {
+                IsoGlow.Generated(__0, __1, __2, __4, __5);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Copying the map's light failed: " + e, 93611201);
+            }
+        }
+
+        public static void DrawMapMesh_Prefix()
+        {
+            try
+            {
+                IsoGlow.BeginFrame(Find.CurrentMap);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Handing the map's light to the shaders failed: " + e, 93611202);
             }
         }
 
@@ -927,8 +965,18 @@ namespace IsoRim
                 }
                 return true;
             }
-            if (!View3D.Ready || kind == 0)
+            if (!View3D.Ready)
             {
+                return true;
+            }
+            if (kind == 0)
+            {
+                // IsoRim's faces that carry their own night and indoor light get a stencil mark, so
+                // the pulled overlay below skips them.
+                if (__instance.Visible)
+                {
+                    IsoGlow.DrawLayerMarks(__instance);
+                }
                 return true;
             }
             if (kind == 3)
@@ -956,6 +1004,8 @@ namespace IsoRim
                 return false;
             }
 
+            // The overlay is drawn with a copy of the game's material that skips pixels of IsoRim
+            // faces lit by their own cell (stencil bit 32, see IsoGlow).
             Matrix4x4 m = View3D.LightingMatrix;
             List<LayerSubMesh> subs = __instance.subMeshes;
             for (int i = 0; i < subs.Count; i++)
@@ -963,7 +1013,8 @@ namespace IsoRim
                 LayerSubMesh sm = subs[i];
                 if (sm.finalized && !sm.disabled)
                 {
-                    Graphics.DrawMesh(sm.mesh, m, sm.material, sm.renderLayer);   // 1.7 vanilla passes renderLayer
+                    Material mat = sm.material == MatBases.LightOverlay ? IsoGlow.OverlayFor(sm.material) : sm.material;
+                    Graphics.DrawMesh(sm.mesh, m, mat, sm.renderLayer);   // 1.7 vanilla passes renderLayer
                 }
             }
             return false;

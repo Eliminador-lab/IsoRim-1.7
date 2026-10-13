@@ -282,7 +282,7 @@ namespace IsoRim
                 {
                     continue;
                 }
-                Graphics.DrawMesh(p.mesh, matrix, p.material, 0);
+                IsoGlow.DrawLit(p.mesh, matrix, p.material, 0);
             }
         }
 
@@ -1548,7 +1548,7 @@ namespace IsoRim
                         }
                         Vector3 at = new Vector3(x + 0.15f + 0.7f * Hashing.Unit(x, z, salt + 1), y, z + 0.15f + 0.7f * Hashing.Unit(x, z, salt + 2));
                         float k = size * (0.7f + 0.6f * Hashing.Unit(x, z, salt + 3));
-                        Graphics.DrawMesh(glint, Matrix4x4.TRS(at, Quaternion.identity, new Vector3(k, 1f, k)), mat, 0);
+                        IsoGlow.DrawLit(glint, Matrix4x4.TRS(at, Quaternion.identity, new Vector3(k, 1f, k)), mat, 0);
                     }
                 }
             }

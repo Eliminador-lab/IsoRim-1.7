@@ -49,7 +49,7 @@ namespace IsoRim
                 // turning the other way first lines the weapon up with where it points.
                 * Matrix4x4.Rotate(Quaternion.AngleAxis(-weapon.def.equippedAngleOffset, Vector3.forward))
                 * Matrix4x4.Scale(new Vector3(draw.x * Size, draw.y * Size, 1f));
-            Graphics.DrawMesh(solid.sides, m, sideMat, 0);
+            IsoGlow.DrawLit(solid.sides, m, sideMat, 0);
             Graphics.DrawMesh(solid.faces, m, mat, 0);
             return true;
         }

@@ -75,6 +75,68 @@
     </shaderProgram>
   </ShaderDef>
 
+  <!-- Step 2b, night and indoor light on 3D faces. Faces lit from IsoRim's own glow texture
+       (_GlowMode 1) are drawn a second time with these, depth-tested but writing neither colour nor
+       depth, to set stencil bit 32 wherever such a face is still the front surface (sprites drawn in
+       front of it keep the game's overlay). The game never uses bit 32. Queue 3099: after
+       everything that writes depth, just before the lighting overlay. -->
+  <ShaderDef>
+    <defName>IsoRimLitMark</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Opaque</blendMode>
+      <depthWrite>false</depthWrite>
+      <colorWrite>false</colorWrite>
+      <cullMode>None</cullMode>
+      <stencilEnabled>true</stencilEnabled>
+      <stencilCompare>Always</stencilCompare>
+      <stencilPassOp>Replace</stencilPassOp>
+      <stencilRef>32</stencilRef>
+      <stencilWriteMask>32</stencilWriteMask>
+      <renderQueue>3099</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- The same for textured faces, so cut-out holes (alpha below 0.5) stay unmarked. -->
+  <ShaderDef>
+    <defName>IsoRimLitMarkTex</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <blendMode>Opaque</blendMode>
+      <depthWrite>false</depthWrite>
+      <colorWrite>false</colorWrite>
+      <cullMode>None</cullMode>
+      <stencilEnabled>true</stencilEnabled>
+      <stencilCompare>Always</stencilCompare>
+      <stencilPassOp>Replace</stencilPassOp>
+      <stencilRef>32</stencilRef>
+      <stencilWriteMask>32</stencilWriteMask>
+      <renderQueue>3099</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- The game's lighting overlay (its own LightOverlay.frag.glsl and render state), pulled toward
+       the camera by IsoRim, but skipping the pixels marked above: those faces carry their own light. -->
+  <ShaderDef>
+    <defName>IsoRimLightOverlay</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>LightOverlay.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Custom</blendMode>
+      <blendSrcFactor>DstColor</blendSrcFactor>
+      <blendDstFactor>SrcColor</blendDstFactor>
+      <depthWrite>false</depthWrite>
+      <stencilEnabled>true</stencilEnabled>
+      <stencilCompare>NotEqual</stencilCompare>
+      <stencilPassOp>Keep</stencilPassOp>
+      <stencilRef>32</stencilRef>
+      <stencilReadMask>32</stencilReadMask>
+      <stencilWriteMask>0</stencilWriteMask>
+      <renderQueue>3100</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
   <!-- See-through marks drawn over everything (drag box, brackets): no depth test or write. -->
   <ShaderDef>
     <defName>IsoRimOverlay</defName>

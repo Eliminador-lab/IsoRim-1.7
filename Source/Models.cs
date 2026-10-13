@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using HarmonyLib;
+using RimWorld;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Verse;
@@ -898,6 +899,7 @@ namespace IsoRim
                 {
                     m.mainTexture = tex;
                     m.color = color;
+                    IsoGlow.Use(m, IsoGlow.OwnCell);
                 }
                 materials[key] = m;
             }
@@ -1134,8 +1136,63 @@ namespace IsoRim
         // which light every face per pixel. Cheap enough to call every frame.
         public static void SetSunHour(float hour)
         {
+            SetLight(SunDirAt(hour));
+        }
+
+        // Night follows the game's moon (user decision 2026-10-13). The game swings its moon from
+        // east to west through the night (GenCelestial.GetLightSourceInfo, night branch: shadows point
+        // west in the evening, south at midnight, east before dawn). In 3D the game's shadows are
+        // mirrored north-south (Patches.GetLightSourceInfo_Postfix), so the light comes from the
+        // opposite side of the mirrored cast. Its height comes from the cast's length, by the same
+        // relation the day sun has to the game's day casts: 62 degrees at the noon length (1.5),
+        // 22 degrees at the length at six (about 8), never lower or higher.
+        public static Vector3 MoonDir(Map map)
+        {
+            Vector2 cast = GenCelestial.GetLightSourceInfo(map, GenCelestial.LightType.LightingMoon).vector;
+            cast.y = -cast.y;   // mirrored like the 3D shadows
+            float len = cast.magnitude;
+            if (len < 1e-4f)
+            {
+                return Dir(180f, 62f);
+            }
+            float elevation = Mathf.Lerp(62f, 22f, Mathf.InverseLerp(1.5f, 8.04f, len)) * Mathf.Deg2Rad;
+            Vector2 flat = -cast / len;
+            return new Vector3(flat.x * Mathf.Cos(elevation), Mathf.Sin(elevation), flat.y * Mathf.Cos(elevation)).normalized;
+        }
+
+        // How far the light has gone over to the moon: 0 in daylight, 1 at night. The game switches
+        // its shadows from sun to moon where the sun's glow crosses 0.6 (they fade out there), so the
+        // light swings over smoothly across that point instead of jumping.
+        public const float NightGlowFull = 0.52f;
+        public const float DayGlowFull = 0.68f;
+
+        public static float NightWeight(float sunGlow)
+        {
+            float t = Mathf.InverseLerp(DayGlowFull, NightGlowFull, sunGlow);
+            return t * t * (3f - 2f * t);
+        }
+
+        // The light right now: IsoRim's own sun by day (unchanged), the game's moon at night.
+        public static Vector3 LightAt(Map map, float hour)
+        {
+            Vector3 sun = SunDirAt(Mathf.Clamp(hour, 6f, 18f));
+            if (map == null)
+            {
+                return sun;
+            }
+            float night = NightWeight(GenCelestial.CurCelestialSunGlow(map));
+            if (night <= 0f)
+            {
+                return sun;
+            }
+            Vector3 moon = MoonDir(map);
+            return night >= 1f ? moon : Vector3.Slerp(sun, moon, night).normalized;
+        }
+
+        public static void SetLight(Vector3 dir)
+        {
             lightSet = true;
-            LightDir = SunDirAt(hour);
+            LightDir = dir;
             LightFlat = new Vector2(LightDir.x, LightDir.z);
             if (LightFlat.sqrMagnitude < 1e-6f)
             {
@@ -1243,6 +1300,7 @@ namespace IsoRim
             if (m == null)
             {
                 m = Make(SolidDef, curve == 1 ? "IsoRim_LitWall" : "IsoRim_LitModel", -1, ModeOf(curve));
+                IsoGlow.Use(m, IsoGlow.OwnCell);
                 litSolid[curve] = m;
             }
             return m;
@@ -1275,6 +1333,7 @@ namespace IsoRim
             {
                 m.mainTexture = tex;
                 m.color = new Color(baseColor.r, baseColor.g, baseColor.b, 1f);
+                IsoGlow.Use(m, IsoGlow.OwnCell);
             }
             litByKey[key] = m;
             return m;
@@ -1398,6 +1457,10 @@ namespace IsoRim
             {
                 return;
             }
+            // Night, lamp and indoor light per pixel from each face's own cell (see IsoGlow);
+            // until the first 3D frame binds the map's light, the light is neutral.
+            IsoGlow.BindNeutral();
+            IsoGlow.Use(solid, IsoGlow.OwnCell);
             // The shell is pushed back in depth by the def, so where it runs close to the model's
             // own faces it can never show through them.
             outline = Make(OutlineDef, "IsoRim_Outline");
@@ -1429,6 +1492,7 @@ namespace IsoRim
                 if (roof == null && Solid != null)
                 {
                     roof = Make(SolidDef, "IsoRim_Roof", 3600);
+                    IsoGlow.Use(roof, IsoGlow.SkyOnly);   // sky colour only: lamps under a roof do not light its top
                 }
                 return roof;
             }

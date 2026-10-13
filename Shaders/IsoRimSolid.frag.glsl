@@ -10,6 +10,12 @@
 // The sun is IsoRim's own (C# R3DMaterials.SunDirAt), pushed every frame as the global _IsoSun.
 // The face normal comes from screen derivatives of the world position in true (unsquashed) space,
 // turned toward the camera, and snapped to the same 26 direction groups as the C# BinOf.
+//
+// Night, lamp and indoor light (_GlowMode): 0 none (the game's pulled lighting overlay darkens it);
+// 1 the light of the face's OWN cell, from IsoRim's glow texture (the corner colours of the game's
+// lighting overlay, one texel per cell corner) and the sky colour, by the game's LightOverlay
+// formula; 2 sky colour only (roofs). Faces lit this way are stencil-marked by a second pass
+// (defs IsoRimLitMark*, colour writes off) so the pulled overlay skips them.
 
 #define QUANTIZE 1   // 1: snap normals to IsoRim's 26 direction groups (original look); 0: exact face normals
 
@@ -26,9 +32,14 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     float _LightMode; // @default = 0.0
     vec4 _IsoSun;     // global, no default: xyz = direction toward IsoRim's sun (or moon)
     vec4 _IsoView;    // global, no default: xyz = true-space direction toward the camera, w = Squash
+    vec4 _IsoSky;     // global, no default: rgb = the game's sky light colour (the LightOverlay _Color)
+    vec4 _IsoGlowMap; // global, no default: (origin x, origin z, 1/(W+1), 1/(H+1)) of the glow texture
+    float _GlowMode;  // @default = 0.0
+    float _MarkPass;  // @default = 0.0     1 on the stencil-mark materials (colour writes off)
 } uMaterial;
 
 layout(set = 2, binding = 1) uniform sampler2D _MainTex;
+layout(set = 2, binding = 2) uniform sampler2D _IsoGlowTex;   // global: texel (x, z) = cell corner (x, z)
 
 const float DEG = 0.017453292519943295;
 
@@ -74,12 +85,29 @@ float WallShade(vec3 n, vec3 L)
     return mix(0.52, 0.80, (dot(normalize(o), sunFlat) + 1.0) * 0.5);
 }
 
+// The game's LightOverlay.frag.glsl as a multiplier: L = sky * (1 - cover) + glow, with its clamps.
+vec3 GlowLight(vec4 g)
+{
+    vec3 s = uMaterial._IsoSky.rgb * (1.0 - g.a);
+    vec3 L = s + g.rgb;
+    float clampBase = 1.5 - 0.5 * min(s.r, s.b);
+    if (L.r > clampBase) L *= clampBase / L.r;
+    if (L.g > clampBase) L *= clampBase / L.g;
+    if (L.b > clampBase) L *= clampBase / L.b;
+    return L;
+}
+
 void main()
 {
     // Derivatives first, in uniform control flow (before any discard).
     float squash = uMaterial._IsoView.w;
     vec3 p = vec3(vWorldPos.x, vWorldPos.y * squash, vWorldPos.z);
     vec3 n = cross(dFdx(p), dFdy(p));
+    float len = length(n);
+    n = len > 1e-20 ? n / len : vec3(0.0, 1.0, 0.0);
+    if (dot(n, uMaterial._IsoView.xyz) < 0.0)
+        n = -n;
+    vec3 faceNormal = n;   // the exact face normal, turned toward the camera
 
     vec4 color = vColor * uMaterial._Color;
 #ifdef USE_TEXTURE
@@ -87,15 +115,16 @@ void main()
     if (color.a < 0.5)
         discard;
 #endif
+    // Mark pass: where an upright face meets the ground, face and ground have the same depth on
+    // the foot line and the ground can win there, so the bottom row of pixels is left unmarked
+    // (else that ground pixel would miss the overlay and show as a bright seam). Ground at height 0.
+    if (uMaterial._MarkPass > 0.5 && squash > 0.0 && abs(faceNormal.y) < 0.92 && p.y < 0.002)
+        discard;
 
     float mode = uMaterial._LightMode;
     float shade = 1.0;
     if (mode > 0.5 && squash > 0.0)
     {
-        float len = length(n);
-        n = len > 1e-20 ? n / len : vec3(0.0, 1.0, 0.0);
-        if (dot(n, uMaterial._IsoView.xyz) < 0.0)
-            n = -n;
 #if QUANTIZE
         n = BinNormal(n);
 #endif
@@ -108,5 +137,24 @@ void main()
             shade = min(1.1, ModelShade(n, L) * 1.05);
     }
     color.rgb *= shade;
+
+    float glowMode = uMaterial._GlowMode;
+    if (glowMode > 0.5)
+    {
+        color.rgb = min(color.rgb, vec3(1.0));   // the 8-bit colour the overlay used to multiply
+        vec4 g = vec4(0.0);                      // mode 2 (roofs): sky only
+        if (glowMode < 1.5)
+        {
+            // Upright faces read a little outward along their own normal, so a wall face takes the
+            // corners on its own side of the wall (the game leaves walls out of those averages).
+            vec2 xz = vWorldPos.xz;
+            if (squash > 0.0 && abs(faceNormal.y) < 0.92)
+                xz += faceNormal.xz * 0.1;
+            vec4 gm = uMaterial._IsoGlowMap;
+            vec2 uv = vec2((xz.x - gm.x + 0.5) * gm.z, 1.0 - (xz.y - gm.y + 0.5) * gm.w);
+            g = textureLod(_IsoGlowTex, uv, 0.0);
+        }
+        color.rgb *= GlowLight(g);
+    }
     outColor = color;
 }

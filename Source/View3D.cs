@@ -439,7 +439,7 @@ namespace IsoRim
 
             appliedSig = sig;
             pendingSig = sig;
-            R3DMaterials.SetSunHour(SunHour());
+            R3DMaterials.SetLight(LightNow());
             MapSections.Clear();
             RegenerateAllMaps();
         }
@@ -453,7 +453,7 @@ namespace IsoRim
             {
                 return;
             }
-            R3DMaterials.SetSunHour(SunHour());
+            R3DMaterials.SetLight(LightNow());
 
             // Which walls are cut down to show the rooms behind them depends on which way the
             // camera looks, so once it comes to rest facing a new way those are redrawn.
@@ -487,6 +487,36 @@ namespace IsoRim
 
         // The hour the sun is at: the current map's time of day, or mid-morning with
         // "Sun moves through the day" off.
+        // The direction of the light now: IsoRim's sun by day, the game's moon at night (see
+        // R3DMaterials.LightAt); with "Sun moves" off, the fixed mid-morning sun.
+        public static Vector3 LightNow()
+        {
+            Map map = Find.CurrentMap;
+            if (!IsoRimMod.Settings.sunMoves || map == null)
+            {
+                return R3DMaterials.SunDirAt(9.5f);
+            }
+            float hour = GenLocalDate.HourFloat(map);
+            Vector3 dir = R3DMaterials.LightAt(map, hour);
+            if (logLight && Prefs.DevMode)
+            {
+                int h = GenLocalDate.HourOfDay(map);
+                if (h != loggedHour)
+                {
+                    loggedHour = h;
+                    float glow = GenCelestial.CurCelestialSunGlow(map);
+                    Log.Message("[IsoRim] light at " + hour.ToString("0.00") + " h: sun glow " + glow.ToString("0.000") + ", night " + R3DMaterials.NightWeight(glow).ToString("0.00")
+                        + ", dir (" + dir.x.ToString("0.000") + ", " + dir.y.ToString("0.000") + ", " + dir.z.ToString("0.000") + ")"
+                        + ", azimuth " + Mathf.Repeat(Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg, 360f).ToString("0") + ", elevation " + (Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg).ToString("0"));
+                }
+            }
+            return dir;
+        }
+
+        // Harness runs (-isorim3d) log the light once per game hour.
+        private static readonly bool logLight = GenCommandLine.CommandLineArgPassed("isorim3d");
+        private static int loggedHour = -1;
+
         public static float SunHour()
         {
             IsoRimSettings st = IsoRimMod.Settings;

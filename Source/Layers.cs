@@ -616,7 +616,9 @@ namespace IsoRim
             FinalizeMesh(MeshParts.All);
         }
 
-        // Drawn with the daylight: roofs are not darkened by the rooms under them, so they dim at night by themselves.
+        // Drawn after the game's lighting overlay, so rooms do not darken them. They take the sky
+        // colour only (_GlowMode 2, set on their materials): at night they match the unlit ground
+        // outside, and lamps under a roof do not light its top.
         public override void DrawLayer()
         {
             if (!Visible)
@@ -628,22 +630,19 @@ namespace IsoRim
                 block = new MaterialPropertyBlock();
                 colorId = Shader.PropertyToID("_Color");
             }
-            Map map = Map;
-            float glow = map != null && map.skyManager != null ? Mathf.Lerp(0.30f, 1f, map.skyManager.CurSkyGlow) : 1f;
             for (int i = 0; i < subMeshes.Count; i++)
             {
                 LayerSubMesh sm = subMeshes[i];
                 if (sm.finalized && !sm.disabled)
                 {
-                    // The textured courses carry their colour in the material's colour, which the
-                    // dimming has to keep (the shader adds the sun on the slope, _LightMode 3);
-                    // the plain parts are coloured per corner.
+                    // The textured courses carry their colour in the material's colour (the shader
+                    // adds the sun on the slope, _LightMode 3); the plain parts are coloured per corner.
                     Color baseColor;
                     if (!textureColors.TryGetValue(sm.material, out baseColor))
                     {
                         baseColor = Color.white;
                     }
-                    block.SetColor(colorId, new Color(baseColor.r * glow, baseColor.g * glow, baseColor.b * glow, 1f));
+                    block.SetColor(colorId, new Color(baseColor.r, baseColor.g, baseColor.b, 1f));
                     Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, sm.material, 0, null, 0, block);
                 }
             }
@@ -726,6 +725,7 @@ namespace IsoRim
                 c.a = 1f;
                 m.color = c;
                 textureColors[m] = c;
+                IsoGlow.Use(m, IsoGlow.SkyOnly);
             }
             textureMats[key] = m;
             return m;
