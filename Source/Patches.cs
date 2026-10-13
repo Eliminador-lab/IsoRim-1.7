@@ -78,7 +78,8 @@ namespace IsoRim
             bool anyPrintPlane = false;
             foreach (MethodInfo m in AccessTools.GetDeclaredMethods(typeof(Printer_Plane)))
             {
-                if (m.Name == "PrintPlane" && StartsWith(m, typeof(SectionLayer), typeof(Vector3), typeof(Vector2), typeof(Material), typeof(float)))
+                // 1.7: PrintPlane takes the base class MapDrawLayer (SectionLayer derives from it).
+                if (m.Name == "PrintPlane" && StartsWith(m, typeof(MapDrawLayer), typeof(Vector3), typeof(Vector2), typeof(Material), typeof(float)))
                 {
                     anyPrintPlane |= Patch("3D shapes and upright plants", m, postfix: nameof(PrintPlane_Postfix));
                 }
@@ -88,7 +89,9 @@ namespace IsoRim
                 ModLog.Warn("[IsoRim] Printer_Plane.PrintPlane was not found in the expected form. Nothing can be raised and plants stay flat.");
             }
 
-            Patch("lighting and fog", AccessTools.Method(typeof(SectionLayer), "DrawLayer"),
+            // 1.7: DrawLayer is declared on MapDrawLayer and SectionLayer does not override it, so the
+            // declared method is patched; the prefix passes non-section layers through.
+            Patch("lighting and fog", AccessTools.DeclaredMethod(typeof(MapDrawLayer), "DrawLayer"),
                 prefix: nameof(DrawLayer_Prefix));
 
             try
@@ -286,7 +289,17 @@ namespace IsoRim
                 postfix: nameof(PlaySettings_Postfix));
 
             RedirectDrawCalls();
+
+            // 1.7 port: one dev-mode line listing which hooks went in and which did not.
+            ModLog.Debug("[IsoRim] Hooks applied (" + hooked.Count + "): " + string.Join("; ", hooked));
+            if (missed.Count > 0)
+            {
+                ModLog.Warn("[IsoRim] Hooks missing (" + missed.Count + "): " + string.Join("; ", missed));
+            }
         }
+
+        private static readonly List<string> hooked = new List<string>();
+        private static readonly List<string> missed = new List<string>();
 
         private static FieldInfo turretParent;
         private static PropertyInfo turretRotation;
@@ -366,15 +379,18 @@ namespace IsoRim
             if (target == null)
             {
                 ModLog.Warn("[IsoRim] The game method behind \"" + feature + "\" was not found. That part of the 3D view is off.");
+                missed.Add(feature + " (not found)");
                 return false;
             }
             try
             {
                 harmony.Patch(target, Hook(prefix), Hook(postfix), Hook(transpiler), Hook(finalizer));
+                hooked.Add(target.DeclaringType?.Name + "." + target.Name);
                 return true;
             }
             catch (Exception e)
             {
+                missed.Add(target.DeclaringType?.Name + "." + target.Name + " (" + e.Message + ")");
                 ModLog.Warn("[IsoRim] Could not hook " + target.DeclaringType + "." + target.Name + " for \"" + feature + "\": " + e.Message);
                 return false;
             }
@@ -757,15 +773,15 @@ namespace IsoRim
 
         // Runs after the game adds one flat sprite quad to a block's mesh.
         // __1 is the quad's centre, __2 its size, __3 its material and __4 its rotation.
-        public static void PrintPlane_Postfix(SectionLayer __0, Vector3 __1, Vector2 __2, Material __3, float __4)
+        public static void PrintPlane_Postfix(MapDrawLayer __0, Vector3 __1, Vector2 __2, Material __3, float __4)
         {
-            if (PrintContext.mode == PrintMode.None)
+            if (PrintContext.mode == PrintMode.None || !(__0 is SectionLayer layer))
             {
                 return;
             }
             try
             {
-                PlaneHandler.Handle(__0, __1, __2, __3, __4);
+                PlaneHandler.Handle(layer, __1, __2, __3, __4);
             }
             catch (Exception e)
             {
@@ -777,8 +793,17 @@ namespace IsoRim
         // The lighting overlay and the fog of war are flat sheets. The lighting is pulled in front
         // of everything so it also darkens upright things; the fog is raised to wall height so
         // unexplored areas read as solid.
-        public static bool DrawLayer_Prefix(SectionLayer __instance)
+        public static bool DrawLayer_Prefix(MapDrawLayer __instance)
         {
+            return DrawLayer_Section(__instance as SectionLayer);
+        }
+
+        private static bool DrawLayer_Section(SectionLayer __instance)
+        {
+            if (__instance == null)
+            {
+                return true;
+            }
             Type type = __instance.GetType();
             int kind;
             if (!layerKinds.TryGetValue(type, out kind))
@@ -835,7 +860,7 @@ namespace IsoRim
                 LayerSubMesh sm = subs[i];
                 if (sm.finalized && !sm.disabled)
                 {
-                    Graphics.DrawMesh(sm.mesh, m, sm.material, 0);
+                    Graphics.DrawMesh(sm.mesh, m, sm.material, sm.renderLayer);   // 1.7 vanilla passes renderLayer
                 }
             }
             return false;

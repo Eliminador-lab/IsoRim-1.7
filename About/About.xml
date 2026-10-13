@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>IsoRim (1.7)</name>
+  <author>Lin, Connor (original)</author>
+  <packageId>Peren.IsoRim17</packageId>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+      <downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+  <incompatibleWith>
+    <li>connor.isorim</li>
+  </incompatibleWith>
+  <description>WORK IN PROGRESS. A port of IsoRim (3D isometric view) to RimWorld 1.7. The 3D view does not work yet.
+
+Original mod by Connor (kndzio): https://github.com/kndzio/IsoRim
+
+开发中。IsoRim（3D 等距视角）的 RimWorld 1.7 移植版，3D 视角暂不可用。
+
+原作者 Connor（kndzio）：https://github.com/kndzio/IsoRim</description>
+</ModMetaData>

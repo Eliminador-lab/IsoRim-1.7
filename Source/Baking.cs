@@ -1278,6 +1278,15 @@ namespace IsoRim
         // be read directly, but anything that has been drawn can.
         private static Mask Build(Texture tex, Vector2 scale, Vector2 offset)
         {
+#if RW17
+            // Waylith's Graphics.Blit(src, dst, scale, offset) ignores scale/offset (stub), so a
+            // sub-rect would read the whole texture. No mask = the caller skips extruding it.
+            // TODO later stage: crop on the CPU instead.
+            if (scale != Vector2.one || offset != Vector2.zero)
+            {
+                return null;
+            }
+#endif
             RenderTexture target = RenderTexture.GetTemporary(N, N, 0, RenderTextureFormat.ARGB32);
             RenderTexture previous = RenderTexture.active;
             Texture2D read = null;

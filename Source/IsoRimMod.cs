@@ -682,6 +682,14 @@ namespace IsoRim
         {
             ModLog.Debug("[IsoRim] Code loaded.");
 
+            // 1.7 port testing: "-isorim3d" on the command line starts with the 3D view on
+            // (used by the screenshot harness). The normal default (off) is unchanged.
+            if (GenCommandLine.CommandLineArgPassed("isorim3d"))
+            {
+                View3D.Active = true;
+                Log.Message("[IsoRim] -isorim3d: 3D view starts on.");
+            }
+
             try
             {
                 Patches.ApplyAll();

@@ -345,6 +345,11 @@ namespace IsoRim
                 return;
             }
             triedShader = true;
+#if RW17
+            // Unity AssetBundles cannot load on Waylith; the LUT needs a GLSL rewrite (later stage).
+            // Without it the sheet colour grade is used, as when no bundle is installed.
+            return;
+#endif
             try
             {
                 if (IsoRimMod.RootDir == null)
