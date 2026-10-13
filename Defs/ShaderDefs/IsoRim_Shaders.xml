@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    IsoRim 3D view shaders. All use vanilla SceneDefault.vert.glsl and Shaders\IsoRimSolid.frag.glsl
+    (vertex colour * _Color [* texture]); only the render state differs. Depth is reverse-Z
+    (compare GreaterOrEqual), front face clockwise. Materials may override renderQueue.
+  -->
+
+  <!-- Opaque vertex-coloured geometry: wall/rock lines and lids, model faces, pawns, animals, doors,
+       turbines, tools, roofs (queue 3600 on the material). Cull off: meshes are not closed. -->
+  <ShaderDef>
+    <defName>IsoRimSolid</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Opaque</blendMode>
+      <cullMode>None</cullMode>
+      <renderQueue>2000</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- Opaque textured faces (cut out below alpha 0.5): textured wall/rock sides and tops, model and
+       dynamic textured faces, strata, damage marks, roof slates (3601). Queue 2001 so they draw after
+       the plain copies they lie on (same depth passes GreaterOrEqual). -->
+  <ShaderDef>
+    <defName>IsoRimSolidTex</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <blendMode>Opaque</blendMode>
+      <cullMode>None</cullMode>
+      <renderQueue>2001</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- Inside-out hull shells drawn behind models: only back faces show. Pushed away from the camera
+       (negative = away under reverse-Z) so the shell never shows through the model's own faces. -->
+  <ShaderDef>
+    <defName>IsoRimOutline</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Opaque</blendMode>
+      <cullMode>Front</cullMode>
+      <depthBiasConstantFactor>-1</depthBiasConstantFactor>
+      <depthBiasSlopeFactor>-1</depthBiasSlopeFactor>
+      <renderQueue>2000</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- Blueprints and frames: see-through, but they write depth so a ghost hides its own back faces. -->
+  <ShaderDef>
+    <defName>IsoRimGhost</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Alpha</blendMode>
+      <depthWrite>true</depthWrite>
+      <cullMode>Back</cullMode>
+      <renderQueue>3100</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- See-through, depth-tested, no depth write: stylised water (3050), ground AO shadows (2420),
+       plain fallback shadows (2900). -->
+  <ShaderDef>
+    <defName>IsoRimBlend</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Alpha</blendMode>
+      <depthWrite>false</depthWrite>
+      <cullMode>None</cullMode>
+      <renderQueue>3050</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- See-through marks drawn over everything (drag box, brackets): no depth test or write. -->
+  <ShaderDef>
+    <defName>IsoRimOverlay</defName>
+    <shaderProgram>
+      <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <blendMode>Alpha</blendMode>
+      <depthTest>false</depthTest>
+      <depthWrite>false</depthWrite>
+      <cullMode>None</cullMode>
+      <renderQueue>3650</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+</Defs>

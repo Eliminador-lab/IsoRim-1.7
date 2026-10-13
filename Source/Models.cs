@@ -879,15 +879,32 @@ namespace IsoRim
         }
 
         // A material showing this texture multiplied by a colour, or null if the texture is missing.
-        public static Material MaterialFor(string path, Color color)
+        // queue -1 = the textured def's own queue (2001, opaque).
+        public static Material MaterialFor(string path, Color color, int queue = -1)
         {
-            if (Get(path) == null)
+            Texture2D tex = Get(path);
+            if (tex == null)
             {
                 return null;
             }
             color.a = 1f;
-            return MaterialPool.MatFrom(path, ShaderDatabase.Cutout, color);
+            Color32 c = color;
+            string key = path + "|" + c.r + "," + c.g + "," + c.b + "|" + queue;
+            Material m;
+            if (!materials.TryGetValue(key, out m))
+            {
+                m = R3DMaterials.Make(R3DMaterials.SolidTexDef, "IsoRim_Tex_" + path, queue);
+                if (m != null)
+                {
+                    m.mainTexture = tex;
+                    m.color = color;
+                }
+                materials[key] = m;
+            }
+            return m;
         }
+
+        private static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
 
         public static int SwatchIndex(string swatch)
         {
@@ -1252,8 +1269,10 @@ namespace IsoRim
             Texture2D tex = R3DTextures.Get(path);
             if (tex != null)
             {
-                m = new Material(ShaderDatabase.Cutout);
-                m.name = "IsoRim_LitTex_" + bin;
+                m = Make(SolidTexDef, "IsoRim_LitTex_" + bin);
+            }
+            if (m != null)
+            {
                 m.mainTexture = tex;
                 baseColor.a = 1f;
                 LitEntry e = new LitEntry { mat = m, baseColor = baseColor, bin = bin, curve = curve };
@@ -1363,41 +1382,67 @@ namespace IsoRim
             }
         }
 
+        // ---- shaders (Defs\ShaderDefs\IsoRim_Shaders.xml). Every IsoRim def runs the same
+        // fragment program (vertex colour * _Color [* texture] * shade); the def sets the render
+        // state. _LightMode picks the shade: 0 unlit (all materials for now), 1 model curve, 2 wall curve.
+        public const string SolidDef = "IsoRimSolid";       // opaque, depth write, cull off, 2000
+        public const string SolidTexDef = "IsoRimSolidTex"; // same + texture, cut out at alpha 0.5, 2001
+        public const string OutlineDef = "IsoRimOutline";   // opaque, cull front, pushed back in depth
+        public const string GhostDef = "IsoRimGhost";       // alpha, depth write, cull back, 3100
+        public const string BlendDef = "IsoRimBlend";       // alpha, depth test, no depth write, 3050
+        public const string OverlayDef = "IsoRimOverlay";   // alpha, no depth test or write, 3650
+
+        public const int LightUnlit = 0;
+        private static readonly int lightModeId = Shader.PropertyToID("_LightMode");
+        private static readonly Dictionary<string, Shader> shaders = new Dictionary<string, Shader>();
+
+        // The shader of one of the defs above, or null (logged once) if it is missing.
+        public static Shader ShaderOf(string defName)
+        {
+            Shader s;
+            if (shaders.TryGetValue(defName, out s))
+            {
+                return s;
+            }
+            ShaderDef def = DefDatabase<ShaderDef>.GetNamedSilentFail(defName);
+            s = def != null ? def.Shader : null;
+            if (s == null)
+            {
+                Log.Error("[IsoRim] ShaderDef " + defName + " is missing, so parts of the 3D view cannot be drawn.");
+            }
+            shaders[defName] = s;
+            return s;
+        }
+
+        // A new material on one of the IsoRim defs. queue -1 keeps the def's queue.
+        public static Material Make(string defName, string name, int queue = -1, int lightMode = LightUnlit)
+        {
+            Shader s = ShaderOf(defName);
+            if (s == null)
+            {
+                return null;
+            }
+            Material m = new Material(s);
+            m.name = name;
+            m.SetFloat(lightModeId, lightMode);
+            if (queue >= 0)
+            {
+                m.renderQueue = queue;
+            }
+            return m;
+        }
+
         private static void Init()
         {
             tried = true;
-
-            // Built into every Unity player; draws plain vertex colours.
-            Shader shader = Shader.Find("Hidden/Internal-Colored");
-            if (shader == null)
+            solid = Make(SolidDef, "IsoRim_Solid");
+            if (solid == null)
             {
-                FieldInfo f = AccessTools.Field(typeof(ShaderDatabase), "VertexColor");
-                if (f != null)
-                {
-                    shader = f.GetValue(null) as Shader;
-                }
-            }
-            if (shader == null)
-            {
-                Log.Error("[IsoRim] No vertex-colour shader is available, so walls and models cannot be drawn in 3D.");
                 return;
             }
-
-            solid = new Material(shader);
-            solid.name = "IsoRim_Solid";
-            solid.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-            solid.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
-            solid.SetInt("_ZWrite", 1);
-            solid.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.LessEqual);
-            solid.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            solid.renderQueue = 2000;
-
-            outline = new Material(solid);
-            outline.name = "IsoRim_Outline";
-            outline.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Front);
-            // Pushed back a touch in depth, so that where the outline shell runs close to the
-            // model's own faces it can never show through them.
-            outline.SetFloat("_ZBias", 1f);
+            // The shell is pushed back in depth by the def, so where it runs close to the model's
+            // own faces it can never show through them.
+            outline = Make(OutlineDef, "IsoRim_Outline");
         }
 
         // See-through, coloured from the vertices, for the ghosts of things still to be built.
@@ -1409,13 +1454,7 @@ namespace IsoRim
             {
                 if (ghost == null && Solid != null)
                 {
-                    ghost = new Material(solid);
-                    ghost.name = "IsoRim_Ghost";
-                    ghost.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                    ghost.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                    ghost.SetInt("_ZWrite", 1);
-                    ghost.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Back);
-                    ghost.renderQueue = 3100;
+                    ghost = Make(GhostDef, "IsoRim_Ghost", 3100);
                 }
                 return ghost;
             }
@@ -1431,9 +1470,7 @@ namespace IsoRim
             {
                 if (roof == null && Solid != null)
                 {
-                    roof = new Material(solid);
-                    roof.name = "IsoRim_Roof";
-                    roof.renderQueue = 3600;
+                    roof = Make(SolidDef, "IsoRim_Roof", 3600);
                 }
                 return roof;
             }
@@ -1449,12 +1486,7 @@ namespace IsoRim
             {
                 if (waterOverlay == null && Solid != null)
                 {
-                    waterOverlay = new Material(solid);
-                    waterOverlay.name = "IsoRim_Water";
-                    waterOverlay.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                    waterOverlay.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                    waterOverlay.SetInt("_ZWrite", 0);
-                    waterOverlay.renderQueue = 3050;
+                    waterOverlay = Make(BlendDef, "IsoRim_Water", 3050);
                 }
                 return waterOverlay;
             }
@@ -1501,12 +1533,7 @@ namespace IsoRim
                     Material basis = Solid;
                     if (basis != null)
                     {
-                        groundShadow = new Material(basis);
-                        groundShadow.name = "IsoRim_GroundShadow";
-                        groundShadow.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                        groundShadow.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                        groundShadow.SetInt("_ZWrite", 0);
-                        groundShadow.renderQueue = 2420;
+                        groundShadow = Make(BlendDef, "IsoRim_GroundShadow", 2420);
                     }
                 }
                 return groundShadow;
@@ -1542,12 +1569,7 @@ namespace IsoRim
             {
                 return;
             }
-            plainShadow = new Material(basis);
-            plainShadow.name = "IsoRim_Shadow";
-            plainShadow.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            plainShadow.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            plainShadow.SetInt("_ZWrite", 0);
-            plainShadow.renderQueue = 2900;
+            plainShadow = Make(BlendDef, "IsoRim_Shadow", 2900);
         }
 
         // Brightness for a face pointing along the given direction: 1 on top, 0.5 in full shade.

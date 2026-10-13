@@ -725,13 +725,14 @@ namespace IsoRim
             Texture2D tex = R3DTextures.Get("IsoRim/Roofs/" + StyleNames[style]);
             if (tex != null)
             {
-                m = new Material(ShaderDatabase.Cutout);
-                m.name = "IsoRim_Roof_" + StyleNames[style] + level;
+                m = R3DMaterials.Make(R3DMaterials.SolidTexDef, "IsoRim_Roof_" + StyleNames[style] + level, 3601);
+            }
+            if (m != null)
+            {
                 m.mainTexture = tex;
                 Color c = Styles[style] * 1.25f;
                 c.a = 1f;
                 m.color = c;
-                m.renderQueue = 3601;
                 textureColors[m] = c;
                 textureBins[m] = bin;
             }
@@ -1058,7 +1059,7 @@ namespace IsoRim
                 if (!tried)
                 {
                     tried = true;
-                    material = R3DTextures.MaterialFor(TexturePath, new Color(0.9f, 0.9f, 0.9f, 1f));
+                    material = R3DTextures.MaterialFor(TexturePath, new Color(0.9f, 0.9f, 0.9f, 1f), 2002); // after the walls it marks
                 }
                 return material;
             }
