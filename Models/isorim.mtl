@@ -1,0 +1,1453 @@
+# Materials for the IsoRim models.
+# Kd is the colour, map_Kd the texture under the mod's Textures folder (no extension).
+# Names starting with "stuff" are also multiplied by the colour of the build material,
+# and {stuff} becomes Wood, Stone or Metal to match it.
+# Names starting with "leaf" are left out while a tree is bare,
+# and names starting with "twig" are only drawn while it is bare.
+
+newmtl stuff
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/{stuff}
+
+newmtl stuff_dark
+Kd 0.800 0.800 0.800
+map_Kd IsoRim/Swatches/{stuff}
+
+newmtl stuff_deep
+Kd 0.620 0.620 0.620
+map_Kd IsoRim/Swatches/{stuff}
+
+newmtl linen
+Kd 0.900 0.880 0.820
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl pillow
+Kd 0.980 0.970 0.940
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl blanket
+Kd 0.440 0.520 0.640
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl cushion
+Kd 0.620 0.340 0.300
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl metal
+Kd 0.600 0.620 0.650
+map_Kd IsoRim/Swatches/Metal
+
+newmtl metal_dark
+Kd 0.320 0.330 0.360
+map_Kd IsoRim/Swatches/Metal
+
+newmtl glow
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Glow
+
+newmtl flame
+Kd 1.000 0.900 0.480
+map_Kd IsoRim/Swatches/Flame
+
+newmtl flame_core
+Kd 1.000 0.950 0.720
+map_Kd IsoRim/Swatches/Glow
+
+newmtl log
+Kd 0.500 0.340 0.210
+map_Kd IsoRim/Swatches/Wood
+
+newmtl stone
+Kd 0.540 0.540 0.550
+map_Kd IsoRim/Swatches/Stone
+
+newmtl soil
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Soil
+
+newmtl solar
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Solar
+
+newmtl solar_frame
+Kd 0.700 0.720 0.750
+map_Kd IsoRim/Swatches/Metal
+
+newmtl stuff_bag
+Kd 0.950 0.920 0.840
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl stuff_bag_dark
+Kd 0.700 0.670 0.600
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl pit
+Kd 0.100 0.080 0.070
+
+newmtl solar_line
+Kd 0.680 0.700 0.740
+map_Kd IsoRim/Swatches/Metal
+
+newmtl battery
+Kd 0.380 0.420 0.460
+map_Kd IsoRim/Swatches/Metal
+
+newmtl terminal
+Kd 0.920 0.800 0.240
+map_Kd IsoRim/Swatches/Metal
+
+newmtl ember
+Kd 0.960 0.420 0.180
+map_Kd IsoRim/Swatches/Glow
+
+newmtl ash
+Kd 0.300 0.280 0.270
+
+newmtl log_burnt
+Kd 0.200 0.160 0.140
+map_Kd IsoRim/Swatches/Wood
+
+newmtl stuff_plain
+Kd 1.000 1.000 1.000
+
+newmtl stuff_plain_dark
+Kd 0.800 0.800 0.800
+
+newmtl visor
+Kd 0.140 0.190 0.240
+
+newmtl visor_lit
+Kd 0.300 0.620 0.700
+
+newmtl stuff_plain_deep
+Kd 0.600 0.600 0.600
+
+newmtl stuff_plain_light
+Kd 1.120 1.120 1.120
+
+newmtl geyser_rock
+Kd 0.440 0.420 0.400
+map_Kd IsoRim/Swatches/Rock
+
+newmtl geyser_crust
+Kd 0.840 0.800 0.620
+map_Kd IsoRim/Swatches/Rock
+
+newmtl water_dark
+Kd 0.200 0.340 0.400
+
+newmtl blood
+Kd 0.520 0.120 0.100
+
+newmtl paper
+Kd 0.920 0.900 0.820
+
+newmtl book_red
+Kd 0.620 0.220 0.180
+
+newmtl book_blue
+Kd 0.220 0.360 0.580
+
+newmtl cloth_roll
+Kd 0.720 0.560 0.340
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl stuff_rock
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Rock
+
+newmtl slag
+Kd 0.400 0.380 0.360
+map_Kd IsoRim/Swatches/Rock
+
+newmtl slag_metal
+Kd 0.520 0.470 0.420
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_metal
+Kd 0.360 0.370 0.400
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_dark
+Kd 0.200 0.200 0.220
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_light
+Kd 0.660 0.680 0.700
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_white
+Kd 0.840 0.860 0.880
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_olive
+Kd 0.360 0.400 0.280
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gun_wood
+Kd 0.500 0.340 0.210
+map_Kd IsoRim/Swatches/Wood
+
+newmtl grip
+Kd 0.300 0.220 0.160
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl string
+Kd 0.860 0.820 0.720
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl charge
+Kd 0.450 0.900 1.000
+map_Kd IsoRim/Swatches/Glow
+
+newmtl warning
+Kd 0.860 0.300 0.200
+map_Kd IsoRim/Swatches/Metal
+
+newmtl stuff_fabric
+Kd 0.920 0.920 0.920
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl stuff_fabric_dark
+Kd 0.720 0.720 0.720
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl armor
+Kd 0.740 0.760 0.740
+map_Kd IsoRim/Swatches/Metal
+
+newmtl armor_dark
+Kd 0.460 0.480 0.460
+map_Kd IsoRim/Swatches/Metal
+
+newmtl strap
+Kd 0.340 0.260 0.180
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl bark
+Kd 0.440 0.310 0.210
+map_Kd IsoRim/Swatches/Bark
+
+newmtl bark_pale
+Kd 0.840 0.820 0.760
+map_Kd IsoRim/Swatches/Bark
+
+newmtl leaf_oak
+Kd 0.380 0.540 0.250
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_poplar
+Kd 0.440 0.600 0.270
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_birch
+Kd 0.520 0.640 0.300
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_pine
+Kd 0.230 0.410 0.250
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_willow
+Kd 0.420 0.570 0.310
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_maple
+Kd 0.800 0.430 0.190
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_cypress
+Kd 0.250 0.430 0.270
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_teak
+Kd 0.310 0.510 0.230
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_jungle
+Kd 0.340 0.570 0.270
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_bamboo
+Kd 0.480 0.640 0.310
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_drago
+Kd 0.290 0.450 0.270
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_anima
+Kd 0.940 0.880 0.920
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_gauranlen
+Kd 0.820 0.880 0.620
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl cactus
+Kd 0.380 0.540 0.320
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl bamboo
+Kd 0.620 0.700 0.360
+map_Kd IsoRim/Swatches/Bark
+
+newmtl blade_a
+Kd 0.450 0.580 0.310
+
+newmtl blade_b
+Kd 0.360 0.480 0.270
+
+newmtl blade_c
+Kd 0.520 0.640 0.370
+
+newmtl hay_a
+Kd 0.660 0.680 0.320
+
+newmtl hay_b
+Kd 0.560 0.600 0.280
+
+newmtl rice_a
+Kd 0.540 0.700 0.330
+
+newmtl stem
+Kd 0.360 0.500 0.240
+
+newmtl moss
+Kd 0.290 0.430 0.230
+
+newmtl agave
+Kd 0.290 0.540 0.520
+
+newmtl petal_yellow
+Kd 0.970 0.820 0.240
+
+newmtl petal_pink
+Kd 0.880 0.520 0.740
+
+newmtl petal_orange
+Kd 0.960 0.570 0.210
+
+newmtl petal_red
+Kd 0.860 0.230 0.250
+
+newmtl petal_white
+Kd 0.960 0.960 0.910
+
+newmtl berry
+Kd 0.330 0.430 0.820
+
+newmtl fruit_red
+Kd 0.860 0.200 0.200
+
+newmtl corn
+Kd 0.960 0.840 0.320
+
+newmtl cotton
+Kd 0.970 0.970 0.950
+
+newmtl cap_red
+Kd 0.720 0.210 0.190
+
+newmtl cap_glow
+Kd 0.560 0.900 0.740
+
+newmtl shrub
+Kd 0.420 0.530 0.250
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl shrub_dark
+Kd 0.310 0.440 0.220
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl bramble
+Kd 0.420 0.370 0.220
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl crop_leaf
+Kd 0.360 0.530 0.250
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl crop_pale
+Kd 0.500 0.620 0.380
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl stuff_herb
+Kd 1.000 1.000 1.000
+
+newmtl stuff_herb_dark
+Kd 0.780 0.780 0.780
+
+newmtl leaf_oak_dk
+Kd 0.281 0.410 0.200
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_oak_lt
+Kd 0.456 0.626 0.265
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_poplar_dk
+Kd 0.326 0.456 0.216
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_poplar_lt
+Kd 0.528 0.696 0.286
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_birch_dk
+Kd 0.385 0.486 0.240
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_birch_lt
+Kd 0.624 0.742 0.318
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_pine_dk
+Kd 0.170 0.312 0.200
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_pine_lt
+Kd 0.276 0.476 0.265
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_willow_dk
+Kd 0.311 0.433 0.248
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_willow_lt
+Kd 0.504 0.661 0.329
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_maple_dk
+Kd 0.592 0.327 0.152
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_maple_lt
+Kd 0.960 0.499 0.201
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_cypress_dk
+Kd 0.185 0.327 0.216
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_cypress_lt
+Kd 0.300 0.499 0.286
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_teak_dk
+Kd 0.229 0.388 0.184
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_teak_lt
+Kd 0.372 0.592 0.244
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_jungle_dk
+Kd 0.252 0.433 0.216
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_jungle_lt
+Kd 0.408 0.661 0.286
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_bamboo_dk
+Kd 0.355 0.486 0.248
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_bamboo_lt
+Kd 0.576 0.742 0.329
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_drago_dk
+Kd 0.215 0.342 0.216
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_drago_lt
+Kd 0.348 0.522 0.286
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_anima_dk
+Kd 0.696 0.669 0.736
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_anima_lt
+Kd 1.000 1.000 0.975
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_gauranlen_dk
+Kd 0.607 0.669 0.496
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl leaf_gauranlen_lt
+Kd 0.984 1.000 0.657
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl bark_dark
+Kd 0.300 0.220 0.170
+map_Kd IsoRim/Swatches/Bark
+
+newmtl bark_birch
+Kd 0.920 0.910 0.860
+map_Kd IsoRim/Swatches/Bark
+
+newmtl bark_mark
+Kd 0.210 0.200 0.190
+
+newmtl twig_bark
+Kd 0.440 0.310 0.210
+map_Kd IsoRim/Swatches/Bark
+
+newmtl twig_bark_pale
+Kd 0.840 0.820 0.760
+map_Kd IsoRim/Swatches/Bark
+
+newmtl twig_bark_dark
+Kd 0.300 0.220 0.170
+map_Kd IsoRim/Swatches/Bark
+
+newmtl twig_bark_birch
+Kd 0.920 0.910 0.860
+map_Kd IsoRim/Swatches/Bark
+
+newmtl pod
+Kd 0.560 0.340 0.160
+
+newmtl pod_pale
+Kd 0.900 0.860 0.660
+
+newmtl coconut
+Kd 0.360 0.260 0.170
+
+newmtl rust
+Kd 0.500 0.320 0.220
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rust_dark
+Kd 0.300 0.210 0.160
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rust_light
+Kd 0.640 0.440 0.300
+map_Kd IsoRim/Swatches/Metal
+
+newmtl paint_olive
+Kd 0.400 0.420 0.300
+map_Kd IsoRim/Swatches/Metal
+
+newmtl paint_red
+Kd 0.560 0.240 0.200
+map_Kd IsoRim/Swatches/Metal
+
+newmtl paint_blue
+Kd 0.300 0.400 0.520
+map_Kd IsoRim/Swatches/Metal
+
+newmtl paint_cream
+Kd 0.780 0.740 0.620
+map_Kd IsoRim/Swatches/Metal
+
+newmtl concrete
+Kd 0.620 0.610 0.580
+map_Kd IsoRim/Swatches/Stone
+
+newmtl glass
+Kd 0.520 0.700 0.780
+
+newmtl glass_dark
+Kd 0.160 0.220 0.270
+
+newmtl screen
+Kd 0.100 0.130 0.160
+
+newmtl glow_screen
+Kd 0.480 0.860 0.960
+map_Kd IsoRim/Swatches/Glow
+
+newmtl glow_green
+Kd 0.460 0.940 0.520
+map_Kd IsoRim/Swatches/Glow
+
+newmtl glow_red
+Kd 0.980 0.360 0.300
+map_Kd IsoRim/Swatches/Glow
+
+newmtl glow_amber
+Kd 1.000 0.720 0.300
+map_Kd IsoRim/Swatches/Glow
+
+newmtl felt
+Kd 0.200 0.440 0.280
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl felt_red
+Kd 0.520 0.180 0.180
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl rubber
+Kd 0.130 0.130 0.140
+
+newmtl hull
+Kd 0.700 0.730 0.760
+map_Kd IsoRim/Swatches/Metal
+
+newmtl hull_dark
+Kd 0.400 0.430 0.470
+map_Kd IsoRim/Swatches/Metal
+
+newmtl plasteel
+Kd 0.700 0.800 0.840
+map_Kd IsoRim/Swatches/Metal
+
+newmtl uranium
+Kd 0.360 0.440 0.320
+map_Kd IsoRim/Swatches/Metal
+
+newmtl gold
+Kd 0.920 0.740 0.300
+map_Kd IsoRim/Swatches/Metal
+
+newmtl silver
+Kd 0.820 0.840 0.860
+map_Kd IsoRim/Swatches/Metal
+
+newmtl jade
+Kd 0.400 0.660 0.460
+map_Kd IsoRim/Swatches/Stone
+
+newmtl wood_end
+Kd 0.780 0.620 0.400
+map_Kd IsoRim/Swatches/Wood
+
+newmtl chemfuel
+Kd 0.740 0.300 0.160
+map_Kd IsoRim/Swatches/Metal
+
+newmtl neutro
+Kd 0.300 0.480 0.720
+map_Kd IsoRim/Swatches/Metal
+
+newmtl medicine
+Kd 0.920 0.920 0.900
+
+newmtl red_cross
+Kd 0.820 0.180 0.160
+
+newmtl herb_green
+Kd 0.380 0.540 0.280
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl meat
+Kd 0.700 0.260 0.240
+
+newmtl fat
+Kd 0.920 0.820 0.740
+
+newmtl bowl
+Kd 0.780 0.700 0.580
+map_Kd IsoRim/Swatches/Wood
+
+newmtl food_paste
+Kd 0.660 0.700 0.520
+
+newmtl food_stew
+Kd 0.660 0.440 0.260
+
+newmtl food_green
+Kd 0.440 0.620 0.300
+
+newmtl food_yellow
+Kd 0.920 0.780 0.360
+
+newmtl foil
+Kd 0.760 0.760 0.720
+map_Kd IsoRim/Swatches/Metal
+
+newmtl sack
+Kd 0.740 0.640 0.460
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl sack_dark
+Kd 0.560 0.470 0.330
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl potato
+Kd 0.720 0.560 0.360
+
+newmtl rice
+Kd 0.940 0.920 0.840
+
+newmtl fungus
+Kd 0.800 0.720 0.620
+
+newmtl egg
+Kd 0.940 0.900 0.820
+
+newmtl milk
+Kd 0.960 0.960 0.940
+
+newmtl jelly
+Kd 0.960 0.740 0.220
+map_Kd IsoRim/Swatches/Glow
+
+newmtl chocolate
+Kd 0.360 0.220 0.140
+
+newmtl bottle
+Kd 0.320 0.220 0.120
+
+newmtl hay
+Kd 0.800 0.720 0.380
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl pill
+Kd 0.920 0.880 0.800
+
+newmtl label
+Kd 0.880 0.860 0.780
+
+newmtl stuff_block
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Stone
+
+newmtl stuff_block_dark
+Kd 0.800 0.800 0.800
+map_Kd IsoRim/Swatches/Stone
+
+newmtl stuff_wool
+Kd 1.000 1.000 1.000
+map_Kd IsoRim/Swatches/Fabric
+
+newmtl shell_olive
+Kd 0.400 0.440 0.300
+map_Kd IsoRim/Swatches/Metal
+
+newmtl brass
+Kd 0.800 0.640 0.300
+map_Kd IsoRim/Swatches/Metal
+
+newmtl spike
+Kd 0.800 0.800 0.800
+
+newmtl water
+Kd 0.320 0.520 0.620
+
+newmtl foam_white
+Kd 0.920 0.940 0.940
+
+newmtl steam_pipe
+Kd 0.580 0.560 0.520
+map_Kd IsoRim/Swatches/Metal
+
+newmtl ice
+Kd 0.820 0.900 0.960
+
+newmtl an_dark
+Kd 0.110 0.100 0.100
+
+newmtl an_horn
+Kd 0.850 0.810 0.690
+
+newmtl an_hoof
+Kd 0.210 0.180 0.160
+
+newmtl an_chicken_body
+Kd 0.920 0.910 0.870
+
+newmtl an_chicken_head
+Kd 0.920 0.910 0.870
+
+newmtl an_chicken_leg
+Kd 0.900 0.720 0.260
+
+newmtl an_chicken_acc
+Kd 0.800 0.180 0.160
+
+newmtl an_chicken_beak
+Kd 0.920 0.700 0.220
+
+newmtl an_duck_body
+Kd 0.600 0.480 0.360
+
+newmtl an_duck_belly
+Kd 0.820 0.780 0.700
+
+newmtl an_duck_head
+Kd 0.220 0.400 0.300
+
+newmtl an_duck_leg
+Kd 0.920 0.560 0.200
+
+newmtl an_duck_beak
+Kd 0.920 0.660 0.200
+
+newmtl an_goose_body
+Kd 0.840 0.830 0.800
+
+newmtl an_goose_head
+Kd 0.840 0.830 0.800
+
+newmtl an_goose_leg
+Kd 0.920 0.560 0.200
+
+newmtl an_goose_acc
+Kd 0.620 0.600 0.580
+
+newmtl an_goose_beak
+Kd 0.920 0.560 0.200
+
+newmtl an_turkey_body
+Kd 0.330 0.250 0.200
+
+newmtl an_turkey_head
+Kd 0.460 0.560 0.740
+
+newmtl an_turkey_leg
+Kd 0.620 0.500 0.420
+
+newmtl an_turkey_acc
+Kd 0.780 0.200 0.180
+
+newmtl an_turkey_tail
+Kd 0.520 0.380 0.260
+
+newmtl an_turkey_beak
+Kd 0.880 0.760 0.460
+
+newmtl an_cow_body
+Kd 0.920 0.910 0.870
+
+newmtl an_cow_head
+Kd 0.920 0.910 0.870
+
+newmtl an_cow_leg
+Kd 0.773 0.764 0.731
+
+newmtl an_cow_acc
+Kd 0.170 0.160 0.170
+
+newmtl an_cow_muzzle
+Kd 0.860 0.660 0.620
+
+newmtl an_pig_body
+Kd 0.900 0.680 0.660
+
+newmtl an_pig_head
+Kd 0.900 0.680 0.660
+
+newmtl an_pig_leg
+Kd 0.756 0.571 0.554
+
+newmtl an_pig_muzzle
+Kd 0.940 0.600 0.600
+
+newmtl an_sheep_body
+Kd 0.900 0.870 0.800
+
+newmtl an_sheep_head
+Kd 0.260 0.230 0.210
+
+newmtl an_sheep_leg
+Kd 0.260 0.230 0.210
+
+newmtl an_goat_body
+Kd 0.840 0.800 0.720
+
+newmtl an_goat_head
+Kd 0.840 0.800 0.720
+
+newmtl an_goat_leg
+Kd 0.706 0.672 0.605
+
+newmtl an_horse_body
+Kd 0.500 0.330 0.220
+
+newmtl an_horse_head
+Kd 0.500 0.330 0.220
+
+newmtl an_horse_leg
+Kd 0.420 0.277 0.185
+
+newmtl an_horse_acc
+Kd 0.200 0.140 0.110
+
+newmtl an_donkey_body
+Kd 0.560 0.520 0.480
+
+newmtl an_donkey_belly
+Kd 0.840 0.820 0.780
+
+newmtl an_donkey_head
+Kd 0.560 0.520 0.480
+
+newmtl an_donkey_leg
+Kd 0.470 0.437 0.403
+
+newmtl an_donkey_acc
+Kd 0.260 0.230 0.210
+
+newmtl an_donkey_muzzle
+Kd 0.860 0.840 0.800
+
+newmtl an_alpaca_body
+Kd 0.840 0.740 0.600
+
+newmtl an_alpaca_head
+Kd 0.840 0.740 0.600
+
+newmtl an_alpaca_leg
+Kd 0.706 0.622 0.504
+
+newmtl an_dromedary_body
+Kd 0.800 0.650 0.450
+
+newmtl an_dromedary_head
+Kd 0.800 0.650 0.450
+
+newmtl an_dromedary_leg
+Kd 0.672 0.546 0.378
+
+newmtl an_muffalo_body
+Kd 0.470 0.560 0.660
+
+newmtl an_muffalo_head
+Kd 0.340 0.400 0.480
+
+newmtl an_muffalo_leg
+Kd 0.320 0.370 0.440
+
+newmtl an_bison_body
+Kd 0.400 0.290 0.210
+
+newmtl an_bison_head
+Kd 0.240 0.180 0.150
+
+newmtl an_bison_leg
+Kd 0.336 0.244 0.176
+
+newmtl an_bison_acc
+Kd 0.270 0.200 0.160
+
+newmtl an_yak_body
+Kd 0.270 0.220 0.200
+
+newmtl an_yak_head
+Kd 0.270 0.220 0.200
+
+newmtl an_yak_leg
+Kd 0.227 0.185 0.168
+
+newmtl an_guineapig_body
+Kd 0.740 0.540 0.360
+
+newmtl an_guineapig_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_guineapig_head
+Kd 0.740 0.540 0.360
+
+newmtl an_guineapig_leg
+Kd 0.622 0.454 0.302
+
+newmtl an_cat_body
+Kd 0.820 0.600 0.360
+
+newmtl an_cat_belly
+Kd 0.940 0.900 0.820
+
+newmtl an_cat_head
+Kd 0.820 0.600 0.360
+
+newmtl an_cat_leg
+Kd 0.689 0.504 0.302
+
+newmtl an_husky_body
+Kd 0.560 0.580 0.630
+
+newmtl an_husky_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_husky_head
+Kd 0.560 0.580 0.630
+
+newmtl an_husky_leg
+Kd 0.880 0.880 0.880
+
+newmtl an_husky_muzzle
+Kd 0.920 0.910 0.870
+
+newmtl an_labrador_body
+Kd 0.860 0.730 0.480
+
+newmtl an_labrador_head
+Kd 0.860 0.730 0.480
+
+newmtl an_labrador_leg
+Kd 0.722 0.613 0.403
+
+newmtl an_yorkie_body
+Kd 0.660 0.500 0.320
+
+newmtl an_yorkie_head
+Kd 0.740 0.580 0.360
+
+newmtl an_yorkie_leg
+Kd 0.554 0.420 0.269
+
+newmtl an_deer_body
+Kd 0.640 0.460 0.300
+
+newmtl an_deer_belly
+Kd 0.900 0.860 0.780
+
+newmtl an_deer_head
+Kd 0.640 0.460 0.300
+
+newmtl an_deer_leg
+Kd 0.538 0.386 0.252
+
+newmtl an_elk_body
+Kd 0.540 0.400 0.280
+
+newmtl an_elk_belly
+Kd 0.720 0.620 0.480
+
+newmtl an_elk_head
+Kd 0.540 0.400 0.280
+
+newmtl an_elk_leg
+Kd 0.454 0.336 0.235
+
+newmtl an_elk_acc
+Kd 0.320 0.230 0.170
+
+newmtl an_caribou_body
+Kd 0.580 0.520 0.460
+
+newmtl an_caribou_belly
+Kd 0.880 0.860 0.820
+
+newmtl an_caribou_head
+Kd 0.580 0.520 0.460
+
+newmtl an_caribou_leg
+Kd 0.487 0.437 0.386
+
+newmtl an_ibex_body
+Kd 0.680 0.560 0.420
+
+newmtl an_ibex_belly
+Kd 0.860 0.800 0.700
+
+newmtl an_ibex_head
+Kd 0.680 0.560 0.420
+
+newmtl an_ibex_leg
+Kd 0.571 0.470 0.353
+
+newmtl an_gazelle_body
+Kd 0.820 0.630 0.420
+
+newmtl an_gazelle_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_gazelle_head
+Kd 0.820 0.630 0.420
+
+newmtl an_gazelle_leg
+Kd 0.689 0.529 0.353
+
+newmtl an_boomalope_body
+Kd 0.740 0.600 0.500
+
+newmtl an_boomalope_head
+Kd 0.740 0.600 0.500
+
+newmtl an_boomalope_leg
+Kd 0.622 0.504 0.420
+
+newmtl an_boomalope_acc
+Kd 0.880 0.800 0.440
+
+newmtl an_wildboar_body
+Kd 0.360 0.280 0.240
+
+newmtl an_wildboar_head
+Kd 0.360 0.280 0.240
+
+newmtl an_wildboar_leg
+Kd 0.302 0.235 0.202
+
+newmtl an_wildboar_acc
+Kd 0.220 0.170 0.150
+
+newmtl an_capybara_body
+Kd 0.560 0.420 0.300
+
+newmtl an_capybara_head
+Kd 0.560 0.420 0.300
+
+newmtl an_capybara_leg
+Kd 0.470 0.353 0.252
+
+newmtl an_rat_body
+Kd 0.500 0.440 0.400
+
+newmtl an_rat_head
+Kd 0.500 0.440 0.400
+
+newmtl an_rat_leg
+Kd 0.420 0.370 0.336
+
+newmtl an_rat_tail
+Kd 0.840 0.640 0.620
+
+newmtl an_boomrat_body
+Kd 0.740 0.400 0.360
+
+newmtl an_boomrat_head
+Kd 0.740 0.400 0.360
+
+newmtl an_boomrat_leg
+Kd 0.622 0.336 0.302
+
+newmtl an_boomrat_acc
+Kd 0.940 0.720 0.360
+
+newmtl an_squirrel_body
+Kd 0.680 0.420 0.260
+
+newmtl an_squirrel_belly
+Kd 0.920 0.860 0.760
+
+newmtl an_squirrel_head
+Kd 0.680 0.420 0.260
+
+newmtl an_squirrel_leg
+Kd 0.571 0.353 0.218
+
+newmtl an_hare_body
+Kd 0.620 0.500 0.380
+
+newmtl an_hare_head
+Kd 0.620 0.500 0.380
+
+newmtl an_hare_leg
+Kd 0.521 0.420 0.319
+
+newmtl an_hare_tail
+Kd 0.920 0.910 0.870
+
+newmtl an_snowhare_body
+Kd 0.950 0.950 0.960
+
+newmtl an_snowhare_head
+Kd 0.950 0.950 0.960
+
+newmtl an_snowhare_leg
+Kd 0.798 0.798 0.806
+
+newmtl an_raccoon_body
+Kd 0.520 0.520 0.520
+
+newmtl an_raccoon_head
+Kd 0.340 0.330 0.330
+
+newmtl an_raccoon_leg
+Kd 0.437 0.437 0.437
+
+newmtl an_raccoon_acc
+Kd 0.200 0.190 0.190
+
+newmtl an_raccoon_muzzle
+Kd 0.920 0.910 0.870
+
+newmtl an_chinchilla_body
+Kd 0.660 0.660 0.710
+
+newmtl an_chinchilla_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_chinchilla_head
+Kd 0.660 0.660 0.710
+
+newmtl an_chinchilla_leg
+Kd 0.554 0.554 0.596
+
+newmtl an_monkey_body
+Kd 0.500 0.360 0.260
+
+newmtl an_monkey_head
+Kd 0.500 0.360 0.260
+
+newmtl an_monkey_leg
+Kd 0.420 0.302 0.218
+
+newmtl an_monkey_muzzle
+Kd 0.840 0.680 0.540
+
+newmtl an_fox_fennec_body
+Kd 0.880 0.740 0.540
+
+newmtl an_fox_fennec_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_fox_fennec_head
+Kd 0.880 0.740 0.540
+
+newmtl an_fox_fennec_leg
+Kd 0.739 0.622 0.454
+
+newmtl an_fox_red_body
+Kd 0.820 0.440 0.200
+
+newmtl an_fox_red_belly
+Kd 0.920 0.910 0.870
+
+newmtl an_fox_red_head
+Kd 0.820 0.440 0.200
+
+newmtl an_fox_red_leg
+Kd 0.240 0.180 0.150
+
+newmtl an_fox_red_acc
+Kd 0.920 0.910 0.870
+
+newmtl an_fox_arctic_body
+Kd 0.940 0.940 0.960
+
+newmtl an_fox_arctic_head
+Kd 0.940 0.940 0.960
+
+newmtl an_fox_arctic_leg
+Kd 0.790 0.790 0.806
+
+newmtl an_wolf_timber_body
+Kd 0.520 0.500 0.480
+
+newmtl an_wolf_timber_belly
+Kd 0.800 0.780 0.740
+
+newmtl an_wolf_timber_head
+Kd 0.520 0.500 0.480
+
+newmtl an_wolf_timber_leg
+Kd 0.437 0.420 0.403
+
+newmtl an_wolf_arctic_body
+Kd 0.920 0.920 0.940
+
+newmtl an_wolf_arctic_head
+Kd 0.920 0.920 0.940
+
+newmtl an_wolf_arctic_leg
+Kd 0.773 0.773 0.790
+
+newmtl an_warg_body
+Kd 0.380 0.250 0.230
+
+newmtl an_warg_head
+Kd 0.380 0.250 0.230
+
+newmtl an_warg_leg
+Kd 0.319 0.210 0.193
+
+newmtl an_warg_acc
+Kd 0.220 0.150 0.140
+
+newmtl an_cougar_body
+Kd 0.780 0.620 0.420
+
+newmtl an_cougar_belly
+Kd 0.920 0.860 0.760
+
+newmtl an_cougar_head
+Kd 0.780 0.620 0.420
+
+newmtl an_cougar_leg
+Kd 0.655 0.521 0.353
+
+newmtl an_panther_body
+Kd 0.170 0.170 0.200
+
+newmtl an_panther_head
+Kd 0.170 0.170 0.200
+
+newmtl an_panther_leg
+Kd 0.143 0.143 0.168
+
+newmtl an_lynx_body
+Kd 0.720 0.640 0.520
+
+newmtl an_lynx_belly
+Kd 0.920 0.880 0.800
+
+newmtl an_lynx_head
+Kd 0.720 0.640 0.520
+
+newmtl an_lynx_leg
+Kd 0.605 0.538 0.437
+
+newmtl an_bear_grizzly_body
+Kd 0.420 0.300 0.220
+
+newmtl an_bear_grizzly_head
+Kd 0.420 0.300 0.220
+
+newmtl an_bear_grizzly_leg
+Kd 0.353 0.252 0.185
+
+newmtl an_bear_grizzly_muzzle
+Kd 0.620 0.480 0.340
+
+newmtl an_bear_polar_body
+Kd 0.940 0.930 0.890
+
+newmtl an_bear_polar_head
+Kd 0.940 0.930 0.890
+
+newmtl an_bear_polar_leg
+Kd 0.790 0.781 0.748
+
+newmtl an_megasloth_body
+Kd 0.460 0.360 0.280
+
+newmtl an_megasloth_head
+Kd 0.620 0.520 0.400
+
+newmtl an_megasloth_leg
+Kd 0.386 0.302 0.235
+
+newmtl an_thrumbo_body
+Kd 0.900 0.920 0.950
+
+newmtl an_thrumbo_belly
+Kd 0.720 0.770 0.850
+
+newmtl an_thrumbo_head
+Kd 0.840 0.870 0.920
+
+newmtl an_thrumbo_leg
+Kd 0.640 0.690 0.770
+
+newmtl an_thrumbo_acc
+Kd 0.780 0.820 0.890
+
+newmtl an_thrumbo_muzzle
+Kd 0.620 0.660 0.740
+
+newmtl an_elephant_body
+Kd 0.550 0.540 0.560
+
+newmtl an_elephant_head
+Kd 0.550 0.540 0.560
+
+newmtl an_elephant_leg
+Kd 0.462 0.454 0.470
+
+newmtl an_rhinoceros_body
+Kd 0.520 0.500 0.480
+
+newmtl an_rhinoceros_head
+Kd 0.520 0.500 0.480
+
+newmtl an_rhinoceros_leg
+Kd 0.437 0.420 0.403
+
+newmtl an_emu_body
+Kd 0.420 0.360 0.320
+
+newmtl an_emu_head
+Kd 0.360 0.440 0.560
+
+newmtl an_emu_leg
+Kd 0.360 0.330 0.300
+
+newmtl an_emu_beak
+Kd 0.260 0.240 0.220
+
+newmtl an_ostrich_body
+Kd 0.180 0.170 0.170
+
+newmtl an_ostrich_head
+Kd 0.860 0.700 0.660
+
+newmtl an_ostrich_leg
+Kd 0.860 0.700 0.660
+
+newmtl an_ostrich_tail
+Kd 0.920 0.910 0.870
+
+newmtl an_ostrich_beak
+Kd 0.800 0.620 0.420
+
+newmtl an_cassowary_body
+Kd 0.150 0.150 0.170
+
+newmtl an_cassowary_head
+Kd 0.220 0.420 0.800
+
+newmtl an_cassowary_leg
+Kd 0.400 0.380 0.340
+
+newmtl an_cassowary_acc
+Kd 0.820 0.200 0.180
+
+newmtl an_cassowary_beak
+Kd 0.280 0.260 0.240
+
+newmtl an_iguana_body
+Kd 0.420 0.600 0.300
+
+newmtl an_iguana_belly
+Kd 0.700 0.780 0.460
+
+newmtl an_iguana_head
+Kd 0.420 0.600 0.300
+
+newmtl an_iguana_leg
+Kd 0.353 0.504 0.252
+
+newmtl an_iguana_acc
+Kd 0.300 0.460 0.240
+
+newmtl an_tortoise_body
+Kd 0.540 0.520 0.340
+
+newmtl an_tortoise_head
+Kd 0.540 0.520 0.340
+
+newmtl an_tortoise_leg
+Kd 0.454 0.437 0.286
+
+newmtl an_tortoise_acc
+Kd 0.440 0.400 0.240
+
+newmtl an_cobra_body
+Kd 0.600 0.500 0.320
+
+newmtl an_cobra_belly
+Kd 0.860 0.800 0.600
+
+newmtl an_cobra_hood
+Kd 0.500 0.400 0.260
+
+newmtl an_megascarab_body
+Kd 0.260 0.300 0.380
+
+newmtl an_megascarab_leg
+Kd 0.182 0.210 0.266
+
+newmtl an_megaspider_body
+Kd 0.560 0.420 0.280
+
+newmtl an_megaspider_leg
+Kd 0.392 0.294 0.196
+
+newmtl an_megaspider_acc
+Kd 0.720 0.620 0.420
+
+newmtl an_spelopede_body
+Kd 0.620 0.560 0.400
+
+newmtl an_spelopede_leg
+Kd 0.434 0.392 0.280
