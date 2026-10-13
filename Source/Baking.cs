@@ -626,16 +626,7 @@ namespace IsoRim
                 Vector3 q1 = q0 + right;
                 float lineTop = OutlineWidth * 0.7f / squash;
                 MeshWriter.Quad(solid, q0, Raised(q0, lineTop), Raised(q1, lineTop), q1, lineColor);
-                if (Exposed(map, c - FaceRight[f], height))
-                {
-                    Vector3 e = q0 + right * OutlineWidth;
-                    MeshWriter.Quad(solid, q0, Raised(q0, topY), Raised(e, topY), e, lineColor);
-                }
-                if (Exposed(map, c + FaceRight[f], height))
-                {
-                    Vector3 e = q0 + right * (1f - OutlineWidth);
-                    MeshWriter.Quad(solid, e, Raised(e, topY), Raised(q1, topY), q1, lineColor);
-                }
+                EndLines(solid, map, c, f, q0, right, topY, height, lineColor);
             }
 
             // Where a wall turns a corner inward, the rim needs a small square to stay unbroken.
@@ -838,16 +829,27 @@ namespace IsoRim
                 Vector3 q1 = q0 + right;
                 float lineTop = OutlineWidth * 0.7f / squash;
                 MeshWriter.Quad(solid, q0, Raised(q0, lineTop), Raised(q1, lineTop), q1, lineColor);
-                if (Exposed(map, c - FaceRight[f], height))
-                {
-                    Vector3 e = q0 + right * OutlineWidth;
-                    MeshWriter.Quad(solid, q0, Raised(q0, topY), Raised(e, topY), e, lineColor);
-                }
-                if (Exposed(map, c + FaceRight[f], height))
-                {
-                    Vector3 e = q0 + right * (1f - OutlineWidth);
-                    MeshWriter.Quad(solid, e, Raised(e, topY), Raised(q1, topY), q1, lineColor);
-                }
+                EndLines(solid, map, c, f, q0, right, topY, height, lineColor);
+            }
+        }
+
+        // The line up each end of a run of wall. An end is always an outside corner, where the
+        // next face round draws its own end line, so each draws half the width and runs on past
+        // the corner by Gap: together they make one line with no seam.
+        private static void EndLines(LayerSubMesh solid, Map map, IntVec3 c, int f, Vector3 q0, Vector3 right, float topY, float height, Color32 lineColor)
+        {
+            float half = OutlineWidth * 0.5f;
+            if (Exposed(map, c - FaceRight[f], height))
+            {
+                Vector3 s = q0 - right * Gap;
+                Vector3 e = q0 + right * half;
+                MeshWriter.Quad(solid, s, Raised(s, topY), Raised(e, topY), e, lineColor);
+            }
+            if (Exposed(map, c + FaceRight[f], height))
+            {
+                Vector3 s = q0 + right * (1f - half);
+                Vector3 e = q0 + right * (1f + Gap);
+                MeshWriter.Quad(solid, s, Raised(s, topY), Raised(e, topY), e, lineColor);
             }
         }
 

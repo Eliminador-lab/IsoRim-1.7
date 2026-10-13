@@ -282,7 +282,7 @@ namespace IsoRim
                 {
                     continue;
                 }
-                IsoGlow.DrawLit(p.mesh, matrix, p.material, 0);
+                IsoGlow.DrawLit(p.mesh, p.outline ? View3D.OutlinePushMatrix * matrix : matrix, p.material, 0);
             }
         }
 
