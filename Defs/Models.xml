@@ -5150,4 +5150,29 @@
     <apparelHeadHeight>0.99</apparelHeadHeight>
     <apparelScale>1.0</apparelScale>
   </IsoRim.ModelDef>
+  <!-- Coop batch 4 class B: ancient stockpile hatch (closed / open parts by MapPortal.IsEnterable) and exit (ladder as a part) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientHatch</defName>
+    <thingDef>AncientHatch</thingDef>
+    <model>Models/hatch_entrance.obj</model>
+    <parts>
+      <li>Models/hatch_cover.obj</li>
+      <li>Models/hatch_readout.obj</li>
+    </parts>
+    <openModel>Models/hatch_entrance.obj</openModel>
+    <openParts>
+      <li>Models/hatch_well.obj</li>
+    </openParts>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientHatchExit</defName>
+    <thingDef>AncientHatchExit</thingDef>
+    <model>Models/hatch_exit.obj</model>
+    <parts>
+      <li>Models/hatch_ladder.obj</li>
+    </parts>
+    <hideExtraGraphics>true</hideExtraGraphics>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
 </Defs>

@@ -311,6 +311,9 @@ namespace IsoRim
             // Outfit stands with their model: head model, the apparel and weapon stood upright over it (Stands.cs).
             Patch("3D outfit stands", AccessTools.DeclaredMethod(typeof(Building_OutfitStand), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
                 prefix: nameof(OutfitStandDrawAt_Prefix));
+            // Extra per-frame sprites the model already has as parts (the ancient stockpile exit's ladder).
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompDrawAdditionalGraphics), "PostDraw"),
+                prefix: nameof(DrawAdditionalGraphicsPostDraw_Prefix));
             // Harvester cables run up to the model's connectors (WorkParts.cs).
             Patch("3D cables", AccessTools.DeclaredMethod(typeof(CompCableConnection), "PostDraw"),
                 prefix: nameof(CableConnectionPostDraw_Prefix));
@@ -2057,6 +2060,26 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing an outfit stand failed: " + e, 93611292);
+                return true;
+            }
+        }
+
+        // CompDrawAdditionalGraphics.PostDraw: left out while the thing is drawn as a model with hideExtraGraphics.
+        public static bool DrawAdditionalGraphicsPostDraw_Prefix(ThingComp __instance)
+        {
+            try
+            {
+                Thing t = __instance.parent;
+                if (!ModelStandsIn(t))
+                {
+                    return true;
+                }
+                ModelEntry entry = Forms.For(t.def).model;
+                return entry == null || !entry.def.hideExtraGraphics;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Checking a building's extra sprites failed: " + e, 93611293);
                 return true;
             }
         }
