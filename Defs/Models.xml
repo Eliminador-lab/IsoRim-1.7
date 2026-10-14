@@ -4877,4 +4877,41 @@
     <spinModel>Models/lightball_rotor.obj</spinModel>
     <spinMote>Mote_LightBall</spinMote>
   </IsoRim.ModelDef>
+  <!-- Coop batch 2 class B: contents the game draws every frame, at the model's own anchors -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Reliquary</defName>
+    <thingDef>Reliquary</thingDef>
+    <model>Models/reliquary.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.31</surfaceHeight>
+    <contentOffset>(0, 0, -0.28)</contentOffset>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GibbetCage</defName>
+    <thingDef>GibbetCage</thingDef>
+    <model>Models/gibbet_cage.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.11</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_DryadCocoon</defName>
+    <thingDef>DryadCocoon</thingDef>
+    <model>Models/dryad_shell.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.15</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_DryadHealingPod</defName>
+    <thingDef>DryadHealingPod</thingDef>
+    <model>Models/dryad_shell.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.15</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BandNode</defName>
+    <thingDef>BandNode</thingDef>
+    <model>Models/band_node.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.22</surfaceHeight>
+  </IsoRim.ModelDef>
 </Defs>

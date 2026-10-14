@@ -125,6 +125,23 @@ namespace IsoRim
             }
         }
 
+        // Graphic_RandomRotated (weapons and other items lying at an angle): a relic in a reliquary.
+        public static void DrawMesh(Mesh mesh, Vector3 position, Quaternion rotation, Material material, int layer, Camera camera, int submeshIndex)
+        {
+            if (skip)
+            {
+                return;
+            }
+            if (active)
+            {
+                Graphics.DrawMesh(mesh, Transform(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer, camera, submeshIndex);
+            }
+            else
+            {
+                Graphics.DrawMesh(mesh, position, rotation, material, layer, camera, submeshIndex);
+            }
+        }
+
         // The stand-in with the same parameter list as the given Graphics.DrawMesh overload, or null.
         public static MethodInfo ReplacementFor(MethodInfo original)
         {

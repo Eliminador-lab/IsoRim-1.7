@@ -28,6 +28,10 @@ namespace IsoRim
         public Vector3 offset = Vector3.zero;
         public float rotation = 0f;         // extra turn around the vertical axis, degrees
         public float surfaceHeight = -1f;   // where a pawn lying on it rests; -1 uses the top of the model
+                                            // (also the height the game's per-frame drawing of it is raised to:
+                                            // contents such as a reliquary's relic, a gibbet's corpse, a cocoon's dryad)
+        public Vector3 contentOffset = Vector3.zero; // those contents moved this far (x, z; model space, facing north)
+                                            // from where the game draws them, to where the model holds them
         public float height = -1f;          // height in cells of the automatic shape; -1 lets the mod decide
         public bool flat = false;           // true keeps the thing as a flat sprite
 

@@ -285,6 +285,11 @@ namespace IsoRim
                 postfix: nameof(BookcaseContents_Postfix));
             Patch("3D bookcases", AccessTools.DeclaredMethod(typeof(Building_Bookcase), "Notify_ItemRemoved"),
                 postfix: nameof(BookcaseContents_Postfix));
+            // Flat sprites drawn every frame over contents that the 3D model replaces (gibbet cage top, dryad sphere front).
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Building_GibbetCage), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(GibbetDrawAt_Prefix));
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompDryadHolder), "PostDraw"),
+                prefix: nameof(DryadHolderPostDraw_Prefix));
             // A new paint colour: the game redraws only things in the map mesh.
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
                 postfix: nameof(BodyColorChanged_Postfix));
@@ -1207,6 +1212,11 @@ namespace IsoRim
                         Building_Bed bed = pawn.Dead ? null : pawn.CurrentBed();
                         float bedTop = bed != null ? Forms.HeightOf(bed)
                             : (pawn.ParentHolder is IThingHolderWithDrawnPawn && pawn.ParentHolder is Building holder ? Forms.HeightOf(holder) : 0f);
+                        Building_GibbetCage gibbet = pawn.Dead ? People.GibbetOf(pawn) : null;
+                        if (gibbet != null)
+                        {
+                            bedTop = Forms.HeightOf(gibbet);   // on the cage floor
+                        }
                         if (bedTop > 0f)
                         {
                             DrawHook.xform = View3D.LiftMatrix(bedTop);
@@ -1782,6 +1792,61 @@ namespace IsoRim
             }
         }
 
+        // True while the thing is drawn as its 3D model.
+        private static bool ModelStandsIn(Thing t)
+        {
+            return t != null && View3D.Ready && Forms.For(t.def).form == Form3D.Model;
+        }
+
+        // The gibbet cage's model has its own cage top: the game's flat top sprite (drawn after
+        // base.DrawAt) is left out, the comps still drawn. The corpse is drawn by DynamicDrawPhaseAt.
+        public static bool GibbetDrawAt_Prefix(Building_GibbetCage __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                Action<Thing, Vector3, bool> baseDraw = ModelStandsIn(__instance) ? BookcaseBaseDraw() : null;
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                baseDraw(__instance, drawLoc, flip);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a gibbet cage failed: " + e, 93611251);
+                return true;
+            }
+        }
+
+        // A dryad cocoon or healing pod with its 3D shell: the dryad inside is drawn as the game
+        // does (raised to the shell's floor by the draw scope), the flat front of the sphere left out.
+        public static bool DryadHolderPostDraw_Prefix(CompDryadHolder __instance)
+        {
+            try
+            {
+                if (__instance.parent == null || !ModelStandsIn(__instance.parent))
+                {
+                    return true;
+                }
+                if (__instance.Props.drawContents)
+                {
+                    ThingOwner held = __instance.GetDirectlyHeldThings();
+                    Vector3 at = __instance.parent.Position.ToVector3ShiftedWithAltitude(AltitudeLayer.BuildingOnTop);
+                    for (int i = 0; i < held.Count; i++)
+                    {
+                        held[i].DrawNowAt(at);
+                    }
+                }
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a dryad cocoon failed: " + e, 93611252);
+                return true;
+            }
+        }
+
         public static void BookcaseContents_Postfix(Building_Bookcase __instance)
         {
             try
@@ -2082,6 +2147,13 @@ namespace IsoRim
                 state.wasActive = DrawHook.active;
                 state.wasXform = DrawHook.xform;
                 DrawHook.xform = View3D.LiftMatrix(h);
+                // What the game draws inside it (a reliquary's relic) moved to where the model holds it.
+                ThingForm form = Forms.For(t.def);
+                if (form.form == Form3D.Model && form.model != null && form.model.def.contentOffset != Vector3.zero)
+                {
+                    Vector3 shift = Quaternion.AngleAxis(t.Rotation.AsAngle + form.model.def.rotation, Vector3.up) * form.model.def.contentOffset;
+                    DrawHook.xform = Matrix4x4.Translate(new Vector3(shift.x, 0f, shift.z)) * DrawHook.xform;
+                }
                 DrawHook.active = true;
             }
             catch (Exception e)
@@ -2150,6 +2222,13 @@ namespace IsoRim
                 {
                     count++;
                 }
+            }
+            // The band node's tuning bar is drawn straight to Unity: through DrawHook it rises onto
+            // the 3D node with the rest of what is drawn over it each frame, as other bars do.
+            MethodInfo bandBar = AccessTools.DeclaredMethod(typeof(CompBandNode), "PostDraw");
+            if (bandBar != null && TryRedirect(bandBar, transpiler))
+            {
+                count++;
             }
 
             if (count == 0)
