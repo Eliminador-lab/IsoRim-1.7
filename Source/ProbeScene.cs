@@ -1060,7 +1060,7 @@ namespace IsoRim
                     PerfKey(key, a, map);
                     break;
                 default:
-                    if (CutKey(key, a) || MechKey(key, a, map))
+                    if (CutKey(key, a) || MechKey(key, a, map) || EntityKey(key, a, map))
                     {
                         break;
                     }

@@ -1257,6 +1257,13 @@ namespace IsoRim
                     return false;
                 }
 
+                // Anomaly entities bound to models go the mechs' way (ModelDef.entity).
+                if (pawn != null && st.animals3D && st.models3D && pawn.RaceProps != null && !pawn.RaceProps.Humanlike && !pawn.RaceProps.IsMechanoid
+                    && Mechs.Draw(pawn, __0))
+                {
+                    return false;
+                }
+
                 if (pawn != null && st.animals3D && st.models3D && pawn.RaceProps != null && !pawn.RaceProps.Humanlike
                     && Animals.Draw(pawn, __0))
                 {
@@ -1344,11 +1351,11 @@ namespace IsoRim
             }
             if (pawn.RaceProps.Humanlike)
             {
-                return st.pawns3D && pawn.def.defName == "Human" && pawn.story != null && !People.Hidden(pawn);
+                return st.pawns3D && People.FigureRace(pawn) && pawn.story != null && !People.Hidden(pawn);
             }
-            if (pawn.RaceProps.IsMechanoid && Mechs.HasModel(pawn))
+            if (Mechs.HasModel(pawn))
             {
-                return st.mechs3D;
+                return pawn.RaceProps.IsMechanoid ? st.mechs3D : st.animals3D;
             }
             ModelEntry entry;
             return st.animals3D && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.animal && entry.HasModel;

@@ -17,6 +17,11 @@ namespace IsoRim
     //     a long coat goes over them, armour adds plates, and a hat, helmet or hood goes on top.
     // Because all of it is read from the person, anyone the game makes up gets a figure to match.
     // Like the animals, a figure turns to face the way it is really walking.
+    // Anomaly: a ghoul gets its own head (by its forced head type), its own hair, the ridged ghoulskin over the
+    // body and its implanted barbs and plating (by hediff); a shambler keeps its own head and clothes, with
+    // scars on the face and, while nothing covers the body, wounds on it; a creepjoiner (race CreepJoiner)
+    // with one of the special head types (leathery, dark scholar, cult escapee, timeless) gets its own face,
+    // an eye that is missing left out.
     public static class People
     {
         // What one person looks like. Worked out from the pawn now and then, not every frame.
@@ -45,6 +50,16 @@ namespace IsoRim
             public Color coatColor = Color.white;
             public Color hatColor = Color.white;
             public Color legArmourColor = Color.white;
+            public Model ownHead;     // replaces head and face (ghoul heads), already as wide as the head type
+            public Model ownFace;     // replaces the face (creepjoiner faces), tinted faceTint
+            public Model eyeLeft;     // the creepjoiner face's separate eyes (cult escapee), left out when missing
+            public Model eyeRight;
+            public Model scars;       // over the face (shambler)
+            public Model skinOverlay; // over the body (ghoulskin ridges, shambler wounds)
+            public Model barbs;       // ghoul implants
+            public Model plating;
+            public bool ownHair;      // hair made for the ghoul head: not widened again, fixed colour
+            public Color faceTint = Color.white;
 
             // Ready-made meshes of this look, by facing, body or head, and alive or dead.
             public readonly Dictionary<int, List<DynamicModels.Part>> meshes = new Dictionary<int, List<DynamicModels.Part>>();
@@ -55,7 +70,9 @@ namespace IsoRim
                     && coat == o.coat && hair == o.hair && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
                     && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
-                    && coatColor == o.coatColor && hatColor == o.hatColor;
+                    && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
+                    && eyeRight == o.eyeRight && scars == o.scars && skinOverlay == o.skinOverlay && barbs == o.barbs && plating == o.plating
+                    && ownHair == o.ownHair && faceTint == o.faceTint;
             }
 
             public void Forget()
@@ -89,12 +106,29 @@ namespace IsoRim
             {
                 Matrix4x4 headPlace = Matrix4x4.Scale(new Vector3(look.headWide, 1f, 1f));
                 Color skin = dead ? Color.Lerp(look.skin, new Color(0.55f, 0.58f, 0.52f), 0.35f) : look.skin;
-                AddPart(head, headPlace, skin);
-                if (!look.visor && !look.faceHidden)
+                if (look.ownHead != null)
                 {
-                    AddPart(face, headPlace, Color.white);
+                    AddPart(look.ownHead, Matrix4x4.identity, Color.white);   // its skin colour is in the model
                 }
-                AddPart(look.hair, headPlace, look.hairColor);
+                else
+                {
+                    AddPart(head, headPlace, skin);
+                    if (!look.visor && !look.faceHidden)
+                    {
+                        AddPart(look.ownFace ?? face, headPlace, look.ownFace != null ? look.faceTint : Color.white);
+                        AddPart(look.eyeLeft, headPlace, Color.white);
+                        AddPart(look.eyeRight, headPlace, Color.white);
+                        AddPart(look.scars, headPlace, Color.white);
+                    }
+                }
+                if (look.ownHair)
+                {
+                    AddPart(look.hair, Matrix4x4.identity, Color.white);
+                }
+                else
+                {
+                    AddPart(look.hair, headPlace, look.hairColor);
+                }
                 AddPart(look.beard, headPlace, look.hairColor);
                 AddPart(look.hat, headPlace, look.hatColor);
                 if (look.hat != null && look.visor)
@@ -106,6 +140,9 @@ namespace IsoRim
             {
                 AddPart(look.lower, Matrix4x4.identity, look.lowerColor);
                 AddPart(look.upper, Matrix4x4.identity, look.upperColor);
+                AddPart(look.skinOverlay, Matrix4x4.identity, Color.white);
+                AddPart(look.barbs, Matrix4x4.identity, Color.white);
+                AddPart(look.plating, Matrix4x4.identity, Color.white);
                 AddPart(look.legArmour, Matrix4x4.identity, look.legArmourColor);
                 AddPart(look.coat, Matrix4x4.identity, look.coatColor);
                 if (look.pads)
@@ -152,7 +189,7 @@ namespace IsoRim
             handHeight = 0.5f;
             facing = 0f;
             standing = false;
-            if (pawn.story == null || pawn.def == null || pawn.def.defName != "Human" || Hidden(pawn))
+            if (pawn.story == null || !FigureRace(pawn) || Hidden(pawn))
             {
                 return false;
             }
@@ -323,6 +360,28 @@ namespace IsoRim
             return cage != null && cage.Spawned && View3D.Ready && Forms.For(cage.def).form == Form3D.Model ? cage : null;
         }
 
+        // For the harness (probe entitycheck): the Anomaly parts of a person's figure.
+        public static string Report(Pawn pawn)
+        {
+            if (pawn.story == null || !FigureRace(pawn))
+            {
+                return "no figure (" + (pawn.def != null ? pawn.def.defName : "?") + ")";
+            }
+            Look l = Work(pawn);
+            Func<Model, string> n = m => m == null ? "-" : (m == head ? "person_head" : (m == face ? "person_face" : m.id.ToString()));
+            return "race " + pawn.def.defName + ", mutant " + (pawn.IsMutant ? pawn.mutant.Def.defName : "none") + ", head " + (pawn.story.headType != null ? pawn.story.headType.defName : "?")
+                + ", hair " + (pawn.story.hairDef != null ? pawn.story.hairDef.defName : "?") + ", body " + (pawn.story.bodyType != null ? pawn.story.bodyType.defName : "?")
+                + ", ownHead " + (l.ownHead != null) + ", ownFace " + (l.ownFace != null) + ", eyes " + (l.eyeLeft != null) + "/" + (l.eyeRight != null)
+                + ", scars " + (l.scars != null) + ", overlay " + (l.skinOverlay != null) + ", barbs " + (l.barbs != null) + ", plating " + (l.plating != null)
+                + ", ownHair " + l.ownHair + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
+        }
+
+        // The races drawn as figures: people, and creepjoiners (people in all but race).
+        public static bool FigureRace(Pawn pawn)
+        {
+            return pawn.def != null && (pawn.def.defName == "Human" || pawn.def.defName == "CreepJoiner");
+        }
+
         // People who are invisible must stay so: they keep their sprite, which the game hides.
         public static bool Hidden(Pawn pawn)
         {
@@ -450,7 +509,99 @@ namespace IsoRim
             {
                 look.beard = Part("person_beard_" + beardKind);
             }
+            Anomaly(pawn, look, build, headName);
             return look;
+        }
+
+        // Ghoul, shambler and creepjoiner parts (Anomaly), on top of what Work found.
+        private static void Anomaly(Pawn pawn, Look look, string build, string headName)
+        {
+            if (pawn.IsGhoul)
+            {
+                string headKind = headName.StartsWith("Ghoul_") ? headName.Substring(6).ToLowerInvariant() : "normal";
+                if (headKind != "normal" && headKind != "heavy" && headKind != "narrow" && headKind != "wide")
+                {
+                    headKind = "normal";
+                }
+                look.ownHead = Part("ghoul_head_" + headKind);
+                if (look.ownHead != null)
+                {
+                    string hairName = pawn.story.hairDef != null ? (pawn.story.hairDef.defName ?? "") : "";
+                    Model hair = hairName.StartsWith("Ghoul_") ? Part("hairs_" + hairName.Substring(6).ToLowerInvariant() + "_" + headKind) : null;
+                    if (hair != null)
+                    {
+                        look.hair = hair;
+                        look.ownHair = true;
+                    }
+                    look.beard = null;
+                }
+                look.skinOverlay = Part("ghoul_" + build + "_body_overlay");
+                HediffSet hediffs = pawn.health != null ? pawn.health.hediffSet : null;
+                if (hediffs != null && HediffDefOf.GhoulBarbs != null && hediffs.HasHediff(HediffDefOf.GhoulBarbs))
+                {
+                    look.barbs = Part("implants_" + build + "_barbs");
+                }
+                if (hediffs != null && HediffDefOf.GhoulPlating != null && hediffs.HasHediff(HediffDefOf.GhoulPlating))
+                {
+                    look.plating = Part("implants_" + build + "_plating");
+                }
+                return;
+            }
+            if (pawn.IsShambler)
+            {
+                look.scars = Part("shambler_head_scars");
+                if (!look.upperWorn && !look.lowerWorn && look.coat == null)
+                {
+                    look.skinOverlay = Part("shambler_" + build + "_body_overlay");
+                }
+                return;
+            }
+            if (pawn.def.defName != "CreepJoiner")
+            {
+                return;
+            }
+            string face = null;
+            switch (headName)
+            {
+                case "Leathery_Male": face = "leathery_male_face"; break;
+                case "Leathery_Female": face = "leathery_female_face"; break;
+                case "DarkScholar_Male": face = "scholar_male_face"; break;
+                case "DarkScholar_Female": face = "scholar_female_face"; break;
+                case "CultEscapee": face = "cult_escapee_face"; break;
+                case "TimelessOne": face = "timeless_face"; break;
+            }
+            if (face == null)
+            {
+                return;
+            }
+            look.ownFace = Part(face);
+            // The creases are a darker shade of the skin (the model's crease colour is for a mid skin).
+            look.faceTint = new Color(Mathf.Clamp01(look.skin.r * 1.35f), Mathf.Clamp01(look.skin.g * 1.35f), Mathf.Clamp01(look.skin.b * 1.35f));
+            if (headName == "CultEscapee")
+            {
+                // The figure faces +z, so its left eye is on the -x side.
+                look.eyeLeft = EyeMissing(pawn, "left") ? null : Part("cult_escapee_eye_negative_x");
+                look.eyeRight = EyeMissing(pawn, "right") ? null : Part("cult_escapee_eye_positive_x");
+            }
+        }
+
+        // True if the person's eye on that side ("left" or "right", by the body part's label) is missing.
+        private static bool EyeMissing(Pawn pawn, string side)
+        {
+            if (pawn.health == null || pawn.health.hediffSet == null || pawn.RaceProps == null || pawn.RaceProps.body == null)
+            {
+                return false;
+            }
+            List<BodyPartRecord> parts = pawn.RaceProps.body.AllParts;
+            for (int i = 0; i < parts.Count; i++)
+            {
+                BodyPartRecord part = parts[i];
+                if (part.def == BodyPartDefOf.Eye && part.customLabel != null && part.customLabel.IndexOf(side, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return pawn.health.hediffSet.PartIsMissing(part);
+                }
+            }
+            return false;
         }
 
         // The mod's body shape ("male", "female", "thin", "hulk", "fat") for one of the game's body types.

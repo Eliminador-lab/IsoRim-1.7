@@ -22,7 +22,7 @@ namespace IsoRim
     // years old, which includes almost every raider) is drawn worn: darker, rusty, marks kept.
     public static class Mechs
     {
-        private enum Motion { Fixed, Wheel, Leg, Spin, Pitch, Arm, Upper, Head, Weapon, Turret }
+        private enum Motion { Fixed, Wheel, Leg, Spin, Pitch, Arm, Upper, Head, Weapon, Turret, Open }
 
         private class Piece
         {
@@ -33,6 +33,7 @@ namespace IsoRim
             public int parent = -1;
             public Model[] worn;      // weathered copies (Ancient), by variant; made when first needed
             public Model[] wornMarked;
+            public int show;          // 0 always, 1 only while shut, 2 only while open (entities that open)
         }
 
         private class Rig
@@ -44,6 +45,7 @@ namespace IsoRim
             public float minX, maxX, minZ, maxZ, height;   // the whole mech, guns left out
             public bool legs;
             public bool weaponPart;
+            public bool opens;        // has parts that slide open or show by how far it is open
             public Model[] bodyWorn;
             public Model[] bodyWornMarked;
         }
@@ -90,7 +92,14 @@ namespace IsoRim
         // Half the game's allegiance overlay: it lays the colour over the sprite's mask at half strength.
         private const float FactionMix = 0.5f;
 
-        private static readonly Dictionary<ModelDef, Rig> rigs = new Dictionary<ModelDef, Rig>();
+        // Rigs by binding and look (index 0: the binding's own model; i + 1: looks[i]).
+        private static readonly Dictionary<ModelDef, Rig[]> rigs = new Dictionary<ModelDef, Rig[]>();
+
+        // An entity counts as shut while it has opened less than this (CompNociosphere.segScale).
+        private const float OpenShown = 0.1f;
+
+        // The look the game gave each entity individual (its alternate graphic), by thing id; it never changes.
+        private static readonly Dictionary<int, int> alternateLooks = new Dictionary<int, int>();
 
         private static readonly HashSet<string> WorkJobs = new HashSet<string>
         {
@@ -103,8 +112,8 @@ namespace IsoRim
         public static bool HasModel(Pawn pawn)
         {
             ModelEntry entry;
-            return pawn != null && pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.mech && entry.HasModel
-                && !People.Hidden(pawn);
+            return pawn != null && pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && (entry.def.mech || entry.def.entity) && entry.HasModel
+                && !(entry.def.entity ? pawn.IsPsychologicallyInvisible() : People.Hidden(pawn)) && (!entry.def.entity || EntityShown(pawn));
         }
 
         // Draws the mech at drawLoc. Returns false if it has no model, in which
@@ -112,12 +121,12 @@ namespace IsoRim
         public static bool Draw(Pawn pawn, Vector3 drawLoc)
         {
             ModelEntry entry;
-            if (pawn.def == null || !ModelLibrary.TryGet(pawn.def, out entry) || !entry.def.mech || !entry.HasModel
-                || People.Hidden(pawn))
+            if (pawn.def == null || !ModelLibrary.TryGet(pawn.def, out entry) || !(entry.def.mech || entry.def.entity) || !entry.HasModel
+                || (entry.def.entity ? pawn.IsPsychologicallyInvisible() : People.Hidden(pawn)) || (entry.def.entity && !EntityShown(pawn)))
             {
                 return false;
             }
-            Rig rig = RigFor(entry);
+            Rig rig = RigFor(entry, entry.def.entity ? LookOf(pawn, entry.def) : -1);
             if (rig == null || rig.body == null)
             {
                 return false;
@@ -131,6 +140,8 @@ namespace IsoRim
             bool onSide = dead || pawn.Downed;
             float lift = Carried.LiftOf(pawn, ref drawLoc);
 
+            float open = rig.opens ? Openness(pawn) : 0f;
+
             float yaw;
             float phase = 0f;
             float gait = 0f;
@@ -139,6 +150,10 @@ namespace IsoRim
             {
                 // Each wreck lies at its own slight angle.
                 yaw = pawn.Rotation.AsAngle + (Hashing.Unit(pawn.thingIDNumber, 3, 9) - 0.5f) * 50f;
+            }
+            else if (def.fixedFacing)
+            {
+                yaw = Rot4.South.AsAngle;   // drawn facing south whatever its rotation (useFixedRotation)
             }
             else
             {
@@ -199,10 +214,23 @@ namespace IsoRim
             Vector3 at = new Vector3(drawLoc.x, lift, drawLoc.z);
 
             Faction faction = pawn.Faction;
-            Color mark = faction != null ? Color.Lerp(rig.markBase, faction.AllegianceColor, FactionMix) : rig.markBase;
-            bool marked = faction != null;
+            Color mark;
+            bool marked;
+            if (def.entity)
+            {
+                // Glowing parts as bright as the entity is active (as the game sets its seam colour's alpha).
+                CompActivity activity = def.glowMaterials != null ? pawn.TryGetComp<CompActivity>() : null;
+                float a = activity != null && !dead ? Mathf.Clamp01(activity.ActivityLevel) : 0f;
+                mark = Color.Lerp(rig.markBase * 0.5f, def.glowColor, a);
+                marked = def.glowMaterials != null;
+            }
+            else
+            {
+                mark = faction != null ? Color.Lerp(rig.markBase, faction.AllegianceColor, FactionMix) : rig.markBase;
+                marked = faction != null;
+            }
 
-            int worn = OtherLook(pawn) ? (pawn.thingIDNumber & 0x7FFFFFFF) % WornVariants : -1;
+            int worn = def.mech && OtherLook(pawn) ? (pawn.thingIDNumber & 0x7FFFFFFF) % WornVariants : -1;
             DynamicModels.DrawLocal(Pick(rig, def, null, worn, marked), at, yaw, whole, mark, null);
 
             // Each moving piece, placed in the body's space (after its parent's movement).
@@ -212,8 +240,12 @@ namespace IsoRim
             {
                 Piece p = rig.pieces[i];
                 Quaternion turn = Quaternion.identity;
+                Vector3 slide = Vector3.zero;
                 switch (p.motion)
                 {
+                    case Motion.Open:
+                        slide = p.def.openOffset * open;
+                        break;
                     case Motion.Wheel:
                         turn = Quaternion.AngleAxis(travel / Mathf.Max(0.05f, p.def.radius * size) * Mathf.Rad2Deg, Vector3.right);
                         break;
@@ -268,7 +300,28 @@ namespace IsoRim
                 }
                 Matrix4x4 own = turn == Quaternion.identity ? Matrix4x4.identity
                     : Matrix4x4.Translate(p.def.pivot) * Matrix4x4.Rotate(turn) * Matrix4x4.Translate(-p.def.pivot);
+                if (slide != Vector3.zero)
+                {
+                    own = Matrix4x4.Translate(slide) * own;
+                }
                 places[i] = (p.parent >= 0 ? places[p.parent] : Matrix4x4.identity) * own;
+                if (p.show == 1 && p.def.fadeTo > 0f)
+                {
+                    if (open >= p.def.fadeTo)
+                    {
+                        continue;
+                    }
+                    if (open > p.def.fadeFrom)
+                    {
+                        // Sinking into what it covers as the entity opens (the nociosphere's lining into its core).
+                        float k = Mathf.Lerp(1f, p.def.fadeScale, Mathf.InverseLerp(p.def.fadeFrom, p.def.fadeTo, open));
+                        places[i] = places[i] * Matrix4x4.Translate(p.def.pivot) * Matrix4x4.Scale(new Vector3(k, k, k)) * Matrix4x4.Translate(-p.def.pivot);
+                    }
+                }
+                else if ((p.show == 1 && open >= OpenShown) || (p.show == 2 && open < OpenShown))
+                {
+                    continue;
+                }
 
                 if (p.motion == Motion.Weapon)
                 {
@@ -411,56 +464,77 @@ namespace IsoRim
                 case "head": return Motion.Head;
                 case "weapon": return Motion.Weapon;
                 case "turret": return Motion.Turret;
+                case "open": return Motion.Open;
                 default: return Motion.Fixed;
             }
         }
 
-        private static Rig RigFor(ModelEntry entry)
+        // look: -1 the binding's own model and parts, else looks[look].
+        private static Rig RigFor(ModelEntry entry, int look)
         {
             ModelDef def = entry.def;
-            Rig rig;
-            if (rigs.TryGetValue(def, out rig))
+            Rig[] all;
+            if (!rigs.TryGetValue(def, out all))
             {
-                return rig;
+                all = new Rig[(def.looks != null ? def.looks.Count : 0) + 1];
+                rigs[def] = all;
             }
-            rig = null;
+            int k = look < 0 || look + 1 >= all.Length ? 0 : look + 1;
+            if (all[k] != null)
+            {
+                return all[k];
+            }
+            Rig rig = null;
             try
             {
-                rig = Build(entry);
+                rig = Build(entry, k - 1);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Putting a mechanoid's model together failed (" + def.defName + "): " + e, 93611401);
             }
-            rigs[def] = rig;
+            if (rig == null && k > 0)
+            {
+                rig = RigFor(entry, -1);   // a look that cannot be built: the binding's own model
+            }
+            all[k] = rig;
             return rig;
         }
 
-        private static Rig Build(ModelEntry entry)
+        private static Rig Build(ModelEntry entry, int look)
         {
             ModelDef def = entry.def;
             Rig rig = new Rig();
             string root = def.modContentPack != null ? def.modContentPack.RootDir : IsoRimMod.RootDir;
-            List<Model> still = new List<Model> { entry.variants[0] };
+            EntityLook other = look >= 0 ? def.looks[look] : null;
+            Model main = other != null ? (other.model.NullOrEmpty() ? null : ModelLibrary.LoadFile(Path.Combine(root, other.model))) : entry.variants[0];
+            if (main == null)
+            {
+                return null;
+            }
+            List<MechPart> partDefs = other != null ? other.mechParts : def.mechParts;
+            List<Model> still = new List<Model> { main };
             Dictionary<string, int> byName = new Dictionary<string, int>();
             List<string> parents = new List<string>();
-            if (def.mechParts != null)
+            if (partDefs != null)
             {
-                for (int i = 0; i < def.mechParts.Count; i++)
+                for (int i = 0; i < partDefs.Count; i++)
                 {
-                    MechPart part = def.mechParts[i];
+                    MechPart part = partDefs[i];
                     Model m = part == null || part.model.NullOrEmpty() ? null : ModelLibrary.LoadFile(Path.Combine(root, part.model));
                     if (m == null)
                     {
                         continue;
                     }
                     Motion motion = MotionOf(part.motion);
-                    if (motion == Motion.Fixed && part.parent.NullOrEmpty())
+                    int show = part.show == "closed" ? 1 : (part.show == "open" ? 2 : 0);
+                    if (motion == Motion.Fixed && part.parent.NullOrEmpty() && show == 0)
                     {
                         still.Add(m);
                         continue;
                     }
-                    Piece p = new Piece { def = part, motion = motion, model = m };
+                    Piece p = new Piece { def = part, motion = motion, model = m, show = show };
+                    rig.opens |= motion == Motion.Open || show != 0;
                     byName[part.name.NullOrEmpty() ? Path.GetFileNameWithoutExtension(part.model) : part.name] = rig.pieces.Count;
                     rig.pieces.Add(p);
                     parents.Add(part.parent);
@@ -486,7 +560,7 @@ namespace IsoRim
             rig.body = still.Count > 1 ? ObjLoader.Merge(still) : still[0];
 
             Color c;
-            rig.bodyMarked = ObjLoader.Marked(rig.body, def.factionMaterials, out c);
+            rig.bodyMarked = def.entity ? ObjLoader.Glowing(rig.body, def.glowMaterials, out c) : ObjLoader.Marked(rig.body, def.factionMaterials, out c);
             bool haveBase = rig.bodyMarked != null;
             if (haveBase)
             {
@@ -495,7 +569,7 @@ namespace IsoRim
             for (int i = 0; i < rig.pieces.Count; i++)
             {
                 Piece p = rig.pieces[i];
-                p.marked = ObjLoader.Marked(p.model, def.factionMaterials, out c);
+                p.marked = def.entity ? ObjLoader.Glowing(p.model, def.glowMaterials, out c) : ObjLoader.Marked(p.model, def.factionMaterials, out c);
                 if (p.marked != null && !haveBase)
                 {
                     rig.markBase = c;
@@ -525,12 +599,99 @@ namespace IsoRim
             return rig;
         }
 
+        // An entity is drawn as its model unless the game shows it some other way: held on a holding platform
+        // (lying on the deck with the chains on its sprite), or a corpse dried to bones.
+        private static bool EntityShown(Pawn pawn)
+        {
+            if (pawn.ParentHolder is Building_HoldingPlatform)
+            {
+                return false;
+            }
+            Corpse corpse = pawn.Dead ? pawn.Corpse : null;
+            return corpse == null || corpse.CurRotDrawMode != RotDrawMode.Dessicated;
+        }
+
+        // Which of an entity's looks the game's state picks now (-1: the binding's own model).
+        private static int LookOf(Pawn pawn, ModelDef def)
+        {
+            if (def.looks == null || def.looks.Count == 0)
+            {
+                return -1;
+            }
+            switch (def.lookBy)
+            {
+                case "activity":
+                {
+                    // As Graphic_ActivityStaged.SubGraphicFor.
+                    CompActivity activity = pawn.TryGetComp<CompActivity>();
+                    if (activity == null)
+                    {
+                        return -1;
+                    }
+                    int n = def.looks.Count;
+                    return Mathf.Clamp(Mathf.FloorToInt(n * activity.ActivityLevel), 0, n - 1);
+                }
+                case "digesting":
+                {
+                    // As PawnRenderNode_Devourer.GraphicFor: the closed mouth while it digests.
+                    CompDevourer devourer = pawn.TryGetComp<CompDevourer>();
+                    return devourer != null && devourer.Digesting ? 0 : -1;
+                }
+                default:
+                {
+                    int look;
+                    if (alternateLooks.TryGetValue(pawn.thingIDNumber, out look))
+                    {
+                        return look;
+                    }
+                    look = -1;
+                    AlternateGraphic ag;
+                    int index;
+                    if (pawn.kindDef != null && pawn.kindDef.alternateGraphics != null && pawn.TryGetAlternate(out ag, out index))
+                    {
+                        string tex = HarmonyLib.Traverse.Create(ag).Field("texPath").GetValue<string>();
+                        if (tex.NullOrEmpty() && ag.graphicData != null)
+                        {
+                            tex = ag.graphicData.texPath;
+                        }
+                        for (int i = 0; tex != null && i < def.looks.Count; i++)
+                        {
+                            if (!def.looks[i].key.NullOrEmpty() && tex.EndsWith(def.looks[i].key, StringComparison.OrdinalIgnoreCase))
+                            {
+                                look = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (alternateLooks.Count > 4000)
+                    {
+                        alternateLooks.Clear();
+                    }
+                    alternateLooks[pawn.thingIDNumber] = look;
+                    return look;
+                }
+            }
+        }
+
+        // How far an entity that opens has opened, 0 (shut) .. 1, briefly 1.2 (the nociosphere's shell segments, CompNociosphere.segScale,
+        // eased by the game every tick, so it stops while paused): 0 dormant, about 0.3..0.7 breathing while active, wider
+        // while an ability warms up.
+        private static float Openness(Pawn pawn)
+        {
+            CompNociosphere sphere = pawn.TryGetComp<CompNociosphere>();
+            return sphere != null ? Mathf.Clamp(sphere.segScale, 0f, 1.3f) : 0f;   // up to 1.2 just after an attack
+        }
+
         // For the harness (probe mechcheck): how the mech is drawn now.
         public static string Report(Pawn pawn)
         {
-            ModelEntry entry;
-            bool bound = pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.mech && entry.HasModel;
+            ModelEntry entry = null;
+            bool bound = pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && (entry.def.mech || entry.def.entity) && entry.HasModel;
             string s = "bound " + bound + ", ancient " + OtherLook(pawn) + ", model " + (bound && HasModel(pawn) && Patches.DrawnAsModel(pawn));
+            if (bound && entry.def.entity)
+            {
+                s += ", look " + LookOf(pawn, entry.def) + ", open " + Openness(pawn).ToString("0.00") + ", shown " + EntityShown(pawn);
+            }
             s += ", posture " + pawn.GetPosture() + (pawn.Downed ? " downed" : "") + (pawn.Dead ? " dead" : "") + ", faction " + (pawn.Faction != null ? pawn.Faction.def.defName : "none");
             if (pawn.ageTracker != null)
             {

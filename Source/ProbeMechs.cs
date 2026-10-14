@@ -19,7 +19,7 @@ namespace IsoRim
     //                                 clean (filth made there first); the designation is added as the player would
     //   goto=x,z,tx,tz                the pawn in (x,z) given the job to walk to (tx,tz)
     //   jump=x,z,tx,tz                the pawn in (x,z) casts its jump ability (LongjumpMech*) at (tx,tz)
-    //   walkfilm=N,k,tag,x,z,size     N screenshots, k Unity frames apart (and each written before the next), the game
+    //   walkfilm=N,k,tag,x,z,size[,follow|ticksM] N screenshots, k Unity frames apart (and each written before the next), the game
     //                                 running at normal speed meanwhile (renders\<harness tag>\walk_<tag>_<frame>.png), camera held at (x,z,size);
     //                                 with a 7th part "follow", centred on the pawns walking on a forced job instead
     //   turrettarget=x,z,tx,tz        the turret comp of the pawn in (x,z) given the pawn (or cell) at (tx,tz) as its target
@@ -273,6 +273,8 @@ namespace IsoRim
                     walkStep = 0;
                     walkPending = null;
                     walkFollow = a.Length > 6 && a[6] == "follow";
+                    walkExtraTicks = a.Length > 6 && a[6].StartsWith("ticks") ? I(a[6].Substring(5)) : 0;
+                    walkTrack = a.Length > 7 && a[7] == "track";
                     return true;
                 case "mechcheck":
                     foreach (Pawn p in map.mapPawns.AllPawnsSpawned.ToList())
@@ -301,6 +303,8 @@ namespace IsoRim
         private static string walkTag;
         private static Vector3 walkCam;
         private static bool walkFollow;
+        private static bool walkTrack;       // 8th part "track": centred on the first entity bound to a model
+        private static int walkExtraTicks;   // 7th part "ticks<N>": N more game ticks run before each film frame (slow states)
 
         // One film frame every few Unity frames: the game ticks and the camera is set, the picture is taken two
         // frames later, and the next frame waits until that picture has been written (the capture is not instant,
@@ -338,6 +342,10 @@ namespace IsoRim
                 // The game runs at normal speed through the film (paused, the game does not move pawns' drawn
                 // positions on however many ticks are run).
                 Find.TickManager.CurTimeSpeed = TimeSpeed.Normal;
+                for (int i = 0; i < walkExtraTicks; i++)
+                {
+                    Find.TickManager.DoSingleTick();
+                }
                 Vector3 cam = new Vector3(walkCam.x, 0f, walkCam.y);
                 if (walkFollow && Find.CurrentMap != null)
                 {
@@ -357,6 +365,14 @@ namespace IsoRim
                         cam = new Vector3(sum.x / n, 0f, sum.z / n);
                     }
                 }
+                if (walkTrack && Find.CurrentMap != null)
+                {
+                    Pawn e = Find.CurrentMap.mapPawns.AllPawnsSpawned.FirstOrDefault(Bound);
+                    if (e != null)
+                    {
+                        cam = new Vector3(e.DrawPos.x, 0f, e.DrawPos.z);
+                    }
+                }
                 Find.CameraDriver.SetRootPosAndSize(cam, walkCam.z);
                 walkStep = 1;
                 return;
@@ -370,7 +386,7 @@ namespace IsoRim
             System.IO.Directory.CreateDirectory(dir);
             walkPending = System.IO.Path.Combine(dir, "walk_" + walkTag + "_" + walkFrame.ToString("000") + ".png");
             ScreenCapture.CaptureScreenshot(walkPending);
-            Log.Message("[IsoRim probe] walkfilm " + walkTag + " frame " + walkFrame + " (Unity frame " + Time.frameCount + ", tick " + Find.TickManager.TicksGame + ")");
+            Log.Message("[IsoRim probe] walkfilm " + walkTag + " frame " + walkFrame + " (Unity frame " + Time.frameCount + ", tick " + Find.TickManager.TicksGame + ")" + EntityFilmNote());
             walkFrame++;
         }
     }
