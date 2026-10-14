@@ -1441,6 +1441,58 @@ namespace IsoRim
             return true;
         }
 
+        // A one-cell door with its own models (Building_SupportedDoor: vac barrier, ancient blast door):
+        // the fixed frame (model) and lintel (doorTopModel) across the doorway, along the door's rotation
+        // as the game sets it (North: walls east and west), and, if it has doorLeafModel, two leaves
+        // sliding apart as far as the game slides its own (0.45 * OpenPct). hackTerminalModel is drawn
+        // while the door's CompHackable is not hacked. As tall as the walls, cut down with them (no
+        // lintel over a cut wall). Returns false if it drew nothing.
+        public static bool DrawSupported(Building_Door door, ModelEntry entry, float openPct)
+        {
+            Map map = door.Map;
+            if (map == null || entry == null || !entry.HasModel)
+            {
+                return false;
+            }
+            ModelDef def = entry.def;
+            float yaw = door.Rotation.AsAngle + def.rotation;
+            Vector3 along = Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.right;
+            IntVec3 c = door.Position;
+            Vector3 centre = new Vector3(c.x + 0.5f, 0f, c.z + 0.5f);
+
+            float height = View3D.WallHeight;
+            bool cut = WallBoxes.CellCut(map, c);
+            if (cut)
+            {
+                height *= WallBoxes.CutFraction;
+            }
+            float s = def.scale;
+            Matrix4x4 sized = Matrix4x4.Scale(new Vector3(s, s * height / BuiltForWallHeight, s));
+            Color tint = door.DrawColor;
+            string swatch = R3DTextures.StuffSwatch(door);
+
+            DynamicModels.DrawLocal(entry.variants[0], centre, yaw, sized, tint, swatch);
+            if (entry.doorTop != null && !cut)
+            {
+                DynamicModels.DrawLocal(entry.doorTop, centre, yaw, sized, tint, swatch);
+            }
+            if (entry.doorLeaf != null)
+            {
+                float slide = 0.45f * Mathf.Clamp01(openPct) * s;
+                DynamicModels.DrawLocal(entry.doorLeaf, centre + along * slide, yaw, sized, tint, swatch);
+                DynamicModels.DrawLocal(entry.doorLeaf, centre - along * slide, yaw + 180f, sized, tint, swatch);
+            }
+            if (entry.hackTerminal != null)
+            {
+                CompHackable hack = door.GetComp<CompHackable>();
+                if (hack != null && !hack.IsHacked)
+                {
+                    DynamicModels.DrawLocal(entry.hackTerminal, centre, yaw, sized, tint, swatch);
+                }
+            }
+            return true;
+        }
+
         private static int Block(Map map, IntVec3 cell)
         {
             if (!cell.InBounds(map))

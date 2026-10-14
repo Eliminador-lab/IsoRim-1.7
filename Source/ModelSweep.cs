@@ -61,7 +61,8 @@ namespace IsoRim
                 bool door = typeof(Building_Door).IsAssignableFrom(def.thingClass) && def.size.x == 1 && def.size.z == 1 && st.doors3D;
                 if (door)
                 {
-                    drawnBy = "Doors.Draw";
+                    drawnBy = typeof(Building_SupportedDoor).IsAssignableFrom(def.thingClass) && listed && entry.HasModel && st.models3D
+                        ? "Doors.DrawSupported" : "Doors.Draw";
                 }
                 else if (typeof(Building_MultiTileDoor).IsAssignableFrom(def.thingClass) && listed && entry.doorLeaf != null && entry.HasModel && st.doors3D)
                 {

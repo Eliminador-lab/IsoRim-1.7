@@ -5099,4 +5099,12 @@
     <workPanelColor>(0.45, 0.85, 1.0)</workPanelColor>
     <workPanelWidth>0.08</workPanelWidth>
   </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: one-cell supported doors with their own models (Doors.DrawSupported) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_VacBarrier</defName>
+    <thingDef>VacBarrier</thingDef>
+    <model>Models/vac_barrier.obj</model>
+    <doorTopModel>Models/vac_barrier_top.obj</doorTopModel>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
 </Defs>

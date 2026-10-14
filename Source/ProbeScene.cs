@@ -88,6 +88,7 @@ namespace IsoRim
     //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
     //   emitcheck=1                  logs the smoke emitters and how many puffs are in the air
     //   opendoor=x,z                 the door in the cell opened by a colonist (Building_Door.StartManualOpenBy)
+    //   hack=x,z[,half]              the hackable building in the cell hacked by a colonist, all the way or half way
     //   doorcheck=1                  logs every door: rotation, cells, open, open fraction
     //   charged=x,z                  the shield in the cell out of its recharge pause
     //   shieldcheck=1                logs every shield: active, charging, cooldown, selected, faction
@@ -790,11 +791,29 @@ namespace IsoRim
                     od.StartManualOpenBy(opener);
                     break;
                 }
+                case "hack":
+                {
+                    // hack=x,z[,half]: the hackable building in the cell hacked by a colonist (CompHackable.Hack),
+                    // all the way, or half way (still locked).
+                    Thing hk = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompHackable ch = hk != null ? hk.TryGetComp<CompHackable>() : null;
+                    if (ch == null)
+                    {
+                        Log.Warning("[IsoRim probe] hack: nothing hackable at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    float need = ch.defence * (a.Length > 2 && a[2] == "half" ? 0.5f : 1f);
+                    ch.Hack(need, map.mapPawns.FreeColonistsSpawned.FirstOrDefault(), true);
+                    Log.Message("[IsoRim probe] hack " + hk.def.defName + " " + hk.Position + ": hacked " + ch.IsHacked + ", progress " + ch.ProgressPercent.ToString("0.00"));
+                    break;
+                }
                 case "doorcheck":
                     foreach (Building_Door dc in map.listerThings.AllThings.OfType<Building_Door>())
                     {
+                        CompHackable dh = dc.GetComp<CompHackable>();
                         Log.Message("[IsoRim probe] doorcheck " + dc.def.defName + " " + dc.Position + " rot " + dc.Rotation.ToStringHuman() + " cells " + dc.OccupiedRect() + " open " + dc.Open
-                            + " pct " + Traverse.Create(dc).Property("OpenPct").GetValue<float>().ToString("0.00"));
+                            + " pct " + Traverse.Create(dc).Property("OpenPct").GetValue<float>().ToString("0.00")
+                            + (dh != null ? " hacked " + dh.IsHacked : "") + " cut " + WallBoxes.CellCut(map, dc.Position));
                     }
                     break;
                 case "charged":

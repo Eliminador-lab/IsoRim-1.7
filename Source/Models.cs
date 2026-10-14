@@ -71,6 +71,10 @@ namespace IsoRim
         // doorTopModel an optional fixed piece on top (the arch). Drawn by Doors.DrawWide.
         public string doorLeafModel;
         public string doorTopModel;
+        // One-cell supported doors (vac barrier, ancient blast door; Doors.DrawSupported) use model (frame),
+        // doorTopModel (lintel) and doorLeafModel (optional, two sliding leaves) the same way, plus
+        // hackTerminalModel: drawn while the door's CompHackable is not hacked (the blast door's terminal).
+        public string hackTerminalModel;
         public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
         public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
@@ -341,6 +345,7 @@ namespace IsoRim
         public Model spin;        // spinModel, or null
         public Model spinLit;     // spinModel with its litMaterial lit, or null
         public Model glass;       // glassModel, or null
+        public Model hackTerminal; // hackTerminalModel, or null
 
         public bool HasModel
         {
@@ -609,6 +614,10 @@ namespace IsoRim
                 {
                     entry.spinLit = ObjLoader.Relit(entry.spin, md.litMaterial, md.litColors);
                 }
+            }
+            if (!md.hackTerminalModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.hackTerminal = LoadFile(Path.Combine(md.modContentPack.RootDir, md.hackTerminalModel));
             }
             if (!md.glassModel.NullOrEmpty() && md.modContentPack != null)
             {

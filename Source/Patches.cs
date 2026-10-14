@@ -266,6 +266,12 @@ namespace IsoRim
             // Doors wider than a cell with their own models (ornate door): frame, arch and two sliding leaves (Doors.DrawWide).
             Patch("3D wide doors", AccessTools.DeclaredMethod(typeof(Building_MultiTileDoor), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
                 prefix: nameof(MultiTileDoorDrawAt_Prefix));
+            // One-cell supported doors with their own models (vac barrier, ancient blast door): frame, lintel,
+            // leaves and hacking terminal (Doors.DrawSupported); the game's flat terminal is then left out.
+            Patch("3D supported doors", AccessTools.DeclaredMethod(typeof(Building_SupportedDoor), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(SupportedDoorDrawAt_Prefix));
+            Patch("3D supported doors", AccessTools.DeclaredMethod(typeof(CompHackable), "PostDraw"),
+                prefix: nameof(HackablePostDraw_Prefix));
 
             // Buildings the game draws every frame (campfire, torches, caskets): their model is baked
             // into the map mesh (SectionLayer_IsoRimBodies); only the body sprite is held back, and
@@ -1760,6 +1766,71 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a wide door failed: " + e, 93611231);
+                return true;
+            }
+        }
+
+        private static Action<Building_Door> doorPreDraw;
+
+        // The supported door's model entry while it is drawn by Doors.DrawSupported; else null.
+        private static ModelEntry SupportedDoorModel(Thing t)
+        {
+            if (!View3D.Ready || t == null || !IsoRimMod.Settings.doors3D || !IsoRimMod.Settings.models3D || !(t is Building_SupportedDoor)
+                || t.def.size.x != 1 || t.def.size.z != 1)
+            {
+                return null;
+            }
+            ModelEntry entry;
+            return ModelLibrary.TryGet(t.def, out entry) && entry.HasModel ? entry : null;
+        }
+
+        // Building_SupportedDoor.DrawAt with the door's own models: the game's support and top sprites and
+        // movers are left out; its comps still draw (a vac barrier then draws its field as the game does).
+        public static bool SupportedDoorDrawAt_Prefix(Building_SupportedDoor __instance)
+        {
+            try
+            {
+                ModelEntry entry = SupportedDoorModel(__instance);
+                if (entry == null)
+                {
+                    return true;
+                }
+                if (doorOpenPct == null)
+                {
+                    doorOpenPct = AccessTools.MethodDelegate<Func<Building_Door, float>>(AccessTools.PropertyGetter(typeof(Building_Door), "OpenPct"));
+                    doorStuckOpen = AccessTools.MethodDelegate<Func<Building_Door, bool>>(AccessTools.PropertyGetter(typeof(Building_Door), "StuckOpen"));
+                    compsPostDraw = AccessTools.MethodDelegate<Action<ThingWithComps>>(AccessTools.Method(typeof(ThingWithComps), "Comps_PostDraw"));
+                }
+                if (doorPreDraw == null)
+                {
+                    doorPreDraw = AccessTools.MethodDelegate<Action<Building_Door>>(AccessTools.Method(typeof(Building_Door), "DoorPreDraw"));
+                }
+                doorPreDraw(__instance);   // the game's rotation for a one-cell door, from the walls beside it
+                if (!Doors.DrawSupported(__instance, entry, doorOpenPct(__instance)))
+                {
+                    return true;
+                }
+                compsPostDraw(__instance);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a supported door failed: " + e, 93611281);
+                return true;
+            }
+        }
+
+        // The hacking terminal of a door drawn by Doors.DrawSupported is its 3D model (hackTerminalModel).
+        public static bool HackablePostDraw_Prefix(CompHackable __instance)
+        {
+            try
+            {
+                ModelEntry entry = SupportedDoorModel(__instance.parent);
+                return entry == null || entry.hackTerminal == null;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Checking a door's hacking terminal failed: " + e, 93611282);
                 return true;
             }
         }
