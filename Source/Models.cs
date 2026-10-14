@@ -92,6 +92,14 @@ namespace IsoRim
                                             // mech, a vat embryo or child) is fitted between surfaceHeight and this
         public bool heldPawnUpright = false; // the person held inside floats upright (growth vat) instead of lying
         public float barHeight = -1f;       // height of the game's progress bar over it (mech gestator console); -1 surfaceHeight
+        // Harvesters (WorkParts.cs). cableAnchors: the connectors (x, height, z; model space, facing north) the
+        // game's cables to holding platforms (CompCableConnection) run up to, taken in turn. workPanel: the two
+        // ends (x, height, z) of a strip on the model where lights run while the building works (stopped while
+        // paused, dark while idle), in workPanelColor, workPanelWidth wide.
+        public List<Vector3> cableAnchors;
+        public List<Vector3> workPanel;
+        public Color workPanelColor = new Color(1f, 0.5f, 0.2f);
+        public float workPanelWidth = 0.08f;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first

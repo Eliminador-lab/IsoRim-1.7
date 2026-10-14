@@ -74,6 +74,8 @@ namespace IsoRim
     //   vatchild=x,z,<age>           a new child colonist chosen for the growth vat (walks in: run tick= after it)
     //   embryo=x,z[,<done 0-1>]      a new embryo started in the powered growth vat, optionally that far along
     //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
+    //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
+    //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
     //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
     //   spincheck=1                logs each building with a turning part (Spinners): turning or still, angle; and every mote
@@ -710,6 +712,28 @@ namespace IsoRim
                     Log.Message("[IsoRim probe] sculpt: " + sp.LabelShort + " into " + bp2.def.defName + " " + bp2.Position + " cycle " + a[2] + ": " + (took ? "in" : "refused") + ", state " + pod.State);
                     break;
                 }
+                case "hold":
+                {
+                    // hold=x,z,<PawnKindDef>: a new entity of that kind (entities' faction) held on the holding platform
+                    // (put into its container, which the harvesters linked to it watch to rebuild their cables).
+                    Building_HoldingPlatform hp = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_HoldingPlatform;
+                    if (hp == null)
+                    {
+                        Log.Warning("[IsoRim probe] hold: no holding platform at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    Pawn ent = PawnGenerator.GeneratePawn(DefDatabase<PawnKindDef>.GetNamed(a[2]), Faction.OfEntities);
+                    bool held = hp.innerContainer.TryAdd(ent);
+                    Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied);
+                    break;
+                }
+                case "workcheck":
+                    foreach (Thing wt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && x.TryGetComp<CompCableConnection>() != null).ToList())
+                    {
+                        Log.Message("[IsoRim probe] workcheck " + wt.def.defName + " " + wt.Position + " rot " + wt.Rotation + ": " + WorkPanels.Report(wt)
+                            + ", cables " + Cables.Count(wt.TryGetComp<CompCableConnection>()) + ", form " + Forms.For(wt.def).form);
+                    }
+                    break;
                 case "glasscheck":
                     foreach (Thing gt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && Glass.EntryFor(x) != null).ToList())
                     {

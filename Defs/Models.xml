@@ -5064,4 +5064,39 @@
     <glassModel>Models/wastepack_atomizer_window.obj</glassModel>
     <surfaceHeight>0.50</surfaceHeight>
   </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: harvesters (WorkParts.cs): cables to the model's connectors, lights running while at work -->
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteHarvester</defName>
+    <thingDef>BioferriteHarvester</thingDef>
+    <model>Models/bioferrite_harvester.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <cableAnchors>
+      <li>(-0.26, 0.80, 0.76)</li>
+      <li>(0.26, 0.80, 0.76)</li>
+    </cableAnchors>
+    <workPanel>
+      <li>(-0.26, 0.755, 0.24)</li>
+      <li>(0.26, 0.755, 0.24)</li>
+    </workPanel>
+    <workPanelColor>(1.0, 0.42, 0.18)</workPanelColor>
+    <workPanelWidth>0.09</workPanelWidth>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Electroharvester</defName>
+    <thingDef>Electroharvester</thingDef>
+    <model>Models/electroharvester.obj</model>
+    <builtFor>(2, 1)</builtFor>
+    <cableAnchors>
+      <li>(-0.65, 0.67, -0.25)</li>
+      <li>(-0.65, 0.67, -0.08)</li>
+      <li>(-0.65, 0.67, 0.09)</li>
+      <li>(-0.65, 0.67, 0.26)</li>
+    </cableAnchors>
+    <workPanel>
+      <li>(-0.435, 0.815, -0.30)</li>
+      <li>(-0.435, 0.815, 0.30)</li>
+    </workPanel>
+    <workPanelColor>(0.45, 0.85, 1.0)</workPanelColor>
+    <workPanelWidth>0.08</workPanelWidth>
+  </IsoRim.ModelDef>
 </Defs>

@@ -299,6 +299,9 @@ namespace IsoRim
                 prefix: nameof(AtomizerDrawAt_Prefix));
             Patch("3D glass", AccessTools.DeclaredMethod(typeof(CompBiosculpterPod), "PostDraw"),
                 prefix: nameof(BiosculpterPostDraw_Prefix));
+            // Harvester cables run up to the model's connectors (WorkParts.cs).
+            Patch("3D cables", AccessTools.DeclaredMethod(typeof(CompCableConnection), "PostDraw"),
+                prefix: nameof(CableConnectionPostDraw_Prefix));
             // A new paint colour: the game redraws only things in the map mesh.
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
                 postfix: nameof(BodyColorChanged_Postfix));
@@ -1950,6 +1953,29 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a wastepack atomizer failed: " + e, 93611264);
+                return true;
+            }
+        }
+
+        public static bool CableConnectionPostDraw_Prefix(CompCableConnection __instance)
+        {
+            try
+            {
+                Thing t = __instance.parent;
+                if (t == null || !View3D.Ready || !IsoRimMod.Settings.models3D)
+                {
+                    return true;
+                }
+                ThingForm form = Forms.For(t.def);
+                if (form.form != Form3D.Model || form.model == null || form.model.def.cableAnchors.NullOrEmpty())
+                {
+                    return true;
+                }
+                return !Cables.Draw(__instance, form.model);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing harvester cables failed: " + e, 93611272);
                 return true;
             }
         }
