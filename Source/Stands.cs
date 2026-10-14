@@ -21,10 +21,10 @@ namespace IsoRim
     //     as a hood in its colour);
     //   - the clothes as the same 3D parts a colonist of that body type wears (People.Dress: trousers,
     //     shirt, coat or armour, hat or helmet), in the same colours;
-    //   - clothing with no 3D part (packs, belts) as the game's sprite, stood upright over the body
-    //     (apparelHeight, apparelScale) as before;
+    //   - clothing with no 3D part (packs, belts, glasses) left out, as a 3D colonist leaves it out;
     //   - the weapon made solid from its sprite (as a colonist's held weapon), placed and turned as the
-    //     game carries it on a stand (DrawWeapon).
+    //     game carries it on a stand (DrawWeapon); with no 3D form, its sprite stood upright over the
+    //     figure (apparelHeight, apparelScale).
     public static class Stands
     {
         private const float DepthScale = 0.3f;   // the game's drawing heights, squeezed into a thin stack toward the camera
@@ -39,15 +39,6 @@ namespace IsoRim
             new Vector3(0f, 0f, -0.11f), new Vector3(0.22f, 0f, -0.22f), new Vector3(0f, 0f, -0.22f), new Vector3(-0.22f, 0f, -0.22f),
         };
 
-        private struct Piece
-        {
-            public Graphic graphic;
-            public int layer;
-            public Vector3 scale;
-            public Vector3 offset;
-            public bool headgear;
-        }
-
         // What one stand shows, worked out when its contents change.
         private class Outfit
         {
@@ -57,10 +48,6 @@ namespace IsoRim
             public string headKey;
             public float halfDepth;   // how far the dressed body reaches north or south of its middle, figure units (facing north)
             public float halfWidth;   // and east or west
-            public readonly List<Apparel> unshown = new List<Apparel>();
-            public Rot4 seen;
-            public int piecesVersion = -1;
-            public readonly List<Piece> pieces = new List<Piece>();
         }
 
         private static readonly Dictionary<int, Outfit> outfits = new Dictionary<int, Outfit>();
@@ -118,9 +105,8 @@ namespace IsoRim
                 weaponDrawn = DrawWeapon(stand, weapon, def, size, c, outfit);
             }
 
-            Rot4 seen = Seen(stand.Rotation);
-            List<Piece> pieces = PiecesFor(outfit, seen, body);
-            if (pieces.Count == 0 && weaponDrawn)
+            // Clothing with no 3D part (packs, belts, glasses) is left out, as on a 3D colonist (People.Dress).
+            if (weaponDrawn)
             {
                 return true;
             }
@@ -132,50 +118,14 @@ namespace IsoRim
                 DrawHook.active = true;
                 DrawHook.billboard = false;
                 DrawHook.skip = false;
-                Mesh mesh = MeshPool.GetMeshSetForSize(1.5f, 1.5f).MeshAt(seen);
-                float scale = def.apparelScale * fit.y;
-
-                // On the body, as the game: each at its layer's height over the item layer.
+                // No 3D form (or 3D weapons off): the game's sprite, as it carries it, stood up over the figure.
+                Rot4 seen = Seen(stand.Rotation);
                 float itemY = AltitudeLayer.Item.AltitudeFor();
-                DrawHook.xform = Card(c, def.apparelHeight * fit.y, scale, new Vector3(drawLoc.x, itemY, drawLoc.z));
-                for (int i = 0; i < pieces.Count; i++)
-                {
-                    Piece p = pieces[i];
-                    if (p.headgear)
-                    {
-                        continue;
-                    }
-                    Vector3 at = new Vector3(drawLoc.x, itemY + PawnRenderUtility.AltitudeForLayer(p.layer), drawLoc.z);
-                    Matrix4x4 m = Matrix4x4.TRS(at + p.graphic.DrawOffset(seen) + p.offset, p.graphic.QuatFromRot(seen), p.scale);
-                    DrawHook.DrawMesh(mesh, m, p.graphic.MatAt(seen), 0);
-                }
-                if (!weaponDrawn)
-                {
-                    // No 3D form (or 3D weapons off): the game's sprite, as it carries it, stood up with the clothes.
-                    Vector3 at = seen != Rot4.North
-                        ? new Vector3(drawLoc.x, AltitudeLayer.ItemImportant.AltitudeFor() + PawnRenderUtility.AltitudeForLayer(90f), drawLoc.z)
-                        : new Vector3(drawLoc.x, itemY - 0.05f, drawLoc.z);
-                    PawnRenderUtility.DrawCarriedWeapon(weapon, at, seen, (float)weaponFactorGetter.Invoke(stand, null));
-                }
-
-                // Headgear with no 3D part, over the head unless something worn hides the head (as the game).
-                if (!skipHead)
-                {
-                    float importantY = AltitudeLayer.ItemImportant.AltitudeFor();
-                    Vector3 head = drawLoc + HeadOffsetAt(body, seen);
-                    DrawHook.xform = Card(c, def.dressRise + PersonHeadCentre * size, scale, new Vector3(head.x, importantY, head.z));
-                    for (int i = 0; i < pieces.Count; i++)
-                    {
-                        Piece p = pieces[i];
-                        if (!p.headgear)
-                        {
-                            continue;
-                        }
-                        Vector3 at = new Vector3(head.x, importantY + PawnRenderUtility.AltitudeForLayer(p.layer), head.z);
-                        Matrix4x4 m = Matrix4x4.TRS(at + p.graphic.DrawOffset(seen), p.graphic.QuatFromRot(seen), p.scale);
-                        DrawHook.DrawMesh(mesh, m, p.graphic.MatAt(seen), 0);
-                    }
-                }
+                DrawHook.xform = Card(c, def.apparelHeight * fit.y, def.apparelScale * fit.y, new Vector3(drawLoc.x, itemY, drawLoc.z));
+                Vector3 at = seen != Rot4.North
+                    ? new Vector3(drawLoc.x, AltitudeLayer.ItemImportant.AltitudeFor() + PawnRenderUtility.AltitudeForLayer(90f), drawLoc.z)
+                    : new Vector3(drawLoc.x, itemY - 0.05f, drawLoc.z);
+                PawnRenderUtility.DrawCarriedWeapon(weapon, at, seen, (float)weaponFactorGetter.Invoke(stand, null));
             }
             finally
             {
@@ -236,16 +186,6 @@ namespace IsoRim
             return Matrix4x4.Translate(to.center) * Matrix4x4.Scale(scale) * Matrix4x4.Translate(-from.center);
         }
 
-        // The middle of a colonist's head, figure space.
-        private static float PersonHeadCentre
-        {
-            get
-            {
-                Model person = People.Part("person_head");
-                return person != null ? BoxOf(person).center.y : 1f;
-            }
-        }
-
         private static readonly Dictionary<int, Bounds> boxes = new Dictionary<int, Bounds>();
 
         private static Bounds BoxOf(Model m)
@@ -288,8 +228,6 @@ namespace IsoRim
                 outfits[stand.thingIDNumber] = outfit;
             }
             outfit.version = version;
-            outfit.piecesVersion = -1;
-            outfit.unshown.Clear();
 
             List<Apparel> worn = new List<Apparel>();
             Apparel hides = null;
@@ -306,7 +244,7 @@ namespace IsoRim
             }
             string build = People.BuildOf(body);
             People.Look look = new People.Look();
-            People.Dress(look, build, worn, Color.white, outfit.unshown);
+            People.Dress(look, build, worn, Color.white, null);   // as a colonist: clothing with no 3D part is left out
 
             // The body: only what some clothing covers (the stand's own body shows elsewhere).
             Begin();
@@ -435,77 +373,6 @@ namespace IsoRim
             return new Rot4((facing.AsInt - turns + 4) & 3);
         }
 
-        private static Vector3 HeadOffsetAt(BodyTypeDef body, Rot4 rot)
-        {
-            Vector2 o = body != null ? body.headOffset : Vector2.zero;
-            switch (rot.AsInt)
-            {
-                case 1: return new Vector3(o.x, 0f, o.y);
-                case 3: return new Vector3(-o.x, 0f, o.y);
-                default: return new Vector3(0f, 0f, o.y);
-            }
-        }
-
-        // The game's Building_OutfitStand.RecacheGraphics for the clothing with no 3D part, for the side
-        // seen (the game works it out for the stand's own facing only), kept until the contents or the side change.
-        private static List<Piece> PiecesFor(Outfit outfit, Rot4 seen, BodyTypeDef body)
-        {
-            if (outfit.piecesVersion == outfit.version && outfit.seen == seen)
-            {
-                return outfit.pieces;
-            }
-            outfit.piecesVersion = outfit.version;
-            outfit.seen = seen;
-            outfit.pieces.Clear();
-            if (outfit.unshown.Count == 0)
-            {
-                return outfit.pieces;
-            }
-
-            List<Apparel> list = new List<Apparel>(outfit.unshown);
-            list.SortBy(a => a.def.apparel.LastLayer.drawOrder);
-            Dictionary<ApparelLayerDef, int> perLayer = new Dictionary<ApparelLayerDef, int>();
-            foreach (Apparel item in list)
-            {
-                ApparelLayerDef lastLayer = item.def.apparel.LastLayer;
-                bool headgear = lastLayer == ApparelLayerDefOf.Overhead || lastLayer == ApparelLayerDefOf.EyeCover;
-                ApparelGraphicRecord rec;
-                if (!ApparelGraphicRecordGetter.TryGetGraphicApparel(item, body, false, out rec))
-                {
-                    continue;
-                }
-                int count = perLayer.GetValueOrDefault(lastLayer, 0);
-                perLayer[lastLayer] = count + 1;
-                int layer = lastLayer.drawOrder / 10 + count;
-                float? forRot = item.def.apparel.drawData?.LayerForRot(seen, -1f);
-                if (forRot.HasValue && forRot.Value > 0f)
-                {
-                    layer += ((int)forRot.Value - (headgear ? 70 : 20)) * 2;
-                }
-                Vector3 scale = Vector3.one;
-                Vector3 offset = Vector3.zero;
-                if (item.RenderAsPack())
-                {
-                    Vector2 s = item.def.apparel.wornGraphicData.BeltScaleAt(seen, body);
-                    scale.x *= s.x;
-                    scale.z *= s.y;
-                    Vector2 o = item.def.apparel.wornGraphicData.BeltOffsetAt(seen, body);
-                    offset.x += o.x;
-                    offset.z += o.y;
-                    if (seen == Rot4.North)
-                    {
-                        layer = 93;
-                    }
-                    else if (seen == Rot4.South)
-                    {
-                        layer = -3;
-                    }
-                }
-                outfit.pieces.Add(new Piece { graphic = rec.graphic, layer = layer, scale = scale, offset = offset, headgear = headgear });
-            }
-            return outfit.pieces;
-        }
-
         // For the harness: what the stand shows and how.
         public static string Report(Building_OutfitStand stand)
         {
@@ -522,7 +389,7 @@ namespace IsoRim
             outfits.TryGetValue(stand.thingIDNumber, out o);
             return "apparel " + apparel + ", weapon " + (stand.HeldWeapon != null ? stand.HeldWeapon.def.defName : "none") + ", head hidden " + skip
                 + ", seen " + Seen(stand.Rotation) + ", model " + SectionLayer_IsoRimBodies.StandsIn(stand)
-                + (o != null ? ", 3D parts " + (o.bodyKey ?? "-") + " / " + (o.headKey ?? "-") + ", as sprites " + o.unshown.Count : "");
+                + (o != null ? ", 3D parts " + (o.bodyKey ?? "-") + " / " + (o.headKey ?? "-") : "");
         }
     }
 }

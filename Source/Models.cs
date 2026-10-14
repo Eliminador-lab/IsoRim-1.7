@@ -112,8 +112,8 @@ namespace IsoRim
         // figure space in cells, as a colonist), lifted dressRise cells onto the stand (scale sizes the stand model
         // to that figure); headModel is the stand's head,
         // drawn over the colonist's head and only while no worn apparel hides the head (as the game).
-        // Clothing with no 3D part is the game's sprite, stood upright facing the camera at apparelHeight,
-        // apparelScale times the game's size.
+        // Clothing with no 3D part is left out (as on a colonist); a weapon with no 3D form is the game's sprite,
+        // stood upright facing the camera at apparelHeight, apparelScale times the game's size.
         public string headModel;
         public float dressRise = 0f;
         public float apparelHeight = 0.85f;
