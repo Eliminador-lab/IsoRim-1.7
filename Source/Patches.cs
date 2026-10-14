@@ -282,6 +282,10 @@ namespace IsoRim
             // Shield bubbles: a dome over the circle instead of a flat ring on the ground (ShieldDomes).
             Patch("shield domes", AccessTools.DeclaredMethod(typeof(CompProjectileInterceptor), "PostDraw"), transpiler: nameof(ShieldDraw_Transpiler));
 
+            // Smoke and dust the game throws from a building: from the model's nozzles, standing up at their height (Emitters).
+            Patch("smoke from 3D nozzles", AccessTools.Method(typeof(CompThrownFleckEmitter), "Emit"), prefix: nameof(FleckEmit_Prefix));
+            Patch("smoke from 3D nozzles", AccessTools.Method(typeof(FleckStatic), "Draw", new[] { typeof(float), typeof(DrawBatch) }), prefix: nameof(FleckDraw_Prefix), finalizer: nameof(FleckDraw_Finalizer));
+
             // Turret guns: a 3D gun turning on its 3D base.
             Type turretTop = AccessTools.TypeByName("RimWorld.TurretTop");
             if (turretTop != null)
@@ -1861,6 +1865,11 @@ namespace IsoRim
         // The game also draws some icons in batches; the same transform is applied there.
         public static bool DrawBatch_Prefix(ref Matrix4x4 __1)
         {
+            if (Emitters.On)
+            {
+                __1 = Emitters.Stand(__1);   // a puff from a model's nozzle (any thread)
+                return true;
+            }
             if (!DrawHook.active)
             {
                 return true;
@@ -2067,6 +2076,34 @@ namespace IsoRim
                 && callee.DeclaringType == typeof(Graphics)
                 && callee.Name == "DrawMesh"
                 && DrawHook.ReplacementFor(callee) != null;
+        }
+
+        public static bool FleckEmit_Prefix(CompThrownFleckEmitter __instance)
+        {
+            try
+            {
+                return Emitters.Emit(__instance);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Throwing smoke from a model failed: " + e, 93611221);
+                return true;
+            }
+        }
+
+        // (FleckStatic.Draw(altitude, batch): every puff, thrown or not, ends up here; the one-line
+        // FleckThrown.Draw is inlined by the runtime and cannot be hooked.)
+        public static void FleckDraw_Prefix(ref FleckStatic __instance, out bool __state)
+        {
+            __state = Emitters.Begin(ref __instance);
+        }
+
+        public static void FleckDraw_Finalizer(bool __state)
+        {
+            if (__state)
+            {
+                Emitters.End();
+            }
         }
 
         public static IEnumerable<CodeInstruction> ShieldDraw_Transpiler(IEnumerable<CodeInstruction> instructions)

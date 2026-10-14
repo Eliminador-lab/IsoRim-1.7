@@ -59,6 +59,7 @@ namespace IsoRim
     //   shoot=x0,z0,x1,z1            a colonist's revolver bullet launched from one cell at the other
     //   bars=1                       progress bars are drawn in the shots (the game leaves them out in screenshot mode)
     //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
+    //   emitcheck=1                  logs the smoke emitters and how many puffs are in the air
     //   charged=x,z                  the shield in the cell out of its recharge pause
     //   shieldcheck=1                logs every shield: active, charging, cooldown, selected, faction
     //   wake=x,z                   the dormant building in the cell (mech capsule) woken at once, as when disturbed
@@ -66,7 +67,8 @@ namespace IsoRim
     //   motecheck=1                  logs every mote on the map (def, cell, draw position, age, linked thing)
     //   statecheck=1                 logs, for each building with an empty-state sprite, its state against its built model
     //   blueprint=<Def>,x,z[,<Stuff>|-[,rot]]  the player's blueprint to build it there
-    //   tickuntil=bursting|intercept,N  game ticks until some turret fires a burst / some shield stops a projectile (at most N <= 900)
+    //   tickuntil=bursting|intercept|burst,N  game ticks until some turret fires a burst / some shield stops a projectile /
+    //                                some slow fleck emitter (toxic spewer) throws its puffs (at most N <= 900)
     //   interact=x,z                 the nearest free colonist is ordered to activate the building (as its float menu option)
     //   turretcheck=1                logs every turret's verb state, aim override, gun rotation and which gun model it shows
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
@@ -509,6 +511,15 @@ namespace IsoRim
                     }
                     break;
                 }
+                case "emitcheck":
+                {
+                    string sys = string.Join(", ", map.flecks.Systems.Select(fs => fs.GetType().Name + " " + ((Traverse.Create(fs).Field("dataGametime").GetValue() as System.Collections.ICollection)?.Count ?? -1)));
+                    foreach (Thing et in map.listerThings.AllThings.Where(x => x.TryGetComp<CompThrownFleckEmitter>() != null))
+                    {
+                        Log.Message("[IsoRim probe] emitcheck " + et.def.defName + " since last " + et.TryGetComp<CompThrownFleckEmitter>().ticksSinceLastEmitted + " ours " + Emitters.Count + " | " + sys);
+                    }
+                    break;
+                }
                 case "charged":
                 {
                     // charged=x,z: the shield in the cell is not in its recharge pause (the game picks that time at random).
@@ -590,7 +601,10 @@ namespace IsoRim
                 {
                     // tickuntil=bursting,N: game ticks one at a time until some turret is firing a burst (at most N).
                     int limit = Mathf.Clamp(I(a[1]), 1, 900), done = 0;
-                    Func<bool> reached = a[0] == "intercept"
+                    Func<bool> reached = a[0] == "burst"
+                        ? (Func<bool>)(() => map.listerThings.AllThings.Any(t => t.TryGetComp<CompThrownFleckEmitter>() is CompThrownFleckEmitter fe
+                            && ((CompProperties_ThrownFleckEmitter)fe.props).emissionInterval >= 100 && fe.ticksSinceLastEmitted == 0))
+                        : a[0] == "intercept"
                         ? (Func<bool>)(() => map.listerThings.AllThings.Any(t => t.TryGetComp<CompProjectileInterceptor>() is CompProjectileInterceptor pi
                             && Traverse.Create(pi).Field("lastInterceptTicks").GetValue<int>() == Find.TickManager.TicksGame))
                         : () => map.listerThings.AllThings.OfType<Building_Turret>().Any(t => t.CurrentEffectiveVerb != null && t.CurrentEffectiveVerb.state == VerbState.Bursting);

@@ -59,6 +59,8 @@ namespace IsoRim
         public Vector2 builtFor = Vector2.zero; // the footprint (x, z) in cells the model was built for; it is stretched to the thing's real size
         public string topModel;             // turrets: the gun that turns, drawn every frame
         public float topHeight = 0.5f;      // height of the turret's pivot, in cells
+        public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
+        public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
