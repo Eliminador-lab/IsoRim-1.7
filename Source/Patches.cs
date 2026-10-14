@@ -1667,7 +1667,7 @@ namespace IsoRim
 
         public static bool EmptyStatePostDraw_Prefix(ThingComp __instance)
         {
-            return __instance.parent == null || !SectionLayer_IsoRimBodies.StandsIn(__instance.parent);
+            return __instance.parent == null || !(SectionLayer_IsoRimBodies.StandsIn(__instance.parent) || StateModels.StandsIn(__instance.parent));
         }
 
         public static void FireOverlayPostDraw_Prefix(ThingComp __instance, out bool __state)
@@ -1710,6 +1710,14 @@ namespace IsoRim
             if (__0 != DrawPhase.Draw || !View3D.Ready || __instance == null || __instance is Pawn)
             {
                 return;
+            }
+            try
+            {
+                StateModels.Track(__instance);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Checking whether a building was emptied failed: " + e, 93611211);
             }
             // Speech bubbles and icons over people's heads stand up and float above them.
             Mote mote = __instance as Mote;

@@ -4312,4 +4312,23 @@
     <builtFor>(3, 3)</builtFor>
   </IsoRim.ModelDef>
 
+  <!-- Closed while mechanoids sleep inside; the open model once they have come out (StateModels.cs). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_MechCapsule</defName>
+    <thingDef>MechCapsule</thingDef>
+    <model>Models/mech_capsule_closed.obj</model>
+    <emptyModel>Models/mech_capsule_open.obj</emptyModel>
+    <builtFor>(2, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- The game draws the eggs it holds every frame, raised to surfaceHeight: just over the nest ring (0.23),
+       under the rim (0.28), so the whole clutch shows in the nest. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_EggBox</defName>
+    <thingDef>EggBox</thingDef>
+    <model>Models/egg_box.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.245</surfaceHeight>
+  </IsoRim.ModelDef>
+
 </Defs>

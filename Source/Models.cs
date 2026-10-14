@@ -47,6 +47,7 @@ namespace IsoRim
         public float mountHeight = 0.5f;    // how far up that wall, as a fraction of the wall's height
         public bool alongRun = false;       // turned a quarter turn where its row runs north-south (sandbags)
         public bool fullVariant = false;    // the second model is used once the thing holds something (graves)
+        public string emptyModel;           // used instead while the game draws the thing as empty (CompEmptyStateGraphic: an opened mech capsule)
         public bool groundShadow = true;    // soft shading on the ground under it
         public float outline = 1f;          // how bold the dark outline is; 0 for none
         public bool linked = false;         // the first model stands in the cell; the second is added toward each neighbour it joins
@@ -285,6 +286,7 @@ namespace IsoRim
         public Dictionary<string, Model> byAppearance;   // StuffAppearanceDef defName -> model; null if none
         public Model leg;   // animals only
         public Model top;   // turrets only
+        public Model empty;       // emptyModel, or null
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
 
         public bool HasModel
@@ -491,6 +493,10 @@ namespace IsoRim
             if (!md.topModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.top = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModel));
+            }
+            if (!md.emptyModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.empty = LoadFile(Path.Combine(md.modContentPack.RootDir, md.emptyModel));
             }
             if (!md.topModelLoaded.NullOrEmpty() && md.modContentPack != null)
             {

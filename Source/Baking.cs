@@ -1656,6 +1656,10 @@ namespace IsoRim
                 Building_Casket holder = thing as Building_Casket;
                 m = entry.variants[holder != null && holder.HasAnyContents ? 1 : 0];
             }
+            if (Ghost.a <= 0f)
+            {
+                m = StateModels.Choose(thing, entry, m);   // an opened mech capsule: its open model
+            }
             if (R3DMaterials.Solid == null || m == null)
             {
                 return false;

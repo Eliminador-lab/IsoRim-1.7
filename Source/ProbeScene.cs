@@ -53,6 +53,9 @@ namespace IsoRim
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   power=x,z                    the building in the cell counts as powered from now on
+    //   wake=x,z                     the dormant building in the cell (mech capsule) woken at once, as when disturbed
+    //   eggs=x,z,N[,<Def>]           the egg box in the cell holds N eggs (default unfertilized chicken eggs)
+    //   statecheck=1                 logs, for each building with an empty-state sprite, its state against its built model
     //   blueprint=<Def>,x,z[,<Stuff>|-[,rot]]  the player's blueprint to build it there
     //   tickuntil=bursting,N         game ticks until some turret fires a burst (at most N <= 900)
     //   interact=x,z                 the nearest free colonist is ordered to activate the building (as its float menu option)
@@ -436,6 +439,43 @@ namespace IsoRim
                     powered.Add(pw);
                     break;
                 }
+                case "wake":
+                {
+                    Building wb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompWakeUpDormant wc = wb != null ? wb.TryGetComp<CompWakeUpDormant>() : null;
+                    if (wc == null)
+                    {
+                        Log.Warning("[IsoRim probe] nothing to wake at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    wc.Activate(map.mapPawns.FreeColonistsSpawned.FirstOrDefault(), true, false, true);   // as being disturbed: wakes at once
+                    break;
+                }
+                case "eggs":
+                {
+                    Building eb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompThingContainer ec = eb != null ? eb.TryGetComp<CompThingContainer>() : null;
+                    if (ec == null)
+                    {
+                        Log.Warning("[IsoRim probe] no container at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    ec.innerContainer.ClearAndDestroyContents();
+                    if (I(a[2]) > 0)
+                    {
+                        Thing egg = ThingMaker.MakeThing(DefDatabase<ThingDef>.GetNamed(a.Length > 3 ? a[3] : "EggChickenUnfertilized"));
+                        egg.stackCount = I(a[2]);
+                        ec.innerContainer.TryAdd(egg);
+                    }
+                    break;
+                }
+                case "statecheck":
+                    foreach (Thing st in map.listerThings.AllThings.Where(x => StateModels.CompOf(x) != null))
+                    {
+                        Log.Message("[IsoRim probe] statecheck " + st.def.defName + " " + st.Position + " empty " + StateModels.IsEmpty(st)
+                            + " built as " + StateModels.Report(st) + " model stands in " + StateModels.StandsIn(st));
+                    }
+                    break;
                 case "blueprint":
                 {
                     ThingDef bd = DefDatabase<ThingDef>.GetNamed(a[0]);
