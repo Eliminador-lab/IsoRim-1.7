@@ -980,6 +980,10 @@ namespace IsoRim
                     PerfKey(key, a, map);
                     break;
                 default:
+                    if (CutKey(key, a))
+                    {
+                        break;
+                    }
                     Log.Warning("[IsoRim probe] unknown key " + key);
                     return;
             }
@@ -1419,6 +1423,7 @@ namespace IsoRim
             FilmTick(map);
             IxTick(map);
             MotionTick();
+            CutTick();
             BurstTick();
             if (swayStill)
             {

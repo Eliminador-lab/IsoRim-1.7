@@ -253,7 +253,12 @@ namespace IsoRim
                 return;
             }
             IsoCellMap c = For(map);
+            long t0 = Probe.On ? Stopwatch.GetTimestamp() : 0;
             c.Update();
+            if (Probe.On)
+            {
+                Probe.AddCellTime((Stopwatch.GetTimestamp() - t0) * 1000.0 / Stopwatch.Frequency);
+            }
             Shader.SetGlobalTexture(texId, c.Texture);
             Shader.SetGlobalVector(mapId, new Vector4(c.origin.x, c.origin.y, c.width, c.height));
             Shader.SetGlobalVector(levelId, new Vector4(c.baseY, 0f, 0f, 0f));
