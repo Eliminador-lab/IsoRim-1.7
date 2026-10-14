@@ -282,6 +282,10 @@ namespace IsoRim
                 {
                     continue;
                 }
+                if (!Cull.MeshVisible(p.mesh, matrix))
+                {
+                    continue;
+                }
                 IsoGlow.DrawLit(p.mesh, matrix, p.material, 0);
             }
         }

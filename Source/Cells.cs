@@ -71,6 +71,21 @@ namespace IsoRim
             return c;
         }
 
+        // The cell data of a map if it has been made (null otherwise); never makes it.
+        public static IsoCellMap Existing(Map map)
+        {
+            IsoCellMap c;
+            return map != null && maps.TryGetValue(map, out c) ? c : null;
+        }
+
+        // The tallest top of any cell, as last sent to the GPU (culling: the fog lid is lifted onto it).
+        public float MaxTop
+        {
+            get { return maxTop; }
+        }
+
+        private float maxTop = 16f;
+
         private static readonly List<Map> gone = new List<Map>();
 
         private static void Prune()
@@ -204,6 +219,12 @@ namespace IsoRim
             }
             tex.SetPixels32(cells);
             tex.Apply(false);
+            int top = 0;
+            for (int i = 0; i < cells.Length; i++)
+            {
+                top = Math.Max(top, (cells[i].r << 8) | cells[i].g);
+            }
+            maxTop = top / HeightSteps;
             changed = false;
             uploads++;
             if (watch != null)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -16,6 +17,11 @@ namespace IsoRim
     //   clear=x0,z0,x1,z1                     every building in a rectangle destroyed (deconstructed at once)
     //   save=<name>                           the game saved (temp file in the save folder: delete it after the run)
     //   loadtest=<name>                       that save loaded with 3D on, then off, then the game quits (see LoadWatch)
+    //   cull=0|1                              culling (Cull) off or on from now on
+    //   cullshrink=f                          culling against a screen f times the real one (f < 1: a negative control)
+    //   cullcheck=0|1                         pawns and doors culled whole are drawn anyway; their model parts that show are counted
+    //   cullab=x,z,size,tag                   camera held there; three screenshots 5 frames apart: culling off, on, off
+    //                                         (renders<harness tag>cullab_<tag>_off1/_on/_off2.png)
     public static partial class Probe
     {
         private static Vector3 camFrom, camTo;
@@ -30,6 +36,22 @@ namespace IsoRim
             {
                 case "window":
                     Window = F(a[0]);
+                    break;
+                case "cull":
+                    Cull.Enabled = a[0] == "1";
+                    break;
+                case "cullcheck":
+                    Cull.checkThings = a[0] == "1";
+                    break;
+                case "cullshrink":
+                    Cull.Shrink = F(a[0]);
+                    break;
+                case "cullab":
+                    abQueue.Add(new KeyValuePair<Vector3, string>(new Vector3(F(a[0]), F(a[1]), F(a[2])), a[3]));
+                    if (abFrame < 0)
+                    {
+                        abFrame = -20;   // waits for a turn to end, then 20 frames
+                    }
                     break;
                 case "campath":
                     camFrom = new Vector3(F(a[0]), F(a[1]), F(a[2]));
@@ -101,9 +123,52 @@ namespace IsoRim
             }
         }
 
+        private static readonly List<KeyValuePair<Vector3, string>> abQueue = new List<KeyValuePair<Vector3, string>>();
+        private static int abFrame = -1;
+
+        private static void CullAbTick()
+        {
+            if (abQueue.Count == 0)
+            {
+                return;
+            }
+            Vector3 abCam = abQueue[0].Key;
+            string abTag = abQueue[0].Value;
+            Find.CameraDriver.SetRootPosAndSize(new Vector3(abCam.x, 0f, abCam.y), abCam.z);
+            if (abFrame < 0)
+            {
+                if (!View3D.Turning)
+                {
+                    abFrame++;
+                }
+                return;
+            }
+            foreach (Window w in Find.WindowStack.Windows.ToList())
+            {
+                Find.WindowStack.TryRemove(w, doCloseSound: false);
+            }
+            Cull.Enabled = abFrame >= 5 && abFrame < 10;
+            if (abFrame == 2 || abFrame == 7 || abFrame == 12)
+            {
+                string dir = System.IO.Path.Combine(GenFilePaths.SaveDataFolderPath, "renders", HarnessTag());
+                System.IO.Directory.CreateDirectory(dir);
+                string name = "cullab_" + abTag + (abFrame == 2 ? "_off1" : abFrame == 7 ? "_on" : "_off2");
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));
+                Log.Message("[IsoRim probe] " + name + ": yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0") + ", cull " + Cull.Enabled
+                    + ", sections tested " + Cull.sectionsTested + " culled " + Cull.sectionsCulled + " unknown " + Cull.sectionsUnknown + ", model parts culled " + Cull.culledParts);
+            }
+            if (++abFrame >= 15)
+            {
+                abQueue.RemoveAt(0);
+                abFrame = abQueue.Count > 0 ? -5 : -1;
+                Cull.Enabled = true;
+            }
+        }
+
         // Every frame (from Sticky).
         private static void MotionTick()
         {
+            CullAbTick();
             if (camFrame >= 0)
             {
                 float f = camFrame / (float)camFrames;
@@ -217,6 +282,160 @@ namespace IsoRim
                 Log.Message("[IsoRim probe] loadtest done, quitting");
                 Root.Shutdown();
             }
+        }
+
+        // ---- render side of a perf window (Waylith): draw commands submitted per frame (all, by the map
+        // mesh, by the dynamic things), main-thread CaptureFrame (one draw item per command), and on the
+        // render thread RecordFrame (Vulkan recording) and the whole RenderFrame (+ acquire/submit waits).
+        private static System.Collections.IList drawCommands;
+        private static long capStart, rtStart, recStart;
+        private static double capMs, rtSum, recSum;
+        private static int rtCount;
+        private static int cmdAtMesh, cmdAtDyn, cmdMesh, cmdDyn, cmdTotal;
+        private static readonly List<float> perfCap = new List<float>();
+        private static readonly List<float> perfCmd = new List<float>();
+        private static readonly List<float> perfCmdMesh = new List<float>();
+        private static readonly List<float> perfCmdDyn = new List<float>();
+        private static bool histNext;
+        private static string hist = "";
+
+        private static void RenderHooks(HarmonyLib.Harmony h)
+        {
+            drawCommands = HarmonyLib.AccessTools.Field(typeof(Waylith.Rendering.MeshDrawSubmission), "Commands").GetValue(null) as System.Collections.IList;
+            h.Patch(HarmonyLib.AccessTools.Method(typeof(Waylith.Rendering.FrameRenderer), "CaptureFrame"),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CapBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CapEnd)));
+            h.Patch(HarmonyLib.AccessTools.Method(typeof(Waylith.Rendering.RenderThread), "RenderFrame"),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RtBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RtEnd)));
+            h.Patch(HarmonyLib.AccessTools.Method(typeof(Waylith.Rendering.FrameRenderer), "RecordFrame"),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RecBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RecEnd)));
+        }
+
+        private static int CmdCount
+        {
+            get { return drawCommands != null ? drawCommands.Count : 0; }
+        }
+
+        public static void MeshCmdBegin() { cmdAtMesh = CmdCount; }
+        public static void MeshCmdEnd() { cmdMesh += CmdCount - cmdAtMesh; }
+        public static void DynCmdBegin() { cmdAtDyn = CmdCount; }
+        public static void DynCmdEnd() { cmdDyn += CmdCount - cmdAtDyn; }
+
+        public static void CapBegin()
+        {
+            cmdTotal = CmdCount;
+            Camera cam = Current.CameraDriver != null ? Current.CameraDriver.MyCamera : null;
+            if (cam != null && View3D.Ready && !Cull.SameCamera(cam.projectionMatrix * cam.worldToCameraMatrix))
+            {
+                camMismatch++;
+            }
+            if (histNext)
+            {
+                histNext = false;
+                hist = Histogram();
+            }
+            capStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        }
+
+        public static void CapEnd() { capMs += (System.Diagnostics.Stopwatch.GetTimestamp() - capStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+        public static void RtBegin() { rtStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
+        public static void RtEnd() { rtSum += (System.Diagnostics.Stopwatch.GetTimestamp() - rtStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; rtCount++; }
+        public static void RecBegin() { recStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
+        public static void RecEnd() { recSum += (System.Diagnostics.Stopwatch.GetTimestamp() - recStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+
+        private static void RenderPerfStart()
+        {
+            perfCap.Clear();
+            perfCmd.Clear();
+            perfCmdMesh.Clear();
+            perfCmdDyn.Clear();
+            rtSum = recSum = 0;
+            rtCount = 0;
+            hist = "";
+            cullTested = cullCulled = cullUnknown = cullParts = cullThings = cullViol = camMismatch = 0;
+        }
+
+        // Once per frame of a perf window (from PerfFrame).
+        private static int cullTested, cullCulled, cullUnknown, cullParts, cullThings, cullViol, camMismatch;
+
+        private static void CullCountsReset()
+        {
+            Cull.sectionsTested = Cull.sectionsCulled = Cull.sectionsUnknown = Cull.culledParts = 0;
+            Cull.thingsCulled = Cull.thingViolations = 0;
+        }
+
+        private static void RenderPerfFrame(int left)
+        {
+            cullTested += Cull.sectionsTested;
+            cullCulled += Cull.sectionsCulled;
+            cullUnknown += Cull.sectionsUnknown;
+            cullParts += Cull.culledParts;
+            cullThings += Cull.thingsCulled;
+            cullViol += Cull.thingViolations;
+            CullCountsReset();
+            perfCap.Add((float)capMs);
+            perfCmd.Add(cmdTotal);
+            perfCmdMesh.Add(cmdMesh);
+            perfCmdDyn.Add(cmdDyn);
+            capMs = 0;
+            cmdMesh = cmdDyn = 0;
+            if (left == 20)
+            {
+                histNext = true;
+            }
+        }
+
+        private static void RenderPerfIdle()
+        {
+            CullCountsReset();
+            capMs = 0;
+            cmdMesh = cmdDyn = 0;
+        }
+
+        private static string RenderPerfReport()
+        {
+            string s = "render: commands median " + Median(perfCmd).ToString("0") + " (map mesh " + Median(perfCmdMesh).ToString("0") + ", dynamic things "
+                + Median(perfCmdDyn).ToString("0") + "), CaptureFrame median " + Median(perfCap).ToString("0.000") + " ms; render thread RenderFrame mean "
+                + (rtCount > 0 ? rtSum / rtCount : 0).ToString("0.000") + " ms (RecordFrame " + (rtCount > 0 ? recSum / rtCount : 0).ToString("0.000") + ") over " + rtCount + " frames"
+                + "; cull " + Cull.Enabled + " per frame: sections tested " + (cullTested / (float)Math.Max(1, perfCmd.Count)).ToString("0.0")
+                + ", culled " + (cullCulled / (float)Math.Max(1, perfCmd.Count)).ToString("0.0") + ", unknown " + (cullUnknown / (float)Math.Max(1, perfCmd.Count)).ToString("0.0")
+                + ", model parts culled " + (cullParts / (float)Math.Max(1, perfCmd.Count)).ToString("0")
+                + ", frames rendered with another camera than culled against " + camMismatch
+                + ", things culled " + (cullThings / (float)Math.Max(1, perfCmd.Count)).ToString("0.0") + (Cull.checkThings ? ", CHECK: visible parts of culled things " + cullViol : "");
+            if (hist.Length > 0)
+            {
+                Log.Message("[IsoRim probe] perf " + perfLabel + " draw commands by shader (one frame): " + hist);
+            }
+            return s;
+        }
+
+
+        // Draw commands of the current frame grouped by shader: count and triangles.
+        private static string Histogram()
+        {
+            if (drawCommands == null || drawCommands.Count == 0)
+            {
+                return "";
+            }
+            PropertyInfo cmdProp = null;
+            Dictionary<string, int[]> by = new Dictionary<string, int[]>();
+            foreach (object o in drawCommands)
+            {
+                if (cmdProp == null)
+                {
+                    cmdProp = o.GetType().GetProperty("Command");
+                }
+                Waylith.Rendering.MeshDrawCommand c = (Waylith.Rendering.MeshDrawCommand)cmdProp.GetValue(o);
+                string key = c.Material != null && c.Material.Shader != null ? c.Material.Shader.Name : "?";
+                int[] v;
+                if (!by.TryGetValue(key, out v))
+                {
+                    v = new int[2];
+                    by[key] = v;
+                }
+                v[0]++;
+                v[1] += c.Mesh != null ? c.Mesh.IndexCount / 3 : 0;
+            }
+            return string.Join(", ", by.OrderByDescending(kv => kv.Value[0]).Select(kv => kv.Key + " " + kv.Value[0] + "/" + (kv.Value[1] / 1000) + "k tris"));
         }
     }
 }

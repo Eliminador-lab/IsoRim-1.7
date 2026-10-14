@@ -366,6 +366,7 @@ namespace IsoRim
             }
             camerasOverridden = true;
             haveFrame = true;
+            Cull.SetCamera(main.projectionMatrix * main.worldToCameraMatrix, s);
 
             // The shaders work out face normals in true space and turn them toward the camera.
             R3DMaterials.SetView(-fwd, s);
@@ -395,6 +396,7 @@ namespace IsoRim
             cams = null;
             camerasOverridden = false;
             haveFrame = false;
+            Cull.Reset();
         }
 
         // Baked map geometry (walls, models, plants) depends on these values, so the map is

@@ -330,6 +330,13 @@ namespace IsoRim
                 postfix: nameof(GenerateLightingOverlay_Postfix));
             Patch("night and indoor light on raised things", AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"),
                 prefix: nameof(DrawMapMesh_Prefix));
+
+            // Culling (Cull): map blocks and moving model parts wholly off screen are not drawn.
+            Patch("culling", AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"), transpiler: nameof(CullDrawMapMesh_Transpiler));
+            Patch("culling", AccessTools.Method(typeof(LayerSubMesh), "FinalizeMesh"), postfix: nameof(CullFinalizeMesh_Postfix));
+            Patch("culling", AccessTools.Method(typeof(DynamicDrawManager), "DrawDynamicThings"),
+                prefix: nameof(CullThings_Prefix), finalizer: nameof(CullThings_Finalizer));
+            Patch("culling", AccessTools.Method(typeof(Thing), "DynamicDrawPhase"), prefix: nameof(CullThing_Prefix), postfix: nameof(CullThing_Postfix));
             if (ModLog.Diag)
             {
                 IsoGlow.Benchmark();
@@ -356,6 +363,37 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Copying the map's light failed: " + e, 93611201);
             }
+        }
+
+        public static IEnumerable<CodeInstruction> CullDrawMapMesh_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            return Cull.DrawMapMeshTranspiler(instructions);
+        }
+
+        public static void CullFinalizeMesh_Postfix(MeshParts __0)
+        {
+            Cull.MeshFinalized(__0);
+        }
+
+        public static bool CullThing_Prefix(Thing __instance, DrawPhase phase)
+        {
+            return Cull.ThingPhase(__instance, phase);
+        }
+
+        public static void CullThing_Postfix()
+        {
+            Cull.ThingPhaseDone();
+        }
+
+        public static void CullThings_Prefix()
+        {
+            Cull.ThingsBegin();
+        }
+
+        public static Exception CullThings_Finalizer(Exception __exception)
+        {
+            Cull.ThingsEnd();
+            return __exception;
         }
 
         public static void DrawMapMesh_Prefix()

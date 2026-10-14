@@ -342,6 +342,7 @@ namespace IsoRim
                     Array.Clear(perfLapMax, 0, 8);
                     bodiesDrawn = 0;
                     bodiesHeld = 0;
+                    RenderPerfStart();
                     break;
                 case "uncap":
                     Application.targetFrameRate = a[0] == "1" ? 1000 : Mathf.RoundToInt((float)Screen.currentResolution.refreshRateRatio.value);
@@ -737,6 +738,10 @@ namespace IsoRim
                 case "clear":
                 case "save":
                 case "loadtest":
+                case "cull":
+                case "cullab":
+                case "cullcheck":
+                case "cullshrink":
                     PerfKey(key, a, map);
                     break;
                 default:
@@ -929,6 +934,9 @@ namespace IsoRim
             h.Patch(AccessTools.Method(typeof(Root_Play), "Update"), new HarmonyMethod(typeof(Probe), nameof(UpdBegin)), new HarmonyMethod(typeof(Probe), nameof(UpdEnd)));
             h.Patch(AccessTools.Method(typeof(DynamicDrawManager), "DrawDynamicThings"), new HarmonyMethod(typeof(Probe), nameof(DynBegin)), new HarmonyMethod(typeof(Probe), nameof(DynEnd)));
             h.Patch(AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"), new HarmonyMethod(typeof(Probe), nameof(MeshBegin)), new HarmonyMethod(typeof(Probe), nameof(MeshEnd)));
+            h.Patch(AccessTools.Method(typeof(DynamicDrawManager), "DrawDynamicThings"), new HarmonyMethod(typeof(Probe), nameof(DynCmdBegin)), new HarmonyMethod(typeof(Probe), nameof(DynCmdEnd)));
+            h.Patch(AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"), new HarmonyMethod(typeof(Probe), nameof(MeshCmdBegin)), new HarmonyMethod(typeof(Probe), nameof(MeshCmdEnd)));
+            RenderHooks(h);
         }
 
         public static void UpdBegin() { updStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
@@ -1016,8 +1024,10 @@ namespace IsoRim
             if (perfLeft <= 0)
             {
                 updMs = dynMs = meshMs = 0;
+                RenderPerfIdle();
                 return;
             }
+            RenderPerfFrame(perfLeft);
             perfDt.Add(dt);
             perfTick.Add(tickMs);
             perfUpdate.Add((float)updMs);
@@ -1055,7 +1065,7 @@ namespace IsoRim
                 + (GC.GetTotalMemory(false) / 1048576.0).ToString("0") + " MB, process working set " + (proc.WorkingSet64 / 1048576.0).ToString("0") + " MB, private "
                 + (proc.PrivateMemorySize64 / 1048576.0).ToString("0") + " MB; IsoRim tick parts mean [" + Breakdown(perfLapSum.Select(s => s / n).ToArray()) + "] max [" + Breakdown(perfLapMax) + "]; CPU medians: frame update " + Median(perfUpdate).ToString("0.000") + " ms, dynamic things "
                 + Median(perfDynamic).ToString("0.000") + " ms, map mesh " + Median(perfMesh).ToString("0.000") + " ms; modelled realtime bodies per frame: game drew " + (bodiesDrawn / (float)n).ToString("0.0")
-                + ", held back " + (bodiesHeld / (float)n).ToString("0.0") + "; " + BodyMeshes() + "; 3D " + View3D.Active + ", targetFrameRate " + Application.targetFrameRate);
+                + ", held back " + (bodiesHeld / (float)n).ToString("0.0") + "; " + BodyMeshes() + "; " + RenderPerfReport() + "; 3D " + View3D.Active + ", targetFrameRate " + Application.targetFrameRate);
         }
 
         public static void OverlaysOn()
