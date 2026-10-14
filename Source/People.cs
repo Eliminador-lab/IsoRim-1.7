@@ -777,7 +777,7 @@ namespace IsoRim
             {
                 return "brim";
             }
-            if (Has(name, "Bowler") || Has(name, "TopHat") || Has(name, "Ladies") || Has(name, "Crown") || Has(name, "Coronet") || Has(name, "Stellic"))
+            if (Has(name, "Bowler") || Has(name, "TopHat") || Has(name, "HatTop") || Has(name, "Ladies") || Has(name, "Crown") || Has(name, "Coronet") || Has(name, "Stellic"))
             {
                 return "tall";
             }
