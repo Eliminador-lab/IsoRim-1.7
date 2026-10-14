@@ -27,7 +27,7 @@ Your colony in 3D, seen through an isometric camera that turns round your base. 
 
 Credit:
 - IsoRim is by Connor (kndzio). The original models, textures and code are his work. This port makes it run on 1.7.
-- The port adds new models for buildings the original didn't cover, about 50 so far: bookcases with their books, shuttles, thrones, instruments, Royalty and Biotech machines, the ornate door and more.
+- The port adds new models for buildings the original didn't cover, about 150 so far: bookcases with their books, shuttles and ships, thrones, instruments, altars by ideoligion style, glass vats and gestators with their contents, Royalty, Ideology, Biotech, Anomaly and Odyssey buildings and more.
 - Original mod: https://steamcommunity.com/sharedfiles/filedetails/?id=3819266222
 - Original source: https://github.com/kndzio/IsoRim
 - This port: https://github.com/peren717/IsoRim-1.7
@@ -38,6 +38,7 @@ Features:
 - 3D models for buildings, furniture and benches. Items, weapons and clothing are made solid from their own art.
 - Trees, plants, animals and colonists in 3D. Colonists work with real tools.
 - Sloped roofs, calm water, flowing rivers, and a sun that moves through the day.
+- Gravship hulls with 3D diagonal corners placed by vanilla's own rules, and a flat deck roof over ships.
 - Colour looks: gentle, warm, filmic, noir and more.
 - Walls lower, trees thin out and roofs lift near the pointer.
 
@@ -53,7 +54,8 @@ What the port changed: RimWorld 1.7 runs on the new Waylith engine, which broke 
 - Lighting is per pixel on the GPU. Sun and moon follow the game, game shadows follow the 3D light, and lamp light stays inside walls.
 - Colour looks rebuilt as one full-screen pass, no asset bundle needed.
 - Items are made solid again from their sprite pixels, read on the CPU (Waylith can't crop textures on the GPU).
-- No full-map rebuild when you tilt or turn the camera (a 475 ms hitch, now under 20 ms), plus fixes for various other issues and crashes.
+- Camera-facing cards and fog are placed on the GPU, so turning or tilting the camera rebuilds nothing (was a 475 ms hitch).
+- Off-screen parts are skipped, roughly doubling the frame rate zoomed out on big maps. The selection box and designators fit the tilted camera, plus fixes for various other issues and crashes.
 
 Compatibility:
 - RimWorld 1.7 only. Requires Harmony.
@@ -63,9 +65,8 @@ Compatibility:
 
 Known limitations:
 - On the very first launch the 3D view may show garbled colours for a few seconds while shaders compile. Only once.
-- Some trees without a model are flat cards facing the camera. They turn after the camera settles.
-- Fog may briefly lie flat after mining reveals cells.
-- Smooth at normal zoom on a 250×250 map with a large base; zoomed fully out on a very large base it drops to about 75 fps.
+- Near full frame rate on a 250×250 map with a large base, even zoomed fully out.
+- Launching and landing a gravship is not yet tested in 3D.
 - More models are being added.
 
 Please report problems with a log on the Workshop page or on GitHub.
@@ -78,7 +79,7 @@ IsoRim Waylith（抢先体验，开发中）
 
 致谢：
 - IsoRim 的作者是 Connor（kndzio）。原版的模型、贴图和代码都是他的作品，本移植版让它能在 1.7 上运行。
-- 移植版为原版没有覆盖的建筑新做了模型，目前约 50 个：书柜（连同上面的书）、穿梭机、宝座、乐器、皇权和生物科技的机器、豪华大门等。
+- 移植版为原版没有覆盖的建筑新做了模型，目前约 150 个：书柜（连同上面的书）、穿梭机和飞船、宝座、乐器、按文化风格区分的祭坛、能看到内容物的玻璃培养舱和孕育器，以及皇权、文化、生物科技、异象和奥德赛的各种建筑等。
 - 原版 mod：https://steamcommunity.com/sharedfiles/filedetails/?id=3819266222
 - 原版源码：https://github.com/kndzio/IsoRim
 - 移植版源码：https://github.com/peren717/IsoRim-1.7
@@ -89,6 +90,7 @@ IsoRim Waylith（抢先体验，开发中）
 - 建筑、家具和工作台都有 3D 模型。物品、武器和衣服按各自的贴图做成立体。
 - 树木、植物、动物和小人都是 3D 的，小人干活时拿着真正的工具。
 - 斜屋顶，平静的水面，流动的河流，太阳随时间移动。
+- 引力船船体有 3D 斜角（位置沿用原版规则），船上是平整的甲板屋顶。
 - 色调风格：柔和、暖色、电影感、黑白等。
 - 鼠标附近的墙会降低，树会变稀，屋顶会掀开。
 
@@ -104,7 +106,8 @@ IsoRim Waylith（抢先体验，开发中）
 - 光照改为在 GPU 上逐像素计算：太阳和月亮跟随游戏，游戏的阴影跟随 3D 光照，灯光不会透过墙。
 - 色调风格改为一次全屏处理，不再需要 AssetBundle。
 - 物品重新做成立体：在 CPU 上读取贴图像素（Waylith 无法在 GPU 上裁切贴图）。
-- 倾斜或旋转镜头时不再重建整张地图（原来卡顿约 475 毫秒，现在不到 20 毫秒），以及修复了其他各种问题和崩溃。
+- 面向镜头的卡片和迷雾改在 GPU 上摆放，旋转或倾斜镜头时不再重建任何东西（原来卡顿约 475 毫秒）。
+- 跳过屏幕外的部分，大地图拉远时帧率约提高一倍。框选和指令贴合倾斜的镜头，以及修复了其他各种问题和崩溃。
 
 兼容性：
 - 仅支持 RimWorld 1.7，需要 Harmony。
@@ -114,9 +117,8 @@ IsoRim Waylith（抢先体验，开发中）
 
 已知问题：
 - 第一次启动时，3D 视角可能有几秒颜色错乱，这是在编译着色器，只发生一次。
-- 部分没有模型的树是面向镜头的平面卡片，镜头停下后才会转向。
-- 挖矿揭开格子后，迷雾可能短暂地平铺在地上。
-- 250×250 大地图加大型基地，正常缩放下流畅；在超大基地上完全拉远时降到约 75 fps。
+- 250×250 大地图加大型基地，完全拉远也接近满帧。
+- 引力船起飞和降落还没有在 3D 下测试过。
 - 新模型还在陆续加入。
 
 遇到问题请在创意工坊页面或 GitHub 上附日志反馈。</description>
