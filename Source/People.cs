@@ -163,6 +163,15 @@ namespace IsoRim
                 tried = true;
                 head = Part("person_head");
                 face = Part("person_face");
+                if (face != null)
+                {
+                    // The eyes are flat decals on the face: an outline shell would poke out as dark spikes at grazing angles.
+                    face.noOutline = new bool[face.positions.Length];
+                    for (int i = 0; i < face.noOutline.Length; i++)
+                    {
+                        face.noOutline[i] = true;
+                    }
+                }
                 visor = Part("person_visor");
                 pads = Part("person_pads");
             }
