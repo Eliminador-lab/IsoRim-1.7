@@ -277,10 +277,10 @@ namespace IsoRim
     [StaticConstructorOnStartup]
     public static class Lut
     {
-        public const string BundleName = "isorimshaders";
-
-        private static bool triedShader;
-        private static Shader shader;
+        // 1.6 loaded the LUT shader from a Unity AssetBundle (Shaders\isorimshaders), which cannot load on
+        // 1.7 (Waylith). The 1.7 grade (design step 3) brings its own ShaderDef; until then there is no
+        // LUT shader and the sheet grade path is used, as when no bundle was installed.
+        private static Shader shader = null;
         private static Material material;
         private static Mesh mesh;
         private static readonly Dictionary<string, Texture2D> tables = new Dictionary<string, Texture2D>();
@@ -289,14 +289,10 @@ namespace IsoRim
         private static Texture2D current;
         private static int strengthId = -1;
 
-        // True once the shader bundle has loaded.
+        // True once there is a LUT shader.
         public static bool Available
         {
-            get
-            {
-                LoadShader();
-                return shader != null;
-            }
+            get { return shader != null; }
         }
 
         public static string Folder
@@ -336,70 +332,6 @@ namespace IsoRim
         public static void Rescan()
         {
             files = null;
-        }
-
-        private static void LoadShader()
-        {
-            if (triedShader)
-            {
-                return;
-            }
-            triedShader = true;
-#if RW17
-            // Unity AssetBundles cannot load on Waylith; the LUT needs a GLSL rewrite (later stage).
-            // Without it the sheet colour grade is used, as when no bundle is installed.
-            return;
-#endif
-            try
-            {
-                if (IsoRimMod.RootDir == null)
-                {
-                    return;
-                }
-                string suffix = "";
-                if (Application.platform == RuntimePlatform.OSXPlayer || Application.platform == RuntimePlatform.OSXEditor)
-                {
-                    suffix = "_mac";
-                }
-                else if (Application.platform == RuntimePlatform.LinuxPlayer || Application.platform == RuntimePlatform.LinuxEditor)
-                {
-                    suffix = "_linux";
-                }
-                string path = Path.Combine(Path.Combine(IsoRimMod.RootDir, "Shaders"), BundleName + suffix);
-                if (!File.Exists(path))
-                {
-                    path = Path.Combine(Path.Combine(IsoRimMod.RootDir, "Shaders"), BundleName);
-                }
-                if (!File.Exists(path))
-                {
-                    return;   // not built yet: the sheet grade is used instead
-                }
-                AssetBundle bundle = AssetBundle.LoadFromFile(path);
-                if (bundle == null)
-                {
-                    ModLog.Warn("[IsoRim] The shader bundle " + path + " could not be loaded. It may have been built for another platform or Unity version.");
-                    return;
-                }
-                foreach (Shader s in bundle.LoadAllAssets<Shader>())
-                {
-                    if (s != null && s.name == "IsoRim/LUT")
-                    {
-                        shader = s;
-                    }
-                }
-                if (shader == null || !shader.isSupported)
-                {
-                    ModLog.Warn("[IsoRim] The shader bundle has no usable IsoRim/LUT shader.");
-                    shader = null;
-                    return;
-                }
-                ModLog.Note("[IsoRim] Exact colour grading (LUT) is available.");
-            }
-            catch (Exception e)
-            {
-                shader = null;
-                ModLog.Warn("[IsoRim] Loading the shader bundle failed: " + e.Message);
-            }
         }
 
         // The table for the chosen look: a LUT file named after the look, or the chosen LUT file.

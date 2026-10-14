@@ -320,6 +320,12 @@ namespace IsoRim
         private static readonly Dictionary<SectionLayer, int> fogCounts = new Dictionary<SectionLayer, int>();
         private static readonly Dictionary<int, float> heights = new Dictionary<int, float>();
 
+        // The game has just rebuilt a block's fog sheet flat: lift it again when it is next drawn.
+        public static void FogRebuilt(SectionLayer layer)
+        {
+            fogLifted.Remove(layer);
+        }
+
         // Moves the corners of a block's fog sheet up onto the tops of the rock and walls under
         // them (and down to the ground elsewhere). Done again now and then, as rock is mined.
         public static void LiftFog(SectionLayer layer, Map map)

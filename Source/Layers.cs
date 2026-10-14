@@ -1175,9 +1175,10 @@ namespace IsoRim
         {
         }
 
+        // Not on maps the game draws without edge sheets (orbit and space maps): no earth under them.
         public override bool Visible
         {
-            get { return View3D.Ready && IsoRimMod.Settings.mapEdge3D; }
+            get { return View3D.Ready && IsoRimMod.Settings.mapEdge3D && Map != null && Map.DrawMapClippers; }
         }
 
         public override void Regenerate()

@@ -150,6 +150,10 @@ namespace IsoRim
             // Designation icons float over what they mark (their drawing is redirected above).
             Patch("floating designation icons", FindMethod(typeof(Designation), "DesignationDraw"),
                 prefix: nameof(DesignationDraw_Prefix), finalizer: nameof(Scope_Finalizer));
+            // Cell designations (mine, smooth ...) are drawn in one instanced batch on the ground,
+            // where they would be inside the rock; in 3D they are drawn one by one like the rest.
+            Patch("floating designation icons", AccessTools.Method(typeof(DesignationManager), "DrawDesignations"),
+                prefix: nameof(DrawDesignations_Prefix), finalizer: nameof(DrawDesignations_Finalizer));
             Type drawBatch = AccessTools.TypeByName("Verse.DrawBatch");
             if (drawBatch != null)
             {
@@ -234,6 +238,11 @@ namespace IsoRim
             // Walls are cut down in front of roofed rooms, so they have to be redrawn when a roof changes.
             Patch("cut-down walls keeping up with roofs", AccessTools.Method(typeof(RoofGrid), "SetRoof"),
                 postfix: nameof(SetRoof_Postfix));
+
+            // The fog sheet is rebuilt flat by the game; it is lifted again on its next draw.
+            Type fogLayer = AccessTools.TypeByName("Verse.SectionLayer_FogOfWar");
+            Patch("fog lid", fogLayer == null ? null : AccessTools.DeclaredMethod(fogLayer, "Regenerate"),
+                postfix: nameof(FogRegenerate_Postfix));
 
             // The water's colour bands reach a few cells from the shore, into the next blocks of the
             // map, which the game does not redraw for a change of terrain.
@@ -1434,6 +1443,11 @@ namespace IsoRim
 
         private static readonly AccessTools.FieldRef<TerrainGrid, Map> terrainMap = AccessTools.FieldRefAccess<TerrainGrid, Map>("map");
 
+        public static void FogRegenerate_Postfix(SectionLayer __instance)
+        {
+            Interaction.FogRebuilt(__instance);
+        }
+
         // The terrain at __0 changed from __1 to __2.
         public static void TerrainChanged_Postfix(TerrainGrid __instance, IntVec3 __0, TerrainDef __1, TerrainDef __2)
         {
@@ -1598,6 +1612,35 @@ namespace IsoRim
             }
         }
 
+        private static readonly List<DesignationDef> unbatched = new List<DesignationDef>();
+
+        public static void DrawDesignations_Prefix()
+        {
+            unbatched.Clear();
+            if (!View3D.Ready)
+            {
+                return;
+            }
+            List<DesignationDef> defs = DefDatabase<DesignationDef>.AllDefsListForReading;
+            for (int i = 0; i < defs.Count; i++)
+            {
+                if (defs[i].shouldBatchDraw)
+                {
+                    defs[i].shouldBatchDraw = false;
+                    unbatched.Add(defs[i]);
+                }
+            }
+        }
+
+        public static void DrawDesignations_Finalizer()
+        {
+            for (int i = 0; i < unbatched.Count; i++)
+            {
+                unbatched[i].shouldBatchDraw = true;
+            }
+            unbatched.Clear();
+        }
+
         // A designation (mine, haul, cut, deconstruct ...): its icon floats over what it marks.
         public static void DesignationDraw_Prefix(Designation __instance, out DrawScope __state)
         {
@@ -1692,6 +1735,11 @@ namespace IsoRim
             try
             {
                 float h = Forms.HeightOf(t);
+                Fire fire = t as Fire;
+                if (h <= 0f && fire != null && fire.parent == null)
+                {
+                    h = FireBaseHeight(fire);
+                }
                 if (h <= 0f)
                 {
                     return;
@@ -1706,6 +1754,27 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Raising a thing's moving parts failed: " + e, 93611015);
             }
+        }
+
+        // A fire burning on a wall, a bed or anything else raised burns on its top, not inside it.
+        private static float FireBaseHeight(Fire fire)
+        {
+            Map map = fire.Map;
+            if (map == null || !fire.Position.InBounds(map))
+            {
+                return 0f;
+            }
+            float h = 0f;
+            List<Thing> things = fire.Position.GetThingList(map);
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing o = things[i];
+                if (o != fire && !(o is Pawn) && !(o is Fire))
+                {
+                    h = Mathf.Max(h, Forms.HeightOf(o));
+                }
+            }
+            return h;
         }
 
         // Finds every method in the pawn drawing code that hands a mesh to Unity and points it at

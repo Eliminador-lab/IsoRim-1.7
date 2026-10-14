@@ -132,6 +132,10 @@ namespace IsoRim
                         break;
                 }
             }
+            if (measuring)
+            {
+                Report();   // the last pass ended before its measuring window did
+            }
             label = "pass " + pass + " (" + line + ")";
             measuring = true;
             measureStart = Time.realtimeSinceStartup;
@@ -195,17 +199,22 @@ namespace IsoRim
             }
             if (Time.realtimeSinceStartup - measureStart >= Window)
             {
-                measuring = false;
-                List<float> b = new List<float>(beforeDt);
-                b.Sort();
-                float usual = b.Count > 0 ? b[b.Count / 2] : 0f;
-                Log.Message("[IsoRim probe] " + label + ": frames " + frames
-                    + ", usual frame " + usual.ToString("0.0") + " ms, max frame " + maxDt.ToString("0.0") + " ms"
-                    + ", IsoRim tick max " + maxTick.ToString("0.0") + " ms (frame " + maxTickFrame + ")"
-                    + ", sum " + sumTick.ToString("0.0") + " ms, last frame > 1 ms: " + lastBusyFrame
-                    + ", yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0"));
-                beforeDt.Clear();
+                Report();
             }
+        }
+
+        private static void Report()
+        {
+            measuring = false;
+            List<float> b = new List<float>(beforeDt);
+            b.Sort();
+            float usual = b.Count > 0 ? b[b.Count / 2] : 0f;
+            Log.Message("[IsoRim probe] " + label + ": frames " + frames
+                + ", usual frame " + usual.ToString("0.0") + " ms, max frame " + maxDt.ToString("0.0") + " ms"
+                + ", IsoRim tick max " + maxTick.ToString("0.0") + " ms (frame " + maxTickFrame + ")"
+                + ", sum " + sumTick.ToString("0.0") + " ms, last frame > 1 ms: " + lastBusyFrame
+                + ", yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0"));
+            beforeDt.Clear();
         }
     }
 }
