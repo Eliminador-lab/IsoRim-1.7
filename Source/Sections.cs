@@ -17,6 +17,7 @@ namespace IsoRim
             public Map map;
             public object section;
             public Type layer;
+            public SectionLayer instance;   // a given layer, in place of section + layer type
         }
 
         private const int SectionSize = 17;
@@ -67,7 +68,9 @@ namespace IsoRim
                     return;
                 }
                 Type type = field.FieldType;
-                Type defOf = AccessTools.TypeByName("Verse.MapMeshFlagDefOf");
+                // RimWorld.MapMeshFlagDefOf in 1.6 and 1.7 (the old "Verse." name found nothing, so IsoRim's
+                // layers were never redrawn by the game's own change flags).
+                Type defOf = AccessTools.TypeByName("RimWorld.MapMeshFlagDefOf") ?? AccessTools.TypeByName("Verse.MapMeshFlagDefOf");
                 ulong bits = 0;
                 object single = null;
                 for (int i = 0; i < names.Length; i++)
@@ -148,7 +151,8 @@ namespace IsoRim
         }
 
         // Queues one layer of every block of a map. With onScreenFirst the blocks in view go first.
-        public static void QueueAll(Map map, Type layer, bool onScreenFirst)
+        // With borderOnly, only the blocks along the edge of the map.
+        public static void QueueAll(Map map, Type layer, bool onScreenFirst, bool borderOnly = false)
         {
             if (map == null || map.mapDrawer == null || layer == null)
             {
@@ -181,6 +185,10 @@ namespace IsoRim
             {
                 for (int z = 0; z < nz; z++)
                 {
+                    if (borderOnly && x != 0 && z != 0 && x != nx - 1 && z != nz - 1)
+                    {
+                        continue;
+                    }
                     object s = sections.GetValue(x, z);
                     if (s == null)
                     {
@@ -198,6 +206,28 @@ namespace IsoRim
                     {
                         later.Add(job);
                     }
+                }
+            }
+            queue.AddRange(later);
+        }
+
+        // Queues the given layers, those in view on the current map first.
+        public static void QueueLayers(List<SectionLayer> layers)
+        {
+            CellRect view = Find.CameraDriver != null ? Find.CameraDriver.CurrentViewRect : CellRect.Empty;
+            Map shown = Find.CurrentMap;
+            List<Job> later = new List<Job>();
+            for (int i = 0; i < layers.Count; i++)
+            {
+                SectionLayer l = layers[i];
+                Job job = new Job { map = MapSections.MapOf(l), instance = l };
+                if (MapSections.MapOf(l) == shown && l.GetBoundaryRect().Overlaps(view))
+                {
+                    queue.Add(job);
+                }
+                else
+                {
+                    later.Add(job);
                 }
             }
             queue.AddRange(later);
@@ -253,6 +283,14 @@ namespace IsoRim
             }
         }
 
+        private static readonly AccessTools.FieldRef<MapDrawLayer, Map> layerMap = AccessTools.FieldRefAccess<MapDrawLayer, Map>("map");
+
+        // The map a layer belongs to (the game keeps it to the layer itself).
+        public static Map MapOf(SectionLayer layer)
+        {
+            return layerMap(layer);
+        }
+
         private static readonly System.Diagnostics.Stopwatch clock = new System.Diagnostics.Stopwatch();
 
         // Called every frame: redraws queued blocks until about four milliseconds have gone (at
@@ -278,7 +316,7 @@ namespace IsoRim
                 }
                 try
                 {
-                    SectionLayer layer = getLayer.Invoke(job.section, new object[] { job.layer }) as SectionLayer;
+                    SectionLayer layer = job.instance ?? getLayer.Invoke(job.section, new object[] { job.layer }) as SectionLayer;
                     if (layer != null)
                     {
                         layer.Regenerate();

@@ -1080,7 +1080,6 @@ namespace IsoRim
         // Light comes from above and from the south-west, so the faces turned toward the camera are lit.
         private static readonly Vector3 BaseLight = new Vector3(-0.35f, 0.8f, -0.5f).normalized;
         private static Vector3 LightDir = BaseLight;
-        private static Vector2 LightFlat = new Vector2(BaseLight.x, BaseLight.z).normalized;
         private static bool lightSet;
 
         // The direction toward IsoRim's sun (or moon) right now, in true (unsquashed) space.
@@ -1193,12 +1192,6 @@ namespace IsoRim
         {
             lightSet = true;
             LightDir = dir;
-            LightFlat = new Vector2(LightDir.x, LightDir.z);
-            if (LightFlat.sqrMagnitude < 1e-6f)
-            {
-                LightFlat = new Vector2(0f, -1f);
-            }
-            LightFlat.Normalize();
             Shader.SetGlobalVector(isoSunId, new Vector4(LightDir.x, LightDir.y, LightDir.z, 0f));
         }
 
@@ -1209,42 +1202,19 @@ namespace IsoRim
             Shader.SetGlobalVector(isoViewId, new Vector4(towardCamera.x, towardCamera.y, towardCamera.z, squash));
         }
 
-        // Kept so older code still compiles: a step of the old six-place sun, as an hour.
-        public static void SetSun(int step)
-        {
-            SetSunHour(step >= 6 ? 0f : 6f + (step + 0.5f) * 2f);
-        }
-
         // ---- lit materials
         //
         // Faces are lit in the shader (Shaders\IsoRimSolid.frag.glsl): it works out which way each
         // face points, sorts it into one of these direction groups (straight up, straight down, or
         // one of eight compass points at three steepnesses) and shades it for this frame's sun.
         // So one material per shading curve serves every direction, and nothing is recoloured or
-        // rebuilt as the sun moves. BinOf / BinShade remain for CPU-side callers.
+        // rebuilt as the sun moves. BinOf remains for callers that still pass a group (it is ignored).
         public const int Bins = 26;
         public const int LightModel = 1;   // _LightMode: model curve (curve 0)
         public const int LightWall = 2;    // _LightMode: wall and rock curve (curve 1)
         public const int LightRoof = 3;    // _LightMode: roof slates (model curve * 1.05, at most 1.1)
-        private static readonly Vector3[] binNormal = MakeBinNormals();
         private static readonly Material[] litSolid = new Material[2];
         private static readonly Dictionary<string, Material> litByKey = new Dictionary<string, Material>();
-
-        private static Vector3[] MakeBinNormals()
-        {
-            Vector3[] n = new Vector3[Bins];
-            n[0] = Vector3.up;
-            n[1] = Vector3.down;
-            float[] elevations = { 0f, 35f, 62f };
-            for (int band = 0; band < 3; band++)
-            {
-                for (int sector = 0; sector < 8; sector++)
-                {
-                    n[2 + band * 8 + sector] = Dir(sector * 45f, elevations[band]);
-                }
-            }
-            return n;
-        }
 
         // Which direction group a face pointing along normal belongs to.
         public static int BinOf(Vector3 normal)
@@ -1267,19 +1237,6 @@ namespace IsoRim
             float az = Mathf.Atan2(normal.x, normal.z) * Mathf.Rad2Deg;
             int sector = Mathf.RoundToInt(Mathf.Repeat(az, 360f) / 45f) % 8;
             return 2 + band * 8 + sector;
-        }
-
-        // How bright faces of a group are now, worked out on the CPU the same way as the shader.
-        // curve 0 is for models, 1 for walls and rock (see WallShade).
-        public static float BinShade(int bin, int curve)
-        {
-            Vector3 n = binNormal[Mathf.Clamp(bin, 0, Bins - 1)];
-            Vector3 light = SunDir;
-            if (curve == 1)
-            {
-                return n.y >= 0.92f ? 1f : WallShadeFor(n, LightFlat);
-            }
-            return ModelShade(n, light);
         }
 
         private static int ModeOf(int curve)
@@ -1337,41 +1294,6 @@ namespace IsoRim
             }
             litByKey[key] = m;
             return m;
-        }
-
-        private static float ModelShade(Vector3 normal, Vector3 light)
-        {
-            float d = Mathf.Max(0f, Vector3.Dot(normal, light));
-            return 0.5f + 0.5f * Mathf.Clamp01(d / Mathf.Max(0.2f, light.y));
-        }
-
-        private static float WallShadeFor(Vector3 outward, Vector2 lightFlat)
-        {
-            Vector2 o = new Vector2(outward.x, outward.z);
-            if (o.sqrMagnitude < 1e-6f)
-            {
-                return 1f;
-            }
-            float d = Vector2.Dot(o.normalized, lightFlat);
-            return Mathf.Lerp(0.52f, 0.80f, (d + 1f) * 0.5f);
-        }
-
-        // Kept for older callers: the light no longer follows the camera.
-        public static void FaceCamera(int step)
-        {
-        }
-
-        // How bright an upright face is that looks out along the given direction on the ground:
-        // 0.80 for the side facing the light, down to about 0.52 for the side facing away.
-        public static float WallShade(Vector3 outward)
-        {
-            Vector2 o = new Vector2(outward.x, outward.z);
-            if (o.sqrMagnitude < 1e-6f)
-            {
-                return 1f;
-            }
-            float d = Vector2.Dot(o.normalized, LightFlat);
-            return Mathf.Lerp(0.52f, 0.80f, (d + 1f) * 0.5f);
         }
 
         public static Material Solid

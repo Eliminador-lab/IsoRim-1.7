@@ -16,7 +16,8 @@ namespace IsoRim
     // Water in the mod's own style, painted like the pools in the marsh ground: dark teal that
     // shades smoothly from a little lighter at the bank to darker out in the deep, with no lines
     // anywhere. Over it a see-through layer of soft ripples drifts and sways on still water, and
-    // long streaks run downstream on rivers; both are moved every frame while they are on screen.
+    // long streaks run downstream on rivers; both drift by moving their texture (the material's
+    // texture offset), so the meshes are never rewritten.
     [StaticConstructorOnStartup]
     public class SectionLayer_IsoRimWater : SectionLayer
     {
@@ -47,16 +48,14 @@ namespace IsoRim
         private int distH;
         private CellRect distRect;
 
-        // The moving layer: kept by this block itself (not part of the game's mesh) because its
-        // texture coordinates are slid along every frame.
+        // The moving layers: kept by this block itself (not part of the game's mesh) because they
+        // are drawn with their own materials, whose texture offset slides every frame.
         private Mesh waveMesh;
         private readonly List<Vector3> waveVerts = new List<Vector3>();
         private readonly List<Vector2> waveBase = new List<Vector2>();
-        private readonly List<Vector2> waveUV = new List<Vector2>();
         private readonly List<int> waveTris = new List<int>();
         private readonly List<Vector3> flowVerts = new List<Vector3>();
         private readonly List<Vector2> flowBase = new List<Vector2>();
-        private readonly List<Vector2> flowUV = new List<Vector2>();
         private readonly List<int> flowTris = new List<int>();
         private Mesh flowMesh;
 
@@ -139,27 +138,17 @@ namespace IsoRim
             {
                 // still water: a slow drift with a gentle side-to-side sway
                 Vector2 shift = new Vector2(t * 0.012f + 0.035f * Mathf.Sin(t * 0.45f), t * 0.008f + 0.025f * Mathf.Sin(t * 0.31f + 1.3f));
-                Slide(waveMesh, waveBase, waveUV, shift);
+                ripples.mainTextureOffset = shift;
                 ripples.color = new Color(glow, glow, glow, 1f);
                 Graphics.DrawMesh(waveMesh, Matrix4x4.identity, ripples, 0);
             }
             if (flow != null && flowMesh != null && flowVerts.Count > 0)
             {
                 // running water: streaks carried downstream
-                Slide(flowMesh, flowBase, flowUV, new Vector2(0.02f * Mathf.Sin(t * 0.7f), -t * 0.22f));
+                flow.mainTextureOffset = new Vector2(0.02f * Mathf.Sin(t * 0.7f), -t * 0.22f);
                 flow.color = new Color(glow, glow, glow, 1f);
                 Graphics.DrawMesh(flowMesh, Matrix4x4.identity, flow, 0);
             }
-        }
-
-        private static void Slide(Mesh mesh, List<Vector2> baseUV, List<Vector2> uv, Vector2 shift)
-        {
-            uv.Clear();
-            for (int i = 0; i < baseUV.Count; i++)
-            {
-                uv.Add(baseUV[i] + shift);
-            }
-            mesh.SetUVs(0, uv);
         }
 
         private static void LoadWaves()
@@ -584,8 +573,6 @@ namespace IsoRim
         private static readonly int[] BX = { 1, 1, 0, 0 };
         private static readonly int[] BZ = { 0, 1, 1, 0 };
 
-        private static MaterialPropertyBlock block;
-        private static int colorId = -1;
         private readonly bool[] open = new bool[4];
 
         public SectionLayer_IsoRimRoofs(Section section) : base(section)
@@ -618,35 +605,9 @@ namespace IsoRim
 
         // Drawn after the game's lighting overlay, so rooms do not darken them. They take the sky
         // colour only (_GlowMode 2, set on their materials): at night they match the unlit ground
-        // outside, and lamps under a roof do not light its top.
-        public override void DrawLayer()
-        {
-            if (!Visible)
-            {
-                return;
-            }
-            if (block == null)
-            {
-                block = new MaterialPropertyBlock();
-                colorId = Shader.PropertyToID("_Color");
-            }
-            for (int i = 0; i < subMeshes.Count; i++)
-            {
-                LayerSubMesh sm = subMeshes[i];
-                if (sm.finalized && !sm.disabled)
-                {
-                    // The textured courses carry their colour in the material's colour (the shader
-                    // adds the sun on the slope, _LightMode 3); the plain parts are coloured per corner.
-                    Color baseColor;
-                    if (!textureColors.TryGetValue(sm.material, out baseColor))
-                    {
-                        baseColor = Color.white;
-                    }
-                    block.SetColor(colorId, new Color(baseColor.r, baseColor.g, baseColor.b, 1f));
-                    Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, sm.material, 0, null, 0, block);
-                }
-            }
-        }
+        // outside, and lamps under a roof do not light its top. The textured courses carry their
+        // colour in the material (the shader adds the sun on the slope, _LightMode 3); the plain
+        // parts are coloured per corner. The game's own DrawLayer draws them.
 
         // 0: no lid here. 1: a built roof (or a wall under the edge of one). 2: a natural rock roof over open ground.
         private static int LidKind(Map map, IntVec3 c)
@@ -698,7 +659,6 @@ namespace IsoRim
         };
         public static readonly string[] StyleNames = { "Slate", "Terracotta", "Thatch", "Tin" };
 
-        private static readonly Dictionary<Material, Color> textureColors = new Dictionary<Material, Color>();
         private static readonly Dictionary<int, Material> textureMats = new Dictionary<int, Material>();
 
         // The textured material for a roof colour, or null if the texture is missing. Drawn just
@@ -724,7 +684,6 @@ namespace IsoRim
                 Color c = Styles[style] * 1.25f;
                 c.a = 1f;
                 m.color = c;
-                textureColors[m] = c;
                 IsoGlow.Use(m, IsoGlow.SkyOnly);
             }
             textureMats[key] = m;
@@ -1257,7 +1216,8 @@ namespace IsoRim
         }
 
         // One side's stretch of face from a to b along the edge; flip runs the texture the other
-        // way so it reads left to right from outside.
+        // way so it reads left to right from outside. Only the sides facing the camera are built:
+        // the ground does not hide what lies under it, so a far side would show through it.
         private void Face(Vector3 normal, int a, int b, float top, float bottom, Func<float, Vector3> at, bool flip)
         {
             Vector3 f = View3D.GroundForward;
@@ -1277,15 +1237,11 @@ namespace IsoRim
                 Vector3 p1 = at(i + 1);
                 float u0 = (flip ? -i : i) / Repeat;
                 float u1 = (flip ? -(i + 1) : i + 1) / Repeat;
-                // Wound both ways, so it shows whatever the shader culls; only the sides facing
-                // the camera are built at all (see Regenerate).
+                // One winding: the material does not cull (IsoRimSolidTex, cullMode None).
                 Color32 white = new Color32(255, 255, 255, 255);
                 MeshWriter.TexturedQuad(sm,
                     new Vector3(p0.x, bottom, p0.z), new Vector3(p0.x, top, p0.z), new Vector3(p1.x, top, p1.z), new Vector3(p1.x, bottom, p1.z),
                     new Vector2(u0, 0f), new Vector2(u0, 1f), new Vector2(u1, 1f), new Vector2(u1, 0f), white);
-                MeshWriter.TexturedQuad(sm,
-                    new Vector3(p1.x, bottom, p1.z), new Vector3(p1.x, top, p1.z), new Vector3(p0.x, top, p0.z), new Vector3(p0.x, bottom, p0.z),
-                    new Vector2(u1, 0f), new Vector2(u1, 1f), new Vector2(u0, 1f), new Vector2(u0, 0f), white);
             }
         }
     }

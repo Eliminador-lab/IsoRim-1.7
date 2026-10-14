@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
@@ -157,6 +158,19 @@ namespace IsoRim
 
         // Called once per frame from the map camera's update.
         public static void Tick()
+        {
+            Probe.Begin();
+            try
+            {
+                TickInner();
+            }
+            finally
+            {
+                Probe.End();
+            }
+        }
+
+        private static void TickInner()
         {
             if (Current.ProgramState != ProgramState.Playing || Current.Game == null)
             {
@@ -378,7 +392,9 @@ namespace IsoRim
         }
 
         // Baked map geometry (walls, models, plants) depends on these values, so the map is
-        // rebuilt when they change. Angle changes wait until the key is released.
+        // rebuilt when they change (a settings change, after 0.35 s without another). The camera's
+        // pitch and turn are not part of this: the little that depends on them is redrawn on its
+        // own (see Relight).
         private static int StateSignature()
         {
             if (!Active)
@@ -389,9 +405,6 @@ namespace IsoRim
             unchecked
             {
                 int h = 17;
-                h = h * 31 + Mathf.RoundToInt(Pitch * 2f);
-                // The camera's turn is not part of this: it only changes the baked shading, which
-                // is relit separately once the camera comes to rest (see Relight).
                 h = h * 31 + Mathf.RoundToInt(Squash * 10000f);
                 h = h * 31 + Mathf.RoundToInt(WallHeight * 100f);
                 h = h * 31 + (st.uprightPlants ? 1 : 0);
@@ -431,6 +444,7 @@ namespace IsoRim
             if (sig == appliedSig)
             {
                 pendingSig = sig;
+                RebuildStaleShownMaps();
                 Relight();
                 return;
             }
@@ -459,6 +473,14 @@ namespace IsoRim
         // The sun moves smoothly with the time of day. Every face is lit per pixel by the shader
         // from the sun direction set here each frame (see R3DMaterials.SetSunHour), so nothing is
         // redrawn or rebuilt as it moves.
+        //
+        // A tilt or a turn redraws only what was built for the camera's angle:
+        // - sprites stood up to face the camera (plants without a model; see UprightCards), for
+        //   both pitch and turn;
+        // - the edge of the map, which is built only on the sides facing the camera, for a turn;
+        // - with "cut walls in front of rooms" on, the walls (which are cut depends on the turn).
+        // Both wait until the camera is at rest: a tilt 0.35 s after the key is let go, a turn once
+        // the swing has ended. The blocks are redrawn a few per frame, those in view first.
         private static void Relight()
         {
             if (!Active)
@@ -467,34 +489,75 @@ namespace IsoRim
             }
             R3DMaterials.SetLight(LightNow());
 
-            // Which walls are cut down to show the rooms behind them depends on which way the
-            // camera looks, so once it comes to rest facing a new way those are redrawn.
+            int pitch = Mathf.RoundToInt(Pitch * 2f);
+            bool tilted = false;
+            if (pitch == cardPitch)
+            {
+                pendingPitch = pitch;
+            }
+            else if (pitch != pendingPitch)
+            {
+                pendingPitch = pitch;
+                pendingPitchSince = Time.realtimeSinceStartup;
+            }
+            else if (Time.realtimeSinceStartup - pendingPitchSince >= 0.35f)
+            {
+                cardPitch = pitch;
+                tilted = true;
+            }
+
+            // A turn counts once the swing ends, also one that came back to where it started
+            // (anything redrawn during the swing was built at an angle in between).
+            bool turned = false;
+            bool turning = Turning;
             int step = Step;
             if (litFacing < 0)
             {
                 litFacing = step;
             }
-            else if (step != litFacing && !Turning)
+            else if (!turning && (step != litFacing || wasTurning))
             {
                 litFacing = step;
+                turned = true;
+            }
+            wasTurning = turning;
+
+            if (!tilted && !turned)
+            {
+                return;
+            }
+            IsoRimSettings st = IsoRimMod.Settings;
+            bool allThings = turned && st.cutRooms && !st.texturedWalls;   // untextured walls are in the game's things layer
+            if (turned)
+            {
                 foreach (Map map in Find.Maps)
                 {
-                    bool here = map == Find.CurrentMap;
-                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimWalls), here);
-                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimDamage), here);
-                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimEdge), here);
-                    if (IsoRimMod.Settings.showRoofs)
+                    bool here = Shown(map);
+                    if (st.mapEdge3D)
                     {
-                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimRoofs), here);
+                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimEdge), here, true);
                     }
-                    if (!IsoRimMod.Settings.texturedWalls)
+                    if (st.cutRooms)
                     {
-                        MapSections.QueueAll(map, MapSections.ThingsLayer, here);
+                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimWalls), here);
+                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimDamage), here);
+                        if (allThings)
+                        {
+                            MapSections.QueueAll(map, MapSections.ThingsLayer, here);
+                        }
                     }
                 }
             }
+            if (!allThings)
+            {
+                UprightCards.QueueAll();
+            }
         }
 
+        private static int cardPitch = int.MinValue;   // the pitch (x2, rounded) the cards were last built at
+        private static int pendingPitch = int.MinValue;
+        private static float pendingPitchSince;
+        private static bool wasTurning;
         private static int litFacing = -1;
 
         // The hour the sun is at: the current map's time of day, or mid-morning with
@@ -540,23 +603,67 @@ namespace IsoRim
             return GenLocalDate.HourFloat(map);
         }
 
+        // Rebuilds the maps on screen now and the others when they are next shown, so a settings
+        // change costs one map's rebuild rather than every map's.
         private static void RegenerateAllMaps()
+        {
+            stale.Clear();
+            cardPitch = Mathf.RoundToInt(Pitch * 2f);
+            pendingPitch = cardPitch;
+            foreach (Map map in Find.Maps)
+            {
+                if (Shown(map))
+                {
+                    Regenerate(map);
+                }
+                else
+                {
+                    stale.Add(map);
+                }
+            }
+        }
+
+        private static readonly HashSet<Map> stale = new HashSet<Map>();
+
+        private static void RebuildStaleShownMaps()
+        {
+            if (stale.Count == 0)
+            {
+                return;
+            }
+            stale.RemoveWhere(m => !Find.Maps.Contains(m));
+            foreach (Map map in Find.Maps)
+            {
+                if (stale.Contains(map) && Shown(map))
+                {
+                    stale.Remove(map);
+                    Regenerate(map);
+                }
+            }
+        }
+
+        // Whether a map is drawn now. Only the current map today; with z-levels (design §11) the
+        // levels drawn with it would count too.
+        public static bool Shown(Map map)
+        {
+            return map != null && map == Find.CurrentMap;
+        }
+
+        private static void Regenerate(Map map)
         {
             if (regenMethod == null)
             {
                 Log.ErrorOnce("[IsoRim] MapDrawer.RegenerateEverythingNow was not found, so walls and models will not refresh.", 93611001);
                 return;
             }
-            foreach (Map map in Find.Maps)
+            try
             {
-                try
-                {
-                    regenMethod.Invoke(map.mapDrawer, null);
-                }
-                catch (Exception e)
-                {
-                    Log.ErrorOnce("[IsoRim] Rebuilding the map drawing failed: " + e, 93611002);
-                }
+                UprightCards.Forget(map);
+                regenMethod.Invoke(map.mapDrawer, null);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Rebuilding the map drawing failed: " + e, 93611002);
             }
         }
 

@@ -244,6 +244,48 @@ namespace IsoRim
         }
     }
 
+    // The blocks of the map that hold sprites stood up to face the camera (plants without a
+    // model). Only these depend on the camera's pitch and turn, so a tilt or a turn redraws just
+    // them (see View3D.Relight) instead of the whole map.
+    public static class UprightCards
+    {
+        private static readonly HashSet<SectionLayer> layers = new HashSet<SectionLayer>();
+        private static readonly List<SectionLayer> batch = new List<SectionLayer>();
+
+        public static void Note(SectionLayer layer)
+        {
+            if (layer != null)
+            {
+                layers.Add(layer);
+            }
+        }
+
+        // Before a map is rebuilt in full: its blocks note themselves again as they are drawn.
+        public static void Forget(Map map)
+        {
+            layers.RemoveWhere(l => MapSections.MapOf(l) == map);
+        }
+
+        // Redraws every block that holds cards, a few per frame, those in view first. They note
+        // themselves again as they are redrawn, if they still hold any.
+        public static void QueueAll()
+        {
+            batch.Clear();
+            foreach (SectionLayer l in layers)
+            {
+                if (MapSections.MapOf(l) != null && Find.Maps.Contains(MapSections.MapOf(l)))
+                {
+                    batch.Add(l);
+                }
+            }
+            layers.Clear();
+            if (batch.Count > 0)
+            {
+                MapSections.QueueLayers(batch);
+            }
+        }
+    }
+
     public static class PlaneHandler
     {
         // Called right after the game adds one flat sprite quad (the last four vertices of the
@@ -272,6 +314,7 @@ namespace IsoRim
                         {
                             sm.verts[i] = View3D.UprightPoint(sm.verts[i], pivot);
                         }
+                        UprightCards.Note(layer);
                     }
                     if (PrintContext.baseHeight > 0f)
                     {
@@ -436,13 +479,6 @@ namespace IsoRim
         private static readonly Vector3[] rockMid = new Vector3[4];
         private static readonly Vector3[] rockTop = new Vector3[4];
         private static readonly Color32 White = new Color32(255, 255, 255, 255);
-
-        // A face's shade comes from where the light is now (see R3DMaterials.WallShade), so it
-        // stays right whichever way the camera has been turned.
-        private static float FaceShadeOf(int f)
-        {
-            return R3DMaterials.WallShade(FaceOut[f].ToVector3());
-        }
 
         // The piece of mesh for plain wall faces looking out of side f, lit by the sun as it
         // moves (see R3DMaterials.Lit); the given piece if there is no room.
@@ -1843,10 +1879,9 @@ namespace IsoRim
             bool textured = st.texturedModels && m.materials != null && m.uvs != null && m.material != null;
             string swatch = textured ? R3DTextures.StuffSwatch(thing) : null;
             // Reused from one model to the next: thousands of plants are written in a row.
-            // Faces go into one piece of mesh per direction group (see R3DMaterials.Lit), so the
-            // sun can light them smoothly; textured faces likewise per material and group.
-            int bins = R3DMaterials.Bins;
-            int slots = textured ? m.materials.Length * bins : 0;
+            // The shader lights each face by its own direction, so all plain faces share one piece
+            // of mesh (see R3DMaterials.Lit) and textured faces one per material.
+            int slots = textured ? m.materials.Length : 0;
             if (texturedPool.Length < slots)
             {
                 texturedPool = new LayerSubMesh[slots * 2];
@@ -1859,10 +1894,7 @@ namespace IsoRim
                 texturedMeshes[i] = null;
                 looked[i] = false;
             }
-            for (int i = 0; i < bins; i++)
-            {
-                plainPool[i] = null;
-            }
+            LayerSubMesh plain = null;
 
             float squash = View3D.Squash;
             float baseY = baseHeight / squash;
@@ -1881,32 +1913,29 @@ namespace IsoRim
                     continue;   // no leaves on a bare tree; no hidden twigs on a leafy one
                 }
 
-                Vector3 normal = turn * (lay * m.normals[i]);
                 bool glow = mm != null && mm.glow;
-                int bin = R3DMaterials.BinOf(normal);
 
                 // The plain copy: lit by direction, or the unlit material for something that glows.
                 LayerSubMesh pm = sm;
                 if (!glow)
                 {
-                    pm = plainPool[bin];
-                    if (pm == null)
+                    if (plain == null)
                     {
-                        Material litMat = R3DMaterials.Lit(bin);
-                        pm = litMat != null ? MeshWriter.Sub(layer, litMat) : null;
-                        if (pm == null || pm.verts.Count + n > MeshWriter.MaxVerts)
+                        Material litMat = R3DMaterials.Lit(0);
+                        plain = litMat != null ? MeshWriter.Sub(layer, litMat) : null;
+                        if (plain == null || plain.verts.Count + n > MeshWriter.MaxVerts)
                         {
-                            pm = sm;
+                            plain = sm;
                         }
-                        plainPool[bin] = pm;
                     }
+                    pm = plain;
                 }
 
-                // Find (once per material and direction) where this triangle's textured face goes.
+                // Find (once per material) where this triangle's textured face goes.
                 LayerSubMesh tm = null;
                 if (textured && mm != null && mm.texture != null)
                 {
-                    int slot = mi * bins + bin;
+                    int slot = mi;
                     if (!looked[slot])
                     {
                         looked[slot] = true;
@@ -1916,7 +1945,7 @@ namespace IsoRim
                             c *= tint;
                         }
                         string path = mm.texture.Replace("{stuff}", swatch);
-                        Material tmat = glow ? R3DTextures.MaterialFor(path, c) : R3DMaterials.LitTexture(path, c, bin);
+                        Material tmat = glow ? R3DTextures.MaterialFor(path, c) : R3DMaterials.LitTexture(path, c);
                         texturedMeshes[slot] = tmat != null ? MeshWriter.Sub(layer, tmat) : null;
                     }
                     tm = texturedMeshes[slot];
@@ -1967,8 +1996,6 @@ namespace IsoRim
             }
             return true;
         }
-
-        private static readonly LayerSubMesh[] plainPool = new LayerSubMesh[R3DMaterials.Bins];
 
         // Textured faces were drawn a little brighter than their plain colour on the lit side.
         public const float TextureLift = 1.08f;
