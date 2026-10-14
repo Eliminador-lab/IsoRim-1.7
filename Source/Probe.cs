@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -112,6 +113,9 @@ namespace IsoRim
                     case "pitch":
                         st.isoPitch = float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture);
                         break;
+                    case "hour":
+                        SetLocalHour(float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture));
+                        break;
                 }
             }
             label = "pass " + pass + " (" + line + ")";
@@ -123,6 +127,23 @@ namespace IsoRim
             maxTickFrame = 0;
             sumTick = 0;
             lastBusyFrame = -1;
+        }
+
+        // Moves the clock to the given local hour of the shown map (the harness only sets whole
+        // hours), without counting as the start of a new pass.
+        private static void SetLocalHour(float hour)
+        {
+            Map map = Find.CurrentMap;
+            if (map == null)
+            {
+                return;
+            }
+            TickManager tm = Find.TickManager;
+            int delta = Mathf.RoundToInt((hour - GenLocalDate.HourFloat(map)) * GenDate.TicksPerHour);
+            tm.DebugSetTicksGame(tm.TicksGame + delta);
+            lastTicks = tm.TicksGame;
+            Log.Message("[IsoRim probe] local hour " + GenLocalDate.HourFloat(map).ToString("0.000")
+                + ", sun glow " + GenCelestial.CurCelestialSunGlow(map).ToString("0.000"));
         }
 
         // End of View3D.Tick.
