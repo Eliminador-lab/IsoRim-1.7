@@ -134,11 +134,20 @@ namespace IsoRim
             ModelDef def = entry.def;
             IsoRimSettings st = IsoRimMod.Settings;
 
-            float size = def.scale * Animals.SizeOf(pawn);
+            float size = def.scale * (def.lookBy == "lifeStage" ? 1f : Animals.SizeOf(pawn));   // lifeStage looks are made at their stage's size
             bool dead = pawn.Dead;
             bool lying = dead || pawn.GetPosture() != PawnPosture.Standing;
             bool onSide = dead || pawn.Downed;
             float lift = Carried.LiftOf(pawn, ref drawLoc);
+            // Held on a holding platform drawn as its model: as the game draws it (HeldPawnPosture LayingOnGroundFaceUp,
+            // HeldPawnBodyAngle = the platform's rotation), lying on its back on the deck, head toward the platform's facing.
+            Building_HoldingPlatform platform = pawn.ParentHolder as Building_HoldingPlatform;
+            if (platform != null)
+            {
+                lift = Forms.HeightOf(platform);
+                lying = true;
+                onSide = false;
+            }
 
             float open = rig.opens ? Openness(pawn) : 0f;
 
@@ -150,6 +159,10 @@ namespace IsoRim
             {
                 // Each wreck lies at its own slight angle.
                 yaw = pawn.Rotation.AsAngle + (Hashing.Unit(pawn.thingIDNumber, 3, 9) - 0.5f) * 50f;
+            }
+            else if (platform != null)
+            {
+                yaw = platform.Rotation.AsAngle;
             }
             else if (def.fixedFacing)
             {
@@ -191,7 +204,13 @@ namespace IsoRim
             // How the whole mech is posed, before it is turned to face its heading.
             Matrix4x4 sized = Matrix4x4.Scale(new Vector3(size, size, size));
             Matrix4x4 pose;
-            if (onSide)
+            if (platform != null)
+            {
+                // On its back: its front up, its top toward its heading; the back on the deck, the body centred where the game draws it.
+                pose = Matrix4x4.Translate(new Vector3(0f, -rig.minZ * size, -rig.height * 0.5f * size)) * Matrix4x4.Rotate(OnBack);
+                gait = 0f;
+            }
+            else if (onSide)
             {
                 // Rolled over onto its left side, which then rests on the ground.
                 float centre = rig.height * 0.5f;
@@ -371,6 +390,28 @@ namespace IsoRim
                 Vector3 hold = def.carryAt.y >= 0f ? def.carryAt : new Vector3(0f, rig.height * 0.45f, rig.maxZ + 0.08f);
                 Carried.Draw(pawn, WorldPoint(at, yaw, whole, hold), yaw);
             }
+            return true;
+        }
+
+        // Lying on its back: (x, y, z) to (-x, z, y), the front up and the top forward.
+        private static readonly Quaternion OnBack = Quaternion.AngleAxis(180f, Vector3.forward) * Quaternion.AngleAxis(90f, Vector3.right);
+
+        // How high an entity held on a holding platform lies as its model (cells over the deck), for the chains; false if it is not drawn so.
+        public static bool HeldHeight(Pawn pawn, out float height)
+        {
+            height = 0f;
+            ModelEntry entry;
+            if (!HasModel(pawn) || !ModelLibrary.TryGet(pawn.def, out entry))
+            {
+                return false;
+            }
+            Rig rig = RigFor(entry, entry.def.entity ? LookOf(pawn, entry.def) : -1);
+            if (rig == null || rig.body == null)
+            {
+                return false;
+            }
+            float size = entry.def.scale * (entry.def.lookBy == "lifeStage" ? 1f : Animals.SizeOf(pawn));
+            height = (rig.maxZ - rig.minZ) * size;
             return true;
         }
 
@@ -600,12 +641,12 @@ namespace IsoRim
         }
 
         // An entity is drawn as its model unless the game shows it some other way: held on a holding platform
-        // (lying on the deck with the chains on its sprite), or a corpse dried to bones.
+        // that is not drawn as its model (the sprite lies on the flat platform), or a corpse dried to bones.
         private static bool EntityShown(Pawn pawn)
         {
-            if (pawn.ParentHolder is Building_HoldingPlatform)
+            if (pawn.ParentHolder is Building_HoldingPlatform platform)
             {
-                return false;
+                return platform.Spawned && SectionLayer_IsoRimBodies.StandsIn(platform);
             }
             Corpse corpse = pawn.Dead ? pawn.Corpse : null;
             return corpse == null || corpse.CurRotDrawMode != RotDrawMode.Dessicated;
@@ -630,6 +671,19 @@ namespace IsoRim
                     }
                     int n = def.looks.Count;
                     return Mathf.Clamp(Mathf.FloorToInt(n * activity.ActivityLevel), 0, n - 1);
+                }
+                case "lifeStage":
+                {
+                    // As the kind's life stage graphics: the look made for the stage it is in now.
+                    string stage = pawn.ageTracker != null && pawn.ageTracker.CurLifeStage != null ? pawn.ageTracker.CurLifeStage.defName : null;
+                    for (int i = 0; stage != null && i < def.looks.Count; i++)
+                    {
+                        if (def.looks[i].key == stage)
+                        {
+                            return i;
+                        }
+                    }
+                    return -1;
                 }
                 case "digesting":
                 {

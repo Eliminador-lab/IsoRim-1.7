@@ -61,6 +61,40 @@ namespace IsoRim
             public Model plating;
             public bool ownHair;      // hair made for the ghoul head: not widened again, fixed colour
             public Color faceTint = Color.white;
+            // Packs, belts and waist tools (WornGear), each with its place (figure space, before bodyScale) and colour;
+            // rigid ones keep their own size (only their place takes bodyScale).
+            public readonly List<Model> gear = new List<Model>();
+            public readonly List<Matrix4x4> gearPlace = new List<Matrix4x4>();
+            public readonly List<Color> gearTint = new List<Color>();
+            public readonly List<bool> gearRigid = new List<bool>();
+            public readonly List<Vector3> gearAnchor = new List<Vector3>();   // a rigid one's own point that goes to its place
+
+            public bool SameGear(Look o)
+            {
+                if (o.gear.Count != gear.Count)
+                {
+                    return false;
+                }
+                for (int i = 0; i < gear.Count; i++)
+                {
+                    if (o.gear[i] != gear[i] || o.gearPlace[i] != gearPlace[i] || o.gearTint[i] != gearTint[i])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Where gear i goes on the figure, with the body type's scale.
+            public Matrix4x4 GearOnBody(int i)
+            {
+                if (!gearRigid[i])
+                {
+                    return Matrix4x4.Scale(bodyScale) * gearPlace[i];
+                }
+                Vector3 t = gearPlace[i].GetColumn(3);
+                return Matrix4x4.Translate(Vector3.Scale(bodyScale, t) - gearAnchor[i]);
+            }
 
             // Ready-made meshes of this look, by facing, body or head, and alive or dead.
             public readonly Dictionary<int, List<DynamicModels.Part>> meshes = new Dictionary<int, List<DynamicModels.Part>>();
@@ -73,7 +107,7 @@ namespace IsoRim
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
                     && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
                     && eyeRight == o.eyeRight && scars == o.scars && skinOverlay == o.skinOverlay && barbs == o.barbs && plating == o.plating
-                    && ownHair == o.ownHair && faceTint == o.faceTint;
+                    && ownHair == o.ownHair && faceTint == o.faceTint && SameGear(o);
             }
 
             public void Forget()
@@ -147,6 +181,10 @@ namespace IsoRim
                 AddPart(look.plating, bodyPlace, Color.white);
                 AddPart(look.legArmour, bodyPlace, look.legArmourColor);
                 AddPart(look.coat, bodyPlace, look.coatColor);
+                for (int i = 0; i < look.gear.Count; i++)
+                {
+                    AddPart(look.gear[i], look.GearOnBody(i), look.gearTint[i]);
+                }
                 if (look.pads)
                 {
                     AddPart(pads, bodyPlace * Matrix4x4.Scale(new Vector3(look.shoulders, 1f, 1.05f)), look.coat != null ? look.coatColor : look.upperColor);
@@ -643,9 +681,9 @@ namespace IsoRim
         }
 
         // What a figure of this build wearing these clothes looks like (also the outfit stands, Stands.cs): the
-        // body parts (trousers, shirt, coat or armour, leg armour, shoulder pads) and the hat, each in the colour
-        // of what it shows; bare is the colour of whatever no clothing covers. Clothing with no 3D part (belts,
-        // packs) goes into unshown if given. Returns the kind of hat worn, or null.
+        // body parts (trousers, shirt, coat or armour, leg armour, shoulder pads), the packs, belts and waist tools
+        // (WornGear) and the hat, each in the colour of what it shows; bare is the colour of whatever no clothing
+        // covers. Clothing with no 3D part goes into unshown if given. Returns the kind of hat worn, or null.
         internal static string Dress(Look look, string build, List<Apparel> worn, Color bare, List<Apparel> unshown)
         {
             // Clothes. Each layer over the body gives its colour to the part it covers; the
@@ -663,6 +701,7 @@ namespace IsoRim
             string shellArmourKind = null;
             Color vestColour = Color.white;
             Color shellArmourColour = Color.white;
+            List<Apparel> gearWorn = null;
             if (worn != null)
             {
                 for (int i = 0; i < worn.Count; i++)
@@ -674,6 +713,11 @@ namespace IsoRim
                         continue;
                     }
                     string name = a.def.defName ?? "";
+                    if (WornGear.For(a.def) != null)
+                    {
+                        (gearWorn ?? (gearWorn = new List<Apparel>())).Add(a);
+                        continue;
+                    }
                     Color colour = ApparelColour(a);
                     bool torso = Covers(props, "Torso");
                     bool legs = Covers(props, "Legs");
@@ -779,6 +823,32 @@ namespace IsoRim
             }
             look.upperWorn = upperLayer >= 0;
             look.lowerWorn = lowerLayer >= 0;
+
+            // Packs, belts and waist tools, fitted to what is worn under them.
+            look.gear.Clear();
+            look.gearPlace.Clear();
+            look.gearTint.Clear();
+            look.gearRigid.Clear();
+            look.gearAnchor.Clear();
+            for (int i = 0; gearWorn != null && i < gearWorn.Count; i++)
+            {
+                WornGearDef g = WornGear.For(gearWorn[i].def);
+                Color tint;
+                Model m = WornGear.ModelFor(g, gearWorn[i], out tint);
+                if (m == null)
+                {
+                    unshown?.Add(gearWorn[i]);
+                    continue;
+                }
+                bool rigid;
+                Vector3 anchor;
+                Matrix4x4 place = WornGear.Place(g, look, out rigid, out anchor);
+                look.gear.Add(m);
+                look.gearPlace.Add(place);
+                look.gearTint.Add(tint);
+                look.gearRigid.Add(rigid);
+                look.gearAnchor.Add(anchor);
+            }
             return hatKind;
         }
 

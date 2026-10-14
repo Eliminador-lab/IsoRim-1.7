@@ -166,6 +166,8 @@ namespace IsoRim
         //              e.g. Chimera_B); none: model
         //   activity   the stage Graphic_ActivityStaged shows: looks[min(floor(count * activity), count - 1)]
         //   digesting  looks[0] while CompDevourer is digesting (the closed mouth), else model
+        //   lifeStage  the look whose key is the entity's life stage (e.g. MetalhorrorLarva); none: model. These models are
+        //              made at each stage's own size, so the life stage does not shrink them again
         // fixedFacing: always faces south, as the game draws it (useFixedRotation; the fleshmass nucleus).
         public bool entity = false;
         public string lookBy;

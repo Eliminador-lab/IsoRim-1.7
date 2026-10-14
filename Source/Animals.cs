@@ -76,6 +76,12 @@ namespace IsoRim
                 {
                     ground = Forms.HeightOf(bed);
                 }
+                if (pawn.ParentHolder is Building_HoldingPlatform platform)
+                {
+                    // Held on a holding platform: lying on its deck, facing as the game draws it (a shambler animal east), turned with the platform.
+                    ground = Forms.HeightOf(platform);
+                    yaw = (pawn.IsShambler ? Rot4.East.AsAngle : Rot4.South.AsAngle) + platform.Rotation.AsAngle;   // turned by HeldPawnBodyAngle
+                }
             }
             ground += lift;
             Vector3 position = new Vector3(drawLoc.x, ground, drawLoc.z);

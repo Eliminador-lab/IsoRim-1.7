@@ -15,6 +15,7 @@ namespace IsoRim
     //                                 open:<f>      CompNociosphere.segScale (the shells; goal set too)
     //                                 visible       revealed (an invisible entity's HediffComp_Invisibility.BecomeVisible)
     //                                 dead / down   killed / damaged until downed
+    //                                 stage:<LifeStageDef>  aged into that life stage of its race (metalhorror larva, juvenile, mature)
     //   devour=x,z,tx,tz              the devourer in (x,z) swallows the pawn in (tx,tz) (CompDevourer.StartDigesting, as its ability does)
     //   person=x,z,<PawnKindDef>,<rot 0-3>[,opt...]  a new person (player faction) facing rot; opts: ghoul, shambler (made that
     //                                 mutant), head:<HeadTypeDef>, hair:<HairDef>, body:<BodyTypeDef>, hediff:<HediffDef> (on the torso),
@@ -49,6 +50,24 @@ namespace IsoRim
             return s;
         }
 
+        // Ages the pawn into the life stage of its race with that name (just past the stage's minimum age).
+        internal static void SetLifeStage(Pawn p, string stage)
+        {
+            List<LifeStageAge> ages = p.RaceProps.lifeStageAges;
+            for (int i = 0; ages != null && i < ages.Count; i++)
+            {
+                if (ages[i].def.defName == stage)
+                {
+                    float years = ages[i].minAge + (i + 1 < ages.Count ? (ages[i + 1].minAge - ages[i].minAge) * 0.5f : 0.01f);
+                    p.ageTracker.AgeBiologicalTicks = (long)(years * GenDate.TicksPerYear);
+                    p.ageTracker.AgeChronologicalTicks = p.ageTracker.AgeBiologicalTicks;
+                    p.Drawer?.renderer?.SetAllGraphicsDirty();
+                    return;
+                }
+            }
+            Log.Warning("[IsoRim probe] no life stage " + stage + " for " + p.def.defName);
+        }
+
         private static bool Bound(Pawn p)
         {
             ModelEntry e;
@@ -68,6 +87,7 @@ namespace IsoRim
                     string state = "";
                     string phase = null;
                     bool visible = false;
+                    string stageName = null;
                     for (int i = 4; i < a.Length; i++)
                     {
                         if (a[i].StartsWith("alt:")) alt = I(a[i].Substring(4));
@@ -75,6 +95,7 @@ namespace IsoRim
                         else if (a[i].StartsWith("open:")) open = F(a[i].Substring(5));
                         else if (a[i] == "active" || a[i] == "passive") phase = a[i];
                         else if (a[i] == "visible") visible = true;
+                        else if (a[i].StartsWith("stage:")) stageName = a[i].Substring(6);
                         else state = a[i];
                     }
                     Pawn p = null;
@@ -85,6 +106,10 @@ namespace IsoRim
                         {
                             break;
                         }
+                    }
+                    if (stageName != null)
+                    {
+                        SetLifeStage(p, stageName);
                     }
                     GenSpawn.Spawn(p, new IntVec3(I(a[0]), 0, I(a[1])), map, rot);
                     p.jobs?.StopAll();
