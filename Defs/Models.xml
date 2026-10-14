@@ -5046,7 +5046,6 @@
     <glassModel>Models/growth_vat_glass.obj</glassModel>
     <surfaceHeight>0.26</surfaceHeight>
     <contentTop>0.64</contentTop>
-    <heldPawnUpright>true</heldPawnUpright>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_BiosculpterPod</defName>
