@@ -33,6 +33,7 @@ namespace IsoRim
             public float size = 1f;
             public float headWide = 1f;
             public float shoulders = 1f;
+            public Vector3 bodyScale = Vector3.one;   // the body and all worn on it, by body type (BodyScales)
             public Model lower;
             public Model upper;
             public Model coat;
@@ -66,7 +67,7 @@ namespace IsoRim
 
             public bool SameAs(Look o)
             {
-                return o != null && size == o.size && headWide == o.headWide && shoulders == o.shoulders && lower == o.lower && upper == o.upper
+                return o != null && size == o.size && headWide == o.headWide && shoulders == o.shoulders && bodyScale == o.bodyScale && lower == o.lower && upper == o.upper
                     && coat == o.coat && hair == o.hair && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
                     && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
@@ -138,16 +139,17 @@ namespace IsoRim
             }
             else
             {
-                AddPart(look.lower, Matrix4x4.identity, look.lowerColor);
-                AddPart(look.upper, Matrix4x4.identity, look.upperColor);
-                AddPart(look.skinOverlay, Matrix4x4.identity, Color.white);
-                AddPart(look.barbs, Matrix4x4.identity, Color.white);
-                AddPart(look.plating, Matrix4x4.identity, Color.white);
-                AddPart(look.legArmour, Matrix4x4.identity, look.legArmourColor);
-                AddPart(look.coat, Matrix4x4.identity, look.coatColor);
+                Matrix4x4 bodyPlace = Matrix4x4.Scale(look.bodyScale);
+                AddPart(look.lower, bodyPlace, look.lowerColor);
+                AddPart(look.upper, bodyPlace, look.upperColor);
+                AddPart(look.skinOverlay, bodyPlace, Color.white);
+                AddPart(look.barbs, bodyPlace, Color.white);
+                AddPart(look.plating, bodyPlace, Color.white);
+                AddPart(look.legArmour, bodyPlace, look.legArmourColor);
+                AddPart(look.coat, bodyPlace, look.coatColor);
                 if (look.pads)
                 {
-                    AddPart(pads, Matrix4x4.Scale(new Vector3(look.shoulders, 1f, 1.05f)), look.coat != null ? look.coatColor : look.upperColor);
+                    AddPart(pads, bodyPlace * Matrix4x4.Scale(new Vector3(look.shoulders, 1f, 1.05f)), look.coat != null ? look.coatColor : look.upperColor);
                 }
             }
             parts = DynamicModels.BuildMerged(mergeModels, mergeLocals, mergeTints, turned);
@@ -339,13 +341,14 @@ namespace IsoRim
 
             if (ground <= 0f && lift <= 0f)
             {
-                GroundShadows.Blob(at, yaw, (lying ? 0.30f : 0.34f) * size, (lying ? 0.70f : 0.30f) * size);
+                GroundShadows.Blob(at, yaw, (lying ? 0.30f : 0.34f) * size * look.bodyScale.x, (lying ? 0.70f : 0.30f * look.bodyScale.z) * size);
             }
             if (standing && pawn.carryTracker != null && pawn.carryTracker.CarriedThing != null)
             {
                 // Held in front, at the hands (the game draws it a little in front of the pawn the way it faces).
                 Vector3 front = Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.forward;
-                Carried.Draw(pawn, new Vector3(at.x + front.x * CarryReach * size, at.y + CarryHeight * size, at.z + front.z * CarryReach * size), yaw);
+                float reach = CarryReach * size * Mathf.Max(1f, look.bodyScale.z);   // clear of a deeper body
+                Carried.Draw(pawn, new Vector3(at.x + front.x * reach, at.y + CarryHeight * size, at.z + front.z * reach), yaw);
             }
             handHeight = 0.46f * size + lift;
             facing = yaw;
@@ -472,6 +475,7 @@ namespace IsoRim
             // Build.
             string build = BuildOf(story.bodyType);
             look.shoulders = Shoulders(build);
+            look.bodyScale = BodyScales.For(story.bodyType);
             float grown = 1f;
             if (pawn.ageTracker != null && pawn.ageTracker.CurLifeStage != null)
             {
