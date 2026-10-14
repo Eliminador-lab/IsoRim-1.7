@@ -76,6 +76,7 @@ namespace IsoRim
     //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
     //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
     //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
+    //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
     //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
@@ -733,6 +734,12 @@ namespace IsoRim
                     foreach (Building_HoldingPlatform hp2 in map.listerThings.AllThings.OfType<Building_HoldingPlatform>().ToList())
                     {
                         Log.Message("[IsoRim probe] chaincheck " + hp2.Position + ": " + HoldingChains.Report(hp2) + ", floor " + Forms.HeightOf(hp2));
+                    }
+                    break;
+                case "standcheck":
+                    foreach (Building_OutfitStand os in map.listerThings.AllThings.OfType<Building_OutfitStand>().ToList())
+                    {
+                        Log.Message("[IsoRim probe] standcheck " + os.def.defName + " " + os.Position + " rot " + os.Rotation + ": " + Stands.Report(os));
                     }
                     break;
                 case "workcheck":

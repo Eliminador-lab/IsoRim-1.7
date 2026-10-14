@@ -108,6 +108,14 @@ namespace IsoRim
         // restraint chains are fixed to. Each chain runs from the ring nearest the game's own end point on
         // the platform up to the held entity (or across it, ring to ring, for an entity with no points of its own).
         public List<Vector3> chainAnchors;
+        // Outfit stands (Stands.cs): headModel is the stand's head, drawn only while no worn headgear hides
+        // the head (as the game). The apparel and weapon the stand shows are the game's own sprites, stood
+        // upright facing the camera: the body's at apparelHeight, the headgear's at apparelHeadHeight (cells),
+        // both apparelScale times the game's size.
+        public string headModel;
+        public float apparelHeight = 0.85f;
+        public float apparelHeadHeight = 1.4f;
+        public float apparelScale = 1f;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -350,6 +358,7 @@ namespace IsoRim
         public Model spinLit;     // spinModel with its litMaterial lit, or null
         public Model glass;       // glassModel, or null
         public Model hackTerminal; // hackTerminalModel, or null
+        public Model head;        // headModel, or null
 
         public bool HasModel
         {
@@ -622,6 +631,10 @@ namespace IsoRim
             if (!md.hackTerminalModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.hackTerminal = LoadFile(Path.Combine(md.modContentPack.RootDir, md.hackTerminalModel));
+            }
+            if (!md.headModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.head = LoadFile(Path.Combine(md.modContentPack.RootDir, md.headModel));
             }
             if (!md.glassModel.NullOrEmpty() && md.modContentPack != null)
             {

@@ -308,6 +308,9 @@ namespace IsoRim
             // Holding platform with its model: the restraint chains in 3D from its eye rings (HoldingChains.cs).
             Patch("3D holding platform chains", AccessTools.DeclaredMethod(typeof(Building_HoldingPlatform), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
                 prefix: nameof(HoldingPlatformDrawAt_Prefix));
+            // Outfit stands with their model: head model, the apparel and weapon stood upright over it (Stands.cs).
+            Patch("3D outfit stands", AccessTools.DeclaredMethod(typeof(Building_OutfitStand), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(OutfitStandDrawAt_Prefix));
             // Harvester cables run up to the model's connectors (WorkParts.cs).
             Patch("3D cables", AccessTools.DeclaredMethod(typeof(CompCableConnection), "PostDraw"),
                 prefix: nameof(CableConnectionPostDraw_Prefix));
@@ -2034,6 +2037,26 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a holding platform's chains failed: " + e, 93611291);
+                return true;
+            }
+        }
+
+        // An outfit stand drawn as its model (stand and body baked, SectionLayer_IsoRimBodies): its head model
+        // and what it shows (Stands.Draw) in place of the game's flat base, body, head and apparel.
+        public static bool OutfitStandDrawAt_Prefix(Building_OutfitStand __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                if (!SectionLayer_IsoRimBodies.StandsIn(__instance))
+                {
+                    return true;
+                }
+                ModelEntry entry = Forms.For(__instance.def).model;
+                return entry == null || !Stands.Draw(__instance, entry, drawLoc);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing an outfit stand failed: " + e, 93611292);
                 return true;
             }
         }

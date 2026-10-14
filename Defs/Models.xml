@@ -5129,4 +5129,25 @@
       <li>(-1.32, 0.215, -1.30)</li>
     </chainAnchors>
   </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: outfit stands (head model, the game's apparel and weapon stood up over the body: Stands.cs) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Building_OutfitStand</defName>
+    <thingDef>Building_OutfitStand</thingDef>
+    <model>Models/outfit_stand.obj</model>
+    <headModel>Models/outfit_stand_head.obj</headModel>
+    <builtFor>(1, 1)</builtFor>
+    <apparelHeight>0.97</apparelHeight>
+    <apparelHeadHeight>1.27</apparelHeadHeight>
+    <apparelScale>1.15</apparelScale>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Building_KidOutfitStand</defName>
+    <thingDef>Building_KidOutfitStand</thingDef>
+    <model>Models/kid_outfit_stand.obj</model>
+    <headModel>Models/kid_outfit_stand_head.obj</headModel>
+    <builtFor>(1, 1)</builtFor>
+    <apparelHeight>0.64</apparelHeight>
+    <apparelHeadHeight>0.99</apparelHeadHeight>
+    <apparelScale>1.0</apparelScale>
+  </IsoRim.ModelDef>
 </Defs>
