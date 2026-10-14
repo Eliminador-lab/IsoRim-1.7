@@ -1877,6 +1877,14 @@ namespace IsoRim
             return placed > 0;
         }
 
+        // Writes an extra part next to a thing's model (a book on a bookcase's shelf): unscaled,
+        // its origin at offset (model space, turned with the thing) and baseHeight cells up.
+        public static bool WritePart(SectionLayer layer, Thing thing, Model m, Vector3 center, Quaternion turn, Vector3 offset, float baseHeight,
+            Color tint, float outlineBold)
+        {
+            return Write(layer, thing, m, center, turn, Quaternion.identity, Vector3.zero, Vector3.one, offset, baseHeight, tint, false, outlineBold);
+        }
+
         private static bool Write(SectionLayer layer, Thing thing, Model m, Vector3 center, Quaternion turn, Quaternion lay, Vector3 layLift,
             Vector3 scale, Vector3 offset, float baseHeight, Color tint, bool bare, float outlineBold)
         {

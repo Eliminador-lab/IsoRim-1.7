@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using RimWorld;
@@ -43,6 +44,14 @@ namespace IsoRim
     //   uncap=1                      lifts the game's frame cap (Application.targetFrameRate) for perf
     //   fuel=x,z,0|1                 the refuelable building in the cell emptied or filled
     //   casket=x,z,0|1               the casket in the cell emptied, or given a new colonist to hold
+    //   books=x,z,N[,Def:Def...]     the bookcase in the cell holds exactly N new books, kinds taken in turn
+    //                                (default every book kind there is); books=x,z,+<Def> adds one,
+    //                                books=x,z,- destroys the last, books=x,z,drop drops the first beside it
+    //   haulbook=<Def>,bx,bz,cx,cz   a new book at (bx,bz) and the first free colonist told to haul it
+    //                                into the bookcase at (cx,cz) (a real job: run tick= after it)
+    //   tick=N                       N game ticks at once (N <= 900)
+    //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
+    //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
     //                                roof, fertility, areas) are drawn in the shots; overlay=home
     //                                shows the home area
@@ -387,11 +396,165 @@ namespace IsoRim
                     }
                     break;
                 }
+                case "books":
+                    Books(map, a);
+                    break;
+                case "haulbook":
+                    HaulBook(map, a);
+                    break;
+                case "tick":
+                {
+                    int n = Mathf.Clamp(I(a[0]), 1, 900);   // under the clock jump that starts a pass
+                    for (int i = 0; i < n; i++)
+                    {
+                        Find.TickManager.DoSingleTick();
+                    }
+                    break;
+                }
+                case "bookcheck":
+                    bookCheckAt = Time.frameCount + 30;   // once the queued rebuilds are done
+                    break;
+                case "paint":
+                {
+                    Building pb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (pb != null)
+                    {
+                        pb.ChangePaint(a[2] == "-" ? null : DefDatabase<ColorDef>.GetNamed(a[2]));
+                    }
+                    break;
+                }
                 default:
                     Log.Warning("[IsoRim probe] unknown key " + key);
                     return;
             }
             Log.Message("[IsoRim probe] " + key + "=" + string.Join(",", a));
+        }
+
+        private static readonly string[] BookOrder = { "TextBook", "Novel", "Schematic", "Tome", "Map" };
+
+        private static List<ThingDef> BookKinds(string list)
+        {
+            List<ThingDef> kinds = new List<ThingDef>();
+            string[] names = list != null ? list.Split(':') : BookOrder;
+            foreach (string name in names)
+            {
+                ThingDef d = DefDatabase<ThingDef>.GetNamedSilentFail(name);
+                if (d != null && typeof(Book).IsAssignableFrom(d.thingClass))
+                {
+                    kinds.Add(d);
+                }
+            }
+            return kinds;
+        }
+
+        private static Building_Bookcase BookcaseAt(Map map, int x, int z)
+        {
+            Building_Bookcase b = new IntVec3(x, 0, z).GetFirstBuilding(map) as Building_Bookcase;
+            if (b == null)
+            {
+                Log.Warning("[IsoRim probe] no bookcase at " + x + "," + z);
+            }
+            return b;
+        }
+
+        private static void Books(Map map, string[] a)
+        {
+            Building_Bookcase b = BookcaseAt(map, I(a[0]), I(a[1]));
+            if (b == null)
+            {
+                return;
+            }
+            ThingOwner held = b.GetDirectlyHeldThings();
+            string what = a[2];
+            if (what == "-")
+            {
+                if (b.HeldBooks.Count > 0)
+                {
+                    b.HeldBooks[b.HeldBooks.Count - 1].Destroy();
+                }
+            }
+            else if (what == "drop")
+            {
+                if (b.HeldBooks.Count > 0)
+                {
+                    Thing dropped;
+                    held.TryDrop(b.HeldBooks[0], b.Position, map, ThingPlaceMode.Near, out dropped);
+                }
+            }
+            else if (what.StartsWith("+"))
+            {
+                List<ThingDef> kinds = BookKinds(what.Substring(1));
+                if (kinds.Count > 0)
+                {
+                    held.TryAdd(BookUtility.MakeBook(kinds[0], ArtGenerationContext.Colony));
+                }
+            }
+            else
+            {
+                held.ClearAndDestroyContents();
+                List<ThingDef> kinds = BookKinds(a.Length > 3 ? a[3] : null);
+                int n = I(what);
+                for (int i = 0; i < n && kinds.Count > 0; i++)
+                {
+                    held.TryAdd(BookUtility.MakeBook(kinds[i % kinds.Count], ArtGenerationContext.Colony));
+                }
+            }
+            Log.Message("[IsoRim probe] bookcase " + b.Position + " holds " + b.HeldBooks.Count + ": "
+                + string.Join(" ", b.HeldBooks.Select(k => k.def.defName)));
+        }
+
+        private static void HaulBook(Map map, string[] a)
+        {
+            ThingDef def = DefDatabase<ThingDef>.GetNamed(a[0]);
+            Building_Bookcase b = BookcaseAt(map, I(a[3]), I(a[4]));
+            Pawn pawn = map.mapPawns.FreeColonistsSpawned.FirstOrDefault(p => !p.Downed);
+            if (b == null || pawn == null)
+            {
+                Log.Warning("[IsoRim probe] haulbook: no bookcase or no colonist");
+                return;
+            }
+            Book book = BookUtility.MakeBook(def, ArtGenerationContext.Colony);
+            GenSpawn.Spawn(book, new IntVec3(I(a[1]), 0, I(a[2])), map);
+            if (pawn.drafter != null)
+            {
+                pawn.drafter.Drafted = false;
+            }
+            Verse.AI.Job job = Verse.AI.HaulAIUtility.HaulToContainerJob(pawn, book, b);
+            pawn.jobs.StartJob(job, Verse.AI.JobCondition.InterruptForced);
+            Log.Message("[IsoRim probe] haulbook: " + pawn.LabelShort + " at " + pawn.Position + " hauls " + book.def.defName + " from " + book.Position
+                + " into the bookcase at " + b.Position + " (" + job.def.defName + ")");
+        }
+
+        private static int bookCheckAt = -1;
+
+        private static void BookCheckDue()
+        {
+            if (bookCheckAt >= 0 && Time.frameCount >= bookCheckAt)
+            {
+                bookCheckAt = -1;
+                if (Find.CurrentMap != null)
+                {
+                    BookCheck(Find.CurrentMap);
+                }
+            }
+        }
+
+        private static void BookCheck(Map map)
+        {
+            Log.Message("[IsoRim probe] book colours: " + Bookcases.ColourList());
+            foreach (Building_Bookcase b in map.listerThings.AllThings.OfType<Building_Bookcase>())
+            {
+                ModelEntry entry = Forms.For(b.def).model;
+                bool stands = SectionLayer_IsoRimBodies.StandsIn(b);
+                int expect = stands ? Mathf.Min(b.HeldBooks.Count, Bookcases.Room(entry)) : 0;
+                int printed;
+                if (!Bookcases.Printed.TryGetValue(b.thingIDNumber, out printed) || !stands)
+                {
+                    printed = 0;
+                }
+                Log.Message("[IsoRim probe] bookcheck " + b.def.defName + " " + b.Position + " rot " + b.Rotation.ToStringHuman()
+                    + " model " + stands + " held " + b.HeldBooks.Count + " baked " + printed + (printed == expect ? " OK" : " MISMATCH"));
+            }
         }
 
         private static bool uiPatched;

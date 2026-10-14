@@ -266,6 +266,17 @@ namespace IsoRim
                 prefix: nameof(EmptyStatePostDraw_Prefix));
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompFireOverlay), "PostDraw"),
                 prefix: nameof(FireOverlayPostDraw_Prefix), finalizer: nameof(FireOverlayPostDraw_Finalizer));
+            // A bookcase draws its books and bookends itself after its body; with the model, the
+            // books are baked onto its shelves (Bookcases), rebuilt when one goes in or out.
+            Patch("3D bookcases", AccessTools.DeclaredMethod(typeof(Building_Bookcase), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(BookcaseDrawAt_Prefix));
+            Patch("3D bookcases", AccessTools.DeclaredMethod(typeof(Building_Bookcase), "Notify_ItemAdded"),
+                postfix: nameof(BookcaseContents_Postfix));
+            Patch("3D bookcases", AccessTools.DeclaredMethod(typeof(Building_Bookcase), "Notify_ItemRemoved"),
+                postfix: nameof(BookcaseContents_Postfix));
+            // A new paint colour: the game redraws only things in the map mesh.
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
+                postfix: nameof(BodyColorChanged_Postfix));
 
             // Turret guns: a 3D gun turning on its 3D base.
             Type turretTop = AccessTools.TypeByName("RimWorld.TurretTop");
@@ -1558,6 +1569,89 @@ namespace IsoRim
                 Log.ErrorOnce("[IsoRim] Checking a building's 3D model failed: " + e, 93611022);
             }
             return true;
+        }
+
+        // ThingWithComps.DrawAt called directly (not virtually): what Building_Bookcase.DrawAt
+        // runs as base.DrawAt before its books and bookends (the body, held back by
+        // ThingDrawAt_Prefix, then the comps).
+        private static Action<Thing, Vector3, bool> bookcaseBaseDraw;
+        private static bool bookcaseBaseTried;
+
+        private static Action<Thing, Vector3, bool> BookcaseBaseDraw()
+        {
+            if (!bookcaseBaseTried)
+            {
+                bookcaseBaseTried = true;
+                MethodInfo target = AccessTools.DeclaredMethod(typeof(ThingWithComps), "DrawAt", new[] { typeof(Vector3), typeof(bool) });
+                if (target != null)
+                {
+                    DynamicMethod dm = new DynamicMethod("IsoRim_BookcaseBaseDraw", null, new[] { typeof(Thing), typeof(Vector3), typeof(bool) },
+                        typeof(Patches).Module, true);
+                    ILGenerator il = dm.GetILGenerator();
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Castclass, typeof(ThingWithComps));
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Ldarg_2);
+                    il.Emit(OpCodes.Call, target);
+                    il.Emit(OpCodes.Ret);
+                    bookcaseBaseDraw = (Action<Thing, Vector3, bool>)dm.CreateDelegate(typeof(Action<Thing, Vector3, bool>));
+                }
+            }
+            return bookcaseBaseDraw;
+        }
+
+        public static bool BookcaseDrawAt_Prefix(Building_Bookcase __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                if (!SectionLayer_IsoRimBodies.StandsIn(__instance))
+                {
+                    return true;
+                }
+                Action<Thing, Vector3, bool> baseDraw = BookcaseBaseDraw();
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                // As the game's own: base.DrawAt a little lower, then (left out) the books and bookends.
+                baseDraw(__instance, drawLoc - Altitudes.AltIncVect * 2f, flip);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a bookcase failed: " + e, 93611121);
+                return true;
+            }
+        }
+
+        public static void BookcaseContents_Postfix(Building_Bookcase __instance)
+        {
+            try
+            {
+                if (SectionLayer_IsoRimBodies.Handles(__instance))
+                {
+                    MapSections.QueueAround(__instance.Map, __instance.Position, 0, typeof(SectionLayer_IsoRimBodies), true);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Updating a bookcase's books failed: " + e, 93611122);
+            }
+        }
+
+        public static void BodyColorChanged_Postfix(Thing __instance)
+        {
+            try
+            {
+                if (SectionLayer_IsoRimBodies.Handles(__instance))
+                {
+                    MapSections.QueueAround(__instance.Map, __instance.Position, 0, typeof(SectionLayer_IsoRimBodies), true);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Repainting a building's 3D model failed: " + e, 93611123);
+            }
         }
 
         public static bool EmptyStatePostDraw_Prefix(ThingComp __instance)

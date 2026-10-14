@@ -26,6 +26,9 @@
          <linked>true</linked>                first model in the cell, second once toward each neighbour it joins
          <builtFor>(3, 2)</builtFor>         the footprint the model was made for; stretched to fit the thing
          <topModel>Models/x.obj</topModel> <topHeight>0.6</topHeight>   a turret's turning gun
+         <bookShelves><li>0.16</li></bookShelves> <bookSlots><li>0.3</li></bookSlots> <bookRow>0.1</bookRow>
+                                              a bookcase: the books it holds stand on these shelves (heights),
+                                              at these x (from the left seen from the front), at this z
        <match><li>Wreck</li></match> in place of <thingDef> covers every building or item whose
        name has one of these as a whole word (Car: AncientCar, not AncientCardboardBox) and that has no entry of its own (first match wins).
        <fallback>SmallPlants</fallback> in place of <thingDef> covers every plant that is
@@ -332,6 +335,27 @@
     <thingDef>Shelf</thingDef>
     <model>Models/shelf.obj</model>
     <surfaceHeight>0.60</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <!-- Bookcase model: coop delivery 20261013-2015_bookcase. The books it holds are drawn on
+       its shelves (Bookcases.cs): lowest shelf first, from the left as seen from the front. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Bookcase</defName>
+    <thingDef>Bookcase</thingDef>
+    <model>Models/bookcase.obj</model>
+    <builtFor>(2, 1)</builtFor>
+    <bookShelves>
+      <li>0.16</li>
+      <li>0.56</li>
+    </bookShelves>
+    <bookSlots>
+      <li>0.62</li>
+      <li>0.31</li>
+      <li>0</li>
+      <li>-0.31</li>
+      <li>-0.62</li>
+    </bookSlots>
+    <bookRow>0.12</bookRow>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>

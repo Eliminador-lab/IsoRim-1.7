@@ -82,6 +82,7 @@ namespace IsoRim
             }
             lastTicks = ticks;
             Sticky();
+            BookCheckDue();
 
             if (applyFrame >= 0 && Time.frameCount >= applyFrame)
             {

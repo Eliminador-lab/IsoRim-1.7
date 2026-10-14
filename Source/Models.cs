@@ -57,6 +57,11 @@ namespace IsoRim
         public string topModel;             // turrets: the gun that turns, drawn every frame
         public float topHeight = 0.5f;      // height of the turret's pivot, in cells
 
+        // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
+        public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
+        public List<float> bookSlots;       // x of each book's middle along a shelf, from the left as seen from the front
+        public float bookRow = 0f;          // z of the books' middle (the model faces north, +z)
+
         // Animals. thingDef is the animal's race; model is its body, facing north.
         public bool animal = false;
         public string legModel;             // one leg, standing on the ground with its hip at the top
@@ -707,6 +712,8 @@ namespace IsoRim
                 return null;
             }
 
+            TurnRoundIfInsideOut(outPos, outNormal, outColor, outTint, outUV, outMaterial);
+
             Model m = new Model();
             m.positions = outPos.ToArray();
             m.normals = outNormal.ToArray();
@@ -770,6 +777,118 @@ namespace IsoRim
             materials.Add(mat);
             materialIndex[name] = materials.Count - 1;
             return materials.Count - 1;
+        }
+
+        // The mod's own model files wind each face clockwise seen from outside (in the file's
+        // axes), so that after the Z flip the face normals point out. An OBJ written the usual way
+        // (counter-clockwise, e.g. Blender's exporter) comes out inside out: the body still shows
+        // (it is drawn from both sides) but its outline shell is pulled in and disappears. A
+        // closed model whose faces enclose a clearly negative volume is turned round here.
+        // (Open shapes such as grass blades enclose almost nothing and are left as they are.)
+        private static void TurnRoundIfInsideOut(List<Vector3> pos, List<Vector3> normal, List<Color> color, List<bool> tint,
+            List<Vector2> uv, List<int> material)
+        {
+            float volume = 0f;
+            Vector3 min = pos[0];
+            Vector3 max = pos[0];
+            for (int i = 0; i + 2 < pos.Count; i += 3)
+            {
+                volume += Vector3.Dot(pos[i], Vector3.Cross(pos[i + 1], pos[i + 2])) / 6f;
+            }
+            for (int i = 0; i < pos.Count; i++)
+            {
+                min = Vector3.Min(min, pos[i]);
+                max = Vector3.Max(max, pos[i]);
+            }
+            Vector3 size = max - min;
+            if (volume >= -0.1f * size.x * size.y * size.z)
+            {
+                return;
+            }
+            for (int i = 0; i + 2 < pos.Count; i += 3)
+            {
+                Swap(pos, i + 1, i + 2);
+                Swap(color, i + 1, i + 2);
+                Swap(tint, i + 1, i + 2);
+                Swap(uv, i + 1, i + 2);
+                Swap(material, i + 1, i + 2);
+                for (int k = i; k < i + 3; k++)
+                {
+                    normal[k] = -normal[k];
+                }
+            }
+        }
+
+        private static void Swap<T>(List<T> list, int a, int b)
+        {
+            T t = list[a];
+            list[a] = list[b];
+            list[b] = t;
+        }
+
+        // A plain box from min to max (game axes), coloured by the tint it is drawn with (its top,
+        // if given, a fixed colour instead), with the same outline as a loaded model. Used for the
+        // books on a bookcase's shelves.
+        public static Model Box(Vector3 min, Vector3 max, Color? top = null)
+        {
+            Vector3[] n = { Vector3.up, Vector3.down, Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
+            List<Vector3> pos = new List<Vector3>(36);
+            List<Vector3> nor = new List<Vector3>(36);
+            for (int f = 0; f < 6; f++)
+            {
+                Vector3 normal = n[f];
+                // Two axes across the face and the corners of the face on its side of the box.
+                Vector3 u = Mathf.Abs(normal.y) > 0.5f ? Vector3.right : Vector3.up;
+                Vector3 v = Vector3.Cross(normal, u);
+                Vector3[] q = new Vector3[4];
+                for (int k = 0; k < 4; k++)
+                {
+                    float su = k == 1 || k == 2 ? 1f : -1f;
+                    float sv = k >= 2 ? 1f : -1f;
+                    Vector3 d = normal + u * su + v * sv;   // a corner direction from the middle, each component -1 or 1
+                    q[k] = new Vector3(d.x > 0f ? max.x : min.x, d.y > 0f ? max.y : min.y, d.z > 0f ? max.z : min.z);
+                }
+                // Clockwise seen from outside (the game's front faces): the cross product points out.
+                if (Vector3.Dot(Vector3.Cross(q[1] - q[0], q[2] - q[0]), normal) < 0f)
+                {
+                    Vector3 t = q[1];
+                    q[1] = q[3];
+                    q[3] = t;
+                }
+                int[] order = { 0, 1, 2, 0, 2, 3 };
+                for (int k = 0; k < 6; k++)
+                {
+                    pos.Add(q[order[k]]);
+                    nor.Add(normal);
+                }
+            }
+            Model m = new Model();
+            m.positions = pos.ToArray();
+            m.normals = nor.ToArray();
+            m.colors = new Color[pos.Count];
+            m.tinted = new bool[pos.Count];
+            m.uvs = new Vector2[pos.Count];
+            m.material = new int[pos.Count];
+            ModelMaterial mat = new ModelMaterial();
+            mat.name = "stuff";
+            mat.tinted = true;
+            mat.color = Color.white;
+            m.materials = new[] { mat };
+            for (int i = 0; i < pos.Count; i++)
+            {
+                bool lid = top.HasValue && nor[i].y > 0.5f;
+                m.colors[i] = lid ? top.Value : Color.white;
+                m.tinted[i] = !lid;
+            }
+            m.maxY = max.y;
+            m.halfDepth = Mathf.Max(Mathf.Abs(min.z), Mathf.Abs(max.z));
+            m.minX = min.x;
+            m.maxX = max.x;
+            m.minZ = min.z;
+            m.maxZ = max.z;
+            m.id = nextId++;
+            m.hull = BuildHull(m.positions, m.normals, OutlineWidth);
+            return m;
         }
 
         // For the outline, each corner moves away from all the faces that meet there. Corners
@@ -1029,7 +1148,20 @@ namespace IsoRim
             try
             {
                 Graphic g = t.Graphic;
-                Material mat = g != null ? g.MatSingleFor(t) : null;
+                return MeanOf(g != null ? g.MatSingleFor(t) : null);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Reading a sprite's colour failed: " + e, 93611040);
+                return Fallback;
+            }
+        }
+
+        // The lifted mean colour of a sprite material (its texture times its colour), read once per texture.
+        public static Color MeanOf(Material mat)
+        {
+            try
+            {
                 if (mat == null || !mat.HasProperty("_MainTex") || mat.mainTexture == null)
                 {
                     return Fallback;

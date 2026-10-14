@@ -709,6 +709,11 @@ namespace IsoRim
                         {
                             if (ModelBaker.Bake(this, t, Forms.For(t.def).model, 0f))
                             {
+                                Building_Bookcase bookcase = t as Building_Bookcase;
+                                if (bookcase != null)
+                                {
+                                    Bookcases.Print(this, bookcase, Forms.For(t.def).model);
+                                }
                                 baked[t.thingIDNumber] = lit;
                             }
                         }
