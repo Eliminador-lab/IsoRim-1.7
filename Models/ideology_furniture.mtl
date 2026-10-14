@@ -1,0 +1,9 @@
+newmtl ideology_furn_headrest
+Kd 0.72 0.71 0.66
+newmtl ideology_furn_mirror
+Kd 0.64 0.70 0.69
+newmtl ideology_furn_tools
+Kd 0.40 0.41 0.39
+map_Kd IsoRim/Swatches/Metal
+newmtl ideology_furn_brush
+Kd 0.25 0.24 0.21

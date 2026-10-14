@@ -1,0 +1,18 @@
+newmtl mech_prod_shell
+Kd 0.58 0.57 0.54
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_prod_trim
+Kd 0.35 0.35 0.33
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_prod_light
+Kd 0.72 0.71 0.67
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_prod_dark
+Kd 0.20 0.22 0.21
+newmtl mech_prod_red
+Kd 0.66 0.20 0.18
+newmtl mech_prod_pad
+Kd 0.48 0.46 0.43
+map_Kd IsoRim/Swatches/Fabric
+newmtl mech_prod_glass
+Kd 0.53 0.34 0.32

@@ -1,0 +1,18 @@
+newmtl deathrest_shell
+Kd 0.53 0.53 0.51
+map_Kd IsoRim/Swatches/Metal
+newmtl deathrest_trim
+Kd 0.32 0.33 0.32
+map_Kd IsoRim/Swatches/Metal
+newmtl deathrest_light
+Kd 0.69 0.69 0.65
+map_Kd IsoRim/Swatches/Metal
+newmtl deathrest_dark
+Kd 0.20 0.21 0.22
+newmtl deathrest_pad
+Kd 0.25 0.25 0.26
+map_Kd IsoRim/Swatches/Fabric
+newmtl deathrest_red
+Kd 0.54 0.17 0.15
+newmtl deathrest_ochre
+Kd 0.56 0.49 0.27

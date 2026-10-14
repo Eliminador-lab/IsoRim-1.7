@@ -1,0 +1,6 @@
+newmtl fence_concrete
+Kd 0.39 0.38 0.35
+newmtl fence_edge
+Kd 0.47 0.46 0.42
+newmtl fence_wear
+Kd 0.56 0.53 0.47
