@@ -12,6 +12,7 @@ namespace IsoRim
     //                                  frames, then stays; every frame logs "[IsoRim probe] cutframe k ..." with the pointer and
     //                                  the cut-away's own work that frame (Cutaway.TrackPointer + the cell texture update)
     //   cutfade=seconds                (shader cut-away) how long a cell takes to go down or come back up
+    //   hurt=x,z,amount                the building at that cell takes that much blunt damage (damage marks)
     //   cutmark=0|1                    a small ring on the ground round the cut-away's pointer (default 1)
     public static partial class Probe
     {
@@ -58,6 +59,15 @@ namespace IsoRim
                 case "cutfade":
                     CutFadeOverride = F(a[0]);
                     return true;
+                case "hurt":
+                {
+                    Building b = new IntVec3(I(a[0]), 0, I(a[1])).GetEdifice(Find.CurrentMap);
+                    if (b != null)
+                    {
+                        b.TakeDamage(new DamageInfo(RimWorld.DamageDefOf.Blunt, F(a[2])));
+                    }
+                    return true;
+                }
                 case "cutmark":
                     cutMark = a[0] == "1";
                     return true;
