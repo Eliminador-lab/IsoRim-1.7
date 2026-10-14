@@ -20,6 +20,7 @@ namespace IsoRim
         public Color lift = Color.black;    // a colour added to the shadows
         public Color gain = Color.white;    // a colour the highlights are multiplied by
         public float exposure;              // 0 to 0.5: brightens the whole picture
+        public string lutFile;              // a LUT file (LUTs folder) used instead of the values above
 
         public LookPreset(string name, string label, string description)
         {
@@ -56,13 +57,13 @@ namespace IsoRim
             Add("Toxic", "Toxic", "A sickly green haze.", desat: 0.2f,
                 gain: new Color(0.88f, 1f, 0.80f), lift: new Color(0.01f, 0.03f, 0f));
             Add("Sepia", "Sepia", "Old photograph browns.", desat: 0.85f,
-                gain: new Color(1f, 0.88f, 0.70f), lift: new Color(0.04f, 0.025f, 0.01f));
-            Add("Noir", "Noir", "Black and white with hard contrast.", desat: 1f, contrast: 0.6f);
+                gain: new Color(1f, 0.88f, 0.70f), lift: new Color(0.04f, 0.025f, 0.01f), lutFile: "Sepia");
+            Add("Noir", "Noir", "Black and white with hard contrast.", desat: 1f, contrast: 0.6f, lutFile: "Noir");
             Presets.Add(new LookPreset(CustomName, "Custom", "Set colour and brightness yourself with the two sliders below."));
         }
 
         private static void Add(string name, string label, string description, float desat = 0f, float contrast = 0f, float bright = 1f,
-            float exposure = 0f, Color? gain = null, Color? lift = null)
+            float exposure = 0f, Color? gain = null, Color? lift = null, string lutFile = null)
         {
             LookPreset p = new LookPreset(name, label, description);
             p.desat = desat;
@@ -71,6 +72,7 @@ namespace IsoRim
             p.exposure = exposure;
             p.gain = gain ?? Color.white;
             p.lift = lift ?? Color.black;
+            p.lutFile = lutFile;
             Presets.Add(p);
         }
 
@@ -92,6 +94,7 @@ namespace IsoRim
             IsoRimSettings st = IsoRimMod.Settings;
             LookPreset p = Find(st.lookName);
             LookPreset r = new LookPreset(p.name, p.label, p.description);
+            r.lutFile = p.lutFile;
             if (p.name == CustomName)
             {
                 r.desat = 1f - Mathf.Clamp(st.saturation, 0.3f, 1f);
@@ -178,7 +181,7 @@ namespace IsoRim
             float strength = 0f;
             if (st.grade)
             {
-                Table file = st.lutFile.NullOrEmpty() ? null : TableFor(st.lutFile);
+                Table file = FileFor(st);
                 if (file != null)
                 {
                     lut = file.texture;
@@ -342,6 +345,31 @@ namespace IsoRim
             }
             tables[name] = t;
             return t;
+        }
+
+        // The LUT file in force: one picked by name, or the file of a look that uses one (Noir, Sepia).
+        // Null when the look's own values apply (also when its file is missing).
+        public static Table FileFor(IsoRimSettings st)
+        {
+            if (!st.lutFile.NullOrEmpty())
+            {
+                return TableFor(st.lutFile);
+            }
+            string own = Looks.Find(st.lookName).lutFile;
+            return own.NullOrEmpty() ? null : TableFor(own);
+        }
+
+        // True for a LUT file that a look already uses (not listed again in the menu).
+        public static bool UsedByLook(string file)
+        {
+            foreach (LookPreset p in Looks.Presets)
+            {
+                if (p.lutFile == file)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // What a colour becomes under a LUT file at a strength. Used for the previews.

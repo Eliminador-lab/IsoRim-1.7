@@ -470,8 +470,18 @@ namespace IsoRim
                 Check(l, "Colour grade on", ref st.grade);
                 if (st.grade)
                 {
+                    foreach (LookPreset p in Looks.Presets)
+                    {
+                        if (!st.lutFile.NullOrEmpty() && p.lutFile == st.lutFile)
+                        {
+                            // a file picked by name before a look used it: show it as that look (same picture)
+                            st.lookName = p.name;
+                            st.lutFile = "";
+                        }
+                    }
                     LookPreset look = Looks.Find(st.lookName);
                     Grade.Table table = st.lutFile.NullOrEmpty() ? null : Grade.TableFor(st.lutFile);
+                    Grade.Table own = table == null && !look.lutFile.NullOrEmpty() ? Grade.TableFor(look.lutFile) : null;
                     Rect b = l.GetRect(30f);
                     if (Widgets.ButtonText(b, "Look: " + (table != null ? st.lutFile + " (LUT)" : look.label)))
                     {
@@ -488,6 +498,10 @@ namespace IsoRim
                         Grade.Rescan();
                         foreach (string f in Grade.Files)
                         {
+                            if (Grade.UsedByLook(f))
+                            {
+                                continue;
+                            }
                             string chosen = f;
                             options.Add(new FloatMenuOption(f + " (LUT)", delegate { st.lutFile = chosen; }));
                         }
@@ -503,7 +517,14 @@ namespace IsoRim
                     {
                         Note(l, look.description);
                         LookPreset current = Looks.Current();
-                        Preview(l, c => Looks.Apply(current, c));
+                        if (own != null)
+                        {
+                            Preview(l, c => Grade.ApplyFile(own, st.lookStrength, c));
+                        }
+                        else
+                        {
+                            Preview(l, c => Looks.Apply(current, c));
+                        }
                         if (look.name == Looks.CustomName)
                         {
                             st.saturation = Slider(l, "Colour kept", st.saturation, 0.5f, 1f, (st.saturation * 100f).ToString("0") + "%");
