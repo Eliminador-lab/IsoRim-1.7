@@ -1060,7 +1060,7 @@ namespace IsoRim
                     PerfKey(key, a, map);
                     break;
                 default:
-                    if (CutKey(key, a))
+                    if (CutKey(key, a) || MechKey(key, a, map))
                     {
                         break;
                     }
@@ -1505,6 +1505,7 @@ namespace IsoRim
             MotionTick();
             CutTick();
             BurstTick();
+            WalkFilmTick();
             if (swayStill)
             {
                 List<Material> plantMats = (List<Material>)plantMaterialsField.GetValue(null);

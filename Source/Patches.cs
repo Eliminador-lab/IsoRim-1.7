@@ -1251,6 +1251,12 @@ namespace IsoRim
                 Pawn pawn = pawnOfRenderer != null ? pawnOfRenderer(__instance) : null;
                 float spriteHeight = 1.5f;
 
+                if (pawn != null && st.mechs3D && st.models3D && pawn.RaceProps != null && pawn.RaceProps.IsMechanoid
+                    && Mechs.Draw(pawn, __0))
+                {
+                    return false;
+                }
+
                 if (pawn != null && st.animals3D && st.models3D && pawn.RaceProps != null && !pawn.RaceProps.Humanlike
                     && Animals.Draw(pawn, __0))
                 {
@@ -1339,6 +1345,10 @@ namespace IsoRim
             if (pawn.RaceProps.Humanlike)
             {
                 return st.pawns3D && pawn.def.defName == "Human" && pawn.story != null && !People.Hidden(pawn);
+            }
+            if (pawn.RaceProps.IsMechanoid && Mechs.HasModel(pawn))
+            {
+                return st.mechs3D;
             }
             ModelEntry entry;
             return st.animals3D && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.animal && entry.HasModel;

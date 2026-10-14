@@ -56,6 +56,7 @@ namespace IsoRim
         public float lookStrength = 1f;
         public string lutFile = "";      // a LUT file picked by name instead of a look's own
         public bool animals3D = true;
+        public bool mechs3D = true;
         public bool heldWeapons3D = true;
         public bool doors3D = true;
         public bool models3D = true;
@@ -122,6 +123,7 @@ namespace IsoRim
             Scribe_Values.Look(ref lookStrength, "lookStrength", 1f);
             Scribe_Values.Look(ref lutFile, "lutFile", "");
             Scribe_Values.Look(ref animals3D, "animals3D", true);
+            Scribe_Values.Look(ref mechs3D, "mechs3D", true);
             Scribe_Values.Look(ref heldWeapons3D, "heldWeapons3D", true);
             Scribe_Values.Look(ref doors3D, "doors3D", true);
             Scribe_Values.Look(ref models3D, "models3D", true);
@@ -627,6 +629,7 @@ namespace IsoRim
                 Section(r, "Creatures and effects");
                 Check(r, "Colonists and other people", ref st.pawns3D);
                 Check(r, "Animals", ref st.animals3D);
+                Check(r, "Mechanoids", ref st.mechs3D);
                 Check(r, "Weapons in hand", ref st.heldWeapons3D);
                 Check(r, "Work animations with tools", ref st.workAnimations, "Axes, pickaxes, hammers, scythes, hoes and brooms while colonists work.");
                 Check(r, "Blueprints show the finished build", ref st.ghosts3D, "Blueprints, frames and the placement preview as see-through 3D models.");

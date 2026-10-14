@@ -147,6 +147,49 @@ namespace IsoRim
         public float bodyCentre = 0f;       // height of the middle of the trunk
         public float bodyHalfWidth = 0.2f;  // half the width of the trunk; where it rests when on its side
         public float bodyHalfLength = 0.4f; // half the length of the animal, for the shading under it
+
+        // Mechanoids (Mechs.cs). thingDef is the mech's race; model is the body (everything that does not move),
+        // facing north, standing on the ground; mechParts are the pieces that move, each built in the same space
+        // as the body (not re-centred), turned about its pivot. A mech whose game sprite is not the first one of
+        // its kind (the Ancient look, over 100 years old) keeps the game's sprite.
+        public bool mech = false;
+        public List<MechPart> mechParts;
+        public List<string> factionMaterials; // faces of these materials take the faction's mech colour, half and half
+                                            // (as the game lays its allegiance overlay over the sprite's mask)
+        public Vector3 carryAt = new Vector3(0f, -1f, 0f); // where a hauled thing is held (x, height, z; model space);
+                                            // height -1: in front of the body at half its height
+    }
+
+    // One moving piece of a mechanoid (ModelDef.mechParts):
+    //   <li><model>Models/x_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.225, -0.05)</pivot><radius>0.225</radius></li>
+    // pivot is (x, height, z) in the body's space (Blender (x, y, z) is (x, z, y) here).
+    // motion:
+    //   fixed   merged into the body (segments, hatches)
+    //   wheel   rolls about its east-west axis by the ground covered (radius in cells)
+    //   leg     swings about its east-west axis in step (beat: where in the stride, 0..1; swing: degrees)
+    //   spin    turns about the upright axis while the mech works (speed: degrees a second) - brushes, cutter discs
+    //   pitch   nods about the east-west axis while the mech works (swing: degrees) - sensor heads
+    //   arm     swings down and up about the east-west axis while the mech works (swing: degrees) - digging arms
+    //   upper   turns about the upright axis toward what the mech aims at - upper bodies
+    //   head    the same, at most maxTurn degrees either way
+    //   weapon  the mech's gun: shown only when the game shows it (aiming, drafted ...), pointing where the game
+    //           points it; weapon names the gun ThingDef it shows (another gun is drawn as that gun's own 3D form)
+    //   turret  a CompTurretGun's gun, pointing where the comp points it; hidden once the turret is destroyed
+    // parent: name of another part (its file name without folder and .obj) this one moves with (claws on an arm,
+    // a gun on an upper body).
+    public class MechPart
+    {
+        public string model;
+        public string name;
+        public string motion = "fixed";
+        public Vector3 pivot = Vector3.zero;
+        public float radius = 0.2f;
+        public float beat = 0f;
+        public float swing = 20f;
+        public float speed = 240f;
+        public float maxTurn = 60f;
+        public string parent;
+        public string weapon;
     }
 
     // Triangle soup: every three entries make one triangle, already in game axes
@@ -920,6 +963,64 @@ namespace IsoRim
                     m.colors[k] = colors[piece % colors.Count];
                     m.tinted[k] = false;
                 }
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        // A copy of a model in which the faces of the named materials take the colour it is drawn with
+        // (white, tinted) and no other face does (a mechanoid's faction marks); the source colour of
+        // the first such material goes to baseColor. Null if the model uses none of them.
+        public static Model Marked(Model src, List<string> names, out Color baseColor)
+        {
+            baseColor = Color.white;
+            if (src == null || src.materials == null || src.material == null || names == null || names.Count == 0)
+            {
+                return null;
+            }
+            bool[] marked = new bool[src.materials.Length];
+            bool any = false;
+            for (int i = 0; i < src.materials.Length; i++)
+            {
+                for (int k = 0; k < names.Count; k++)
+                {
+                    if (string.Equals(src.materials[i].name, names[k], StringComparison.OrdinalIgnoreCase))
+                    {
+                        marked[i] = true;
+                    }
+                }
+            }
+            Model m = new Model();
+            m.positions = src.positions;
+            m.normals = src.normals;
+            m.uvs = src.uvs;
+            m.hull = src.hull;
+            m.maxY = src.maxY;
+            m.halfDepth = src.halfDepth;
+            m.minX = src.minX;
+            m.maxX = src.maxX;
+            m.minZ = src.minZ;
+            m.maxZ = src.maxZ;
+            m.materials = src.materials;
+            m.material = src.material;
+            m.colors = (Color[])src.colors.Clone();
+            m.tinted = new bool[src.tinted.Length];
+            for (int i = 0; i < m.colors.Length; i++)
+            {
+                if (marked[src.material[i]])
+                {
+                    if (!any)
+                    {
+                        baseColor = src.colors[i];
+                        any = true;
+                    }
+                    m.colors[i] = Color.white;
+                    m.tinted[i] = true;
+                }
+            }
+            if (!any)
+            {
+                return null;
             }
             m.id = nextId++;
             return m;
