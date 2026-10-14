@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>IsoRim (1.7)</name>
+  <name>IsoRim 1.7</name>
   <author>Lin, Connor (original)</author>
   <packageId>Peren.IsoRim17</packageId>
+  <url>https://github.com/peren717/IsoRim-1.7</url>
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
@@ -20,11 +21,91 @@
   <incompatibleWith>
     <li>connor.isorim</li>
   </incompatibleWith>
-  <description>WORK IN PROGRESS. A port of IsoRim (3D isometric view) to RimWorld 1.7. The 3D view does not work yet.
+  <description>EARLY ACCESS, work in progress.
 
-Original mod by Connor (kndzio): https://github.com/kndzio/IsoRim
+Your colony in 3D, seen through an isometric camera that turns round your base. A port of IsoRim to RimWorld 1.7.
 
-开发中。IsoRim（3D 等距视角）的 RimWorld 1.7 移植版，3D 视角暂不可用。
+Credit:
+- IsoRim is by Connor (kndzio). The models, textures and original code are his work. This port makes it run on 1.7.
+- Original mod: https://steamcommunity.com/sharedfiles/filedetails/?id=3819266222
+- Original source: https://github.com/kndzio/IsoRim
+- This port: https://github.com/peren717/IsoRim-1.7
+- MIT licence, full text in the LICENSE file.
 
-原作者 Connor（kndzio）：https://github.com/kndzio/IsoRim</description>
+Features:
+- Walls are solid blocks, natural rock becomes broken cliffs.
+- Hand-made 3D models for buildings, furniture and benches. Items, weapons and clothing are made solid from their own art.
+- Trees, plants, animals and colonists in 3D. Colonists work with real tools.
+- Sloped roofs, calm water, flowing rivers, and a sun that moves through the day.
+- Colour looks: gentle, warm, filmic, noir and more.
+- Walls lower, trees thin out and roofs lift near the pointer.
+
+How to use:
+- 0, or the cube button in the bottom right: 3D view on and off.
+- 9: isometric or straight-on. Q and E: turn the camera. [ and ]: camera angle.
+- Roofs are hidden by default. Show them with the IsoRim roof button in the bottom right.
+- Keys and settings: Options, Mod settings, IsoRim.
+
+How it's made on 1.7: RimWorld 1.7 runs on the new Waylith engine, which broke the original's rendering. The port keeps IsoRim's models and look, and rewrites the lighting, colour grade and outlines as GLSL shaders that Waylith compiles at runtime.
+
+Compatibility:
+- RimWorld 1.7 only. Requires Harmony.
+- Tested with the base game and DLCs. Other mods are untested.
+- Do not use with the original IsoRim.
+- Visual only: safe to add to or remove from a save.
+
+Known limitations:
+- On the very first launch the 3D view may show garbled colours for a few seconds while shaders compile. Only once.
+- Some trees without a model are flat cards facing the camera. They turn after the camera settles.
+- Fog may briefly lie flat after mining reveals cells.
+- Drag-box selection and pawn labels with a tilted camera are not fully tested.
+- Performance on large maps is not measured yet.
+- More models are being added.
+
+Please report problems with a log on the Workshop page or on GitHub.
+
+====================
+
+IsoRim 1.7（抢先体验，开发中）
+
+用等距视角的 3D 镜头看你的殖民地，镜头可以绕着基地旋转。这是 IsoRim 的 RimWorld 1.7 移植版。
+
+致谢：
+- IsoRim 的作者是 Connor（kndzio）。模型、贴图和原始代码都是他的作品，本移植版让它能在 1.7 上运行。
+- 原版 mod：https://steamcommunity.com/sharedfiles/filedetails/?id=3819266222
+- 原版源码：https://github.com/kndzio/IsoRim
+- 移植版源码：https://github.com/peren717/IsoRim-1.7
+- MIT 许可证，全文见 LICENSE 文件。
+
+功能：
+- 墙是立体方块，天然岩石变成崎岖的山崖。
+- 建筑、家具和工作台都有手工制作的 3D 模型。物品、武器和衣服按各自的贴图做成立体。
+- 树木、植物、动物和小人都是 3D 的，小人干活时拿着真正的工具。
+- 斜屋顶，平静的水面，流动的河流，太阳随时间移动。
+- 色调风格：柔和、暖色、电影感、黑白等。
+- 鼠标附近的墙会降低，树会变稀，屋顶会掀开。
+
+使用方法：
+- 0 键，或右下角的方块按钮：开关 3D 视角。
+- 9 键：等距或正视。Q、E：旋转镜头。[ 和 ]：镜头角度。
+- 屋顶默认隐藏，可用右下角的 IsoRim 屋顶按钮显示。
+- 按键和设置：选项，模组设置，IsoRim。
+
+在 1.7 上的实现：RimWorld 1.7 换成了新引擎 Waylith，原版的渲染因此失效。移植版保留了 IsoRim 的模型和画风，把光照、色调和描边改写成 GLSL 着色器，由 Waylith 在运行时编译。
+
+兼容性：
+- 仅支持 RimWorld 1.7，需要 Harmony。
+- 只测试过本体和 DLC，其他 mod 未测试。
+- 不要和原版 IsoRim 同时使用。
+- 只改画面，可随时加入或移出存档。
+
+已知问题：
+- 第一次启动时，3D 视角可能有几秒颜色错乱，这是在编译着色器，只发生一次。
+- 部分没有模型的树是面向镜头的平面卡片，镜头停下后才会转向。
+- 挖矿揭开格子后，迷雾可能短暂地平铺在地上。
+- 镜头倾斜时的框选和小人名字还没有完全测试。
+- 大地图上的性能还没有测量。
+- 新模型还在陆续加入。
+
+遇到问题请在创意工坊页面或 GitHub 上附日志反馈。</description>
 </ModMetaData>
