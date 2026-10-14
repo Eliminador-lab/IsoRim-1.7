@@ -1147,6 +1147,11 @@ namespace IsoRim
 
         private static readonly Dictionary<MaskKey, Mask> cache = new Dictionary<MaskKey, Mask>();
 
+        public static int CacheCount
+        {
+            get { return cache.Count; }
+        }
+
         // sm holds the sprite quad as its last four vertices (n = its vertex count). bottom and
         // top are heights in cells. Returns false, leaving the sprite untouched, if it cannot be done.
         public static bool Extrude(SectionLayer layer, LayerSubMesh sm, int n, Material mat, float bottom, float top)
@@ -1339,41 +1344,24 @@ namespace IsoRim
             return mask;
         }
 
-        // Draws the sprite into a tiny off-screen image and reads it back. Game textures cannot
-        // be read directly, but anything that has been drawn can.
+        // A low-resolution sample of the sprite (SpritePixels: read on the CPU, as the 1.5 mod's
+        // Blit and ReadPixels gave it). A whole texture whose pixels cannot be read is still
+        // sampled the 1.5 way on the GPU.
         private static Mask Build(Texture tex, Vector2 scale, Vector2 offset)
         {
-#if RW17
-            // Waylith's Graphics.Blit(src, dst, scale, offset) ignores scale/offset (stub), so a
-            // sub-rect would read the whole texture. No mask = the caller skips extruding it.
-            // TODO later stage: crop on the CPU instead.
-            if (scale != Vector2.one || offset != Vector2.zero)
+            Color32[] px = SpritePixels.Sample(tex, scale, offset, N);
+            if (px == null && scale == Vector2.one && offset == Vector2.zero && !SpritePixels.IsSheet(tex))
             {
-                return null;
+                px = SpritePixels.GpuSample(tex, N);
             }
-#endif
-            RenderTexture target = RenderTexture.GetTemporary(N, N, 0, RenderTextureFormat.ARGB32);
-            RenderTexture previous = RenderTexture.active;
-            Texture2D read = null;
-            Color32[] px = null;
-            try
-            {
-                Graphics.Blit(tex, target, scale, offset);
-                RenderTexture.active = target;
-                read = new Texture2D(N, N, TextureFormat.RGBA32, false);
-                read.ReadPixels(new Rect(0f, 0f, N, N), 0, 0);
-                read.Apply();
-                px = read.GetPixels32();
-            }
-            finally
-            {
-                RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(target);
-                if (read != null)
-                {
-                    UnityEngine.Object.Destroy(read);
-                }
-            }
+            return FromPixels(px);
+        }
+
+        public const int MaskSize = N;
+
+        // The outline and mean colour from an N x N sample (rows bottom first). Null if empty.
+        internal static Mask FromPixels(Color32[] px)
+        {
             if (px == null || px.Length < N * N)
             {
                 return null;

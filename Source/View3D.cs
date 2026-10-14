@@ -161,6 +161,7 @@ namespace IsoRim
             Probe.Begin();
             try
             {
+                SpritePixels.Tick();
                 TickInner();
             }
             finally

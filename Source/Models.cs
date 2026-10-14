@@ -1006,33 +1006,23 @@ namespace IsoRim
             }
         }
 
-        // Game textures cannot be read directly, so the sprite is drawn into a tiny off-screen
-        // image first and that is read back.
+        public const int SampleSize = N;
+
+        // A 16 x 16 sample of the whole sprite (SpritePixels: on the CPU, as the 1.5 mod's Blit and
+        // ReadPixels gave it; the 1.5 way on the GPU if the pixels cannot be read).
         private static Color Read(Texture tex)
         {
-            RenderTexture target = RenderTexture.GetTemporary(N, N, 0, RenderTextureFormat.ARGB32);
-            RenderTexture previous = RenderTexture.active;
-            Texture2D read = null;
-            Color32[] px = null;
-            try
+            Color32[] px = SpritePixels.Sample(tex, Vector2.one, Vector2.zero, N);
+            if (px == null && !SpritePixels.IsSheet(tex))
             {
-                Graphics.Blit(tex, target);
-                RenderTexture.active = target;
-                read = new Texture2D(N, N, TextureFormat.RGBA32, false);
-                read.ReadPixels(new Rect(0f, 0f, N, N), 0, 0);
-                read.Apply();
-                px = read.GetPixels32();
+                px = SpritePixels.GpuSample(tex, N);
             }
-            finally
-            {
-                RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(target);
-                if (read != null)
-                {
-                    UnityEngine.Object.Destroy(read);
-                }
-            }
+            return MeanOf(px);
+        }
 
+        // The lifted mean colour of the solid pixels of a sample; the fallback if there are none.
+        public static Color MeanOf(Color32[] px)
+        {
             float r = 0f;
             float g = 0f;
             float b = 0f;

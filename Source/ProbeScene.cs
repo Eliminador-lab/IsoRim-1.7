@@ -17,7 +17,7 @@ namespace IsoRim
     //   gas=x,z,<GasType>,<radius>   a gas cloud
     //   snow=<depth>,x0,z0,x1,z1     snow over a rectangle
     //   terrain=<Def>,x0,z0,x1,z1    terrain over a rectangle
-    //   spawn=<Def>,x,z[,<Stuff>]    a thing (the player's)
+    //   spawn=<Def>,x,z[,<Stuff>|-[,<count>]]  a thing (the player's), optionally a stack
     //   roof=0|1,x0,z0,x1,z1         built roof off or on over a rectangle
     //   active=0|1                   the 3D view off or on
     //   fog=x0,z0,x1,z1              fog of war over a rectangle
@@ -32,6 +32,10 @@ namespace IsoRim
     //   ramp=0|1                     the grade's test band of known colours (Grade.TestPattern)
     //   gradegpu=N                   the grade pass drawn N more times a frame (to time it on the GPU)
     //   gradebench=N                 builds a grade table N times (alternating looks) and logs the times
+    //   spritesweep=1                checks the CPU sprite sampling over every extruded / colour-sampled def
+    //                                (SpriteSweep; writes IsoRimSpriteSweep.tsv/.txt, IsoRimSpriteColours.tsv)
+    //   spritestats=1                logs the sprite sampling counters (time, reads, cache size)
+    //   itemsheet=k,x0,z0,cols,rows  lays batch k of the extruded items out in a grid (contact sheets)
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
     //                                roof, fertility, areas) are drawn in the shots; overlay=home
     //                                shows the home area
@@ -156,8 +160,12 @@ namespace IsoRim
                 case "spawn":
                 {
                     ThingDef def = DefDatabase<ThingDef>.GetNamed(a[0]);
-                    ThingDef stuff = a.Length > 3 ? DefDatabase<ThingDef>.GetNamed(a[3]) : (def.MadeFromStuff ? GenStuff.DefaultStuffFor(def) : null);
+                    ThingDef stuff = a.Length > 3 && a[3] != "-" ? DefDatabase<ThingDef>.GetNamed(a[3]) : (def.MadeFromStuff ? GenStuff.DefaultStuffFor(def) : null);
                     Thing t = ThingMaker.MakeThing(def, stuff);
+                    if (a.Length > 4)
+                    {
+                        t.stackCount = Mathf.Clamp(I(a[4]), 1, def.stackLimit);
+                    }
                     if (t.def.CanHaveFaction)
                     {
                         t.SetFaction(Faction.OfPlayer);
@@ -267,6 +275,15 @@ namespace IsoRim
                     break;
                 case "gradebench":
                     GradeBench(I(a[0]));
+                    break;
+                case "spritesweep":
+                    SpriteSweep.Run();
+                    break;
+                case "spritestats":
+                    SpriteSweep.Stats();
+                    break;
+                case "itemsheet":
+                    SpriteSweep.PlaceSheet(map, I(a[0]), I(a[1]), I(a[2]), I(a[3]), I(a[4]));
                     break;
                 case "ui":
                     if (!uiPatched)
