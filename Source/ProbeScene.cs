@@ -80,7 +80,8 @@ namespace IsoRim
     //   sealflag=x,z                 the portal in the cell marked sealed (CompSealable) and its map mesh redrawn
     //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
     //   dressed=x,z,rot,age[:Body],Def[:Stuff];...  a new drafted colonist (adults male body, or that BodyTypeDef)
-    //                                wearing/holding exactly those ("-" for nothing), facing rot
+    //                                wearing/holding exactly those ("-" for nothing), facing rot; items hair:<HairDef>
+    //                                and beard:<BeardDef> set those styles instead
     //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
@@ -808,6 +809,16 @@ namespace IsoRim
                             continue;   // nothing worn
                         }
                         string[] ds = item.Split(':');
+                        if (ds[0] == "hair")
+                        {
+                            dp.story.hairDef = DefDatabase<HairDef>.GetNamed(ds[1]);
+                            continue;
+                        }
+                        if (ds[0] == "beard")
+                        {
+                            dp.style.beardDef = DefDatabase<BeardDef>.GetNamed(ds[1]);
+                            continue;
+                        }
                         ThingDef dd = DefDatabase<ThingDef>.GetNamed(ds[0]);
                         ThingDef dstuff = ds.Length > 1 && ds[1] != "-" ? DefDatabase<ThingDef>.GetNamed(ds[1]) : (dd.MadeFromStuff ? GenStuff.DefaultStuffFor(dd) : null);
                         Thing dt = ThingMaker.MakeThing(dd, dstuff);
@@ -824,7 +835,7 @@ namespace IsoRim
                     dp.drafter.Drafted = true;
                     dp.Rotation = new Rot4(I(a[2]));
                     Log.Message("[IsoRim probe] dressed " + dp.LabelShort + " at " + dp.Position + " rot " + dp.Rotation + ": " + string.Join(", ", dp.apparel.WornApparel.Select(x => x.def.defName))
-                        + (dp.equipment.Primary != null ? " + " + dp.equipment.Primary.def.defName : ""));
+                        + (dp.equipment.Primary != null ? " + " + dp.equipment.Primary.def.defName : "") + "; " + People.Report(dp));
                     break;
                 }
                 case "standcheck":

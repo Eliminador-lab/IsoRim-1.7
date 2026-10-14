@@ -38,6 +38,7 @@ namespace IsoRim
             public Model upper;
             public Model coat;
             public Model hair;
+            public Model hairTop;     // the part of a hairstyle that a hat hides (topbun_tail's bun), when bareheaded
             public Model beard;
             public Model hat;
             public Model legArmour;
@@ -102,7 +103,7 @@ namespace IsoRim
             public bool SameAs(Look o)
             {
                 return o != null && size == o.size && headWide == o.headWide && shoulders == o.shoulders && bodyScale == o.bodyScale && lower == o.lower && upper == o.upper
-                    && coat == o.coat && hair == o.hair && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
+                    && coat == o.coat && hair == o.hair && hairTop == o.hairTop && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
                     && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
                     && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
@@ -163,6 +164,7 @@ namespace IsoRim
                 else
                 {
                     AddPart(look.hair, headPlace, look.hairColor);
+                    AddPart(look.hairTop, headPlace, look.hairColor);
                 }
                 AddPart(look.beard, headPlace, look.hairColor);
                 AddPart(look.hat, headPlace, look.hatColor);
@@ -427,7 +429,10 @@ namespace IsoRim
             Look l = Work(pawn);
             Func<Model, string> n = m => m == null ? "-" : (m == head ? "person_head" : (m == face ? "person_face" : m.id.ToString()));
             return "race " + pawn.def.defName + ", mutant " + (pawn.IsMutant ? pawn.mutant.Def.defName : "none") + ", head " + (pawn.story.headType != null ? pawn.story.headType.defName : "?")
-                + ", hair " + (pawn.story.hairDef != null ? pawn.story.hairDef.defName : "?") + ", body " + (pawn.story.bodyType != null ? pawn.story.bodyType.defName : "?")
+                + ", hair " + (pawn.story.hairDef != null ? pawn.story.hairDef.defName : "?") + " -> " + (HairParts.Hair(pawn.story.hairDef) ?? "none")
+                + (l.hair != null ? "" : " (not drawn)") + (l.hairTop != null ? " +bun" : "")
+                + ", beard " + (pawn.style != null && pawn.style.beardDef != null ? pawn.style.beardDef.defName : "?") + " -> "
+                + (pawn.style != null ? HairParts.Beard(pawn.style.beardDef) ?? "none" : "none") + (l.beard != null ? "" : " (not drawn)") + ", body " + (pawn.story.bodyType != null ? pawn.story.bodyType.defName : "?")
                 + ", ownHead " + (l.ownHead != null) + ", ownFace " + (l.ownFace != null) + ", eyes " + (l.eyeLeft != null) + "/" + (l.eyeRight != null)
                 + ", scars " + (l.scars != null) + ", overlay " + (l.skinOverlay != null) + ", barbs " + (l.barbs != null) + ", plating " + (l.plating != null)
                 + ", ownHair " + l.ownHair + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
@@ -542,26 +547,21 @@ namespace IsoRim
             look.headWide = Has(headName, "Narrow") ? 0.9f : (Has(headName, "Wide") ? 1.07f : 1f);
             look.skin = story.SkinColor;
             look.hairColor = story.HairColor;
-            string hairKind = HairKind(story.hairDef != null ? (story.hairDef.defName ?? "") : "");
-            string beardKind = null;
-            if (pawn.style != null && pawn.style.beardDef != null)
-            {
-                string beardName = pawn.style.beardDef.defName ?? "";
-                if (!Has(beardName, "NoBeard") && !Has(beardName, "Stubble") && !Has(beardName, "Moustache") && !Has(beardName, "Mustache"))
-                {
-                    beardKind = Has(beardName, "Goatee") || Has(beardName, "Soul") || Has(beardName, "Chin") ? "goatee" : "full";
-                }
-            }
+            string hairKind = HairParts.Hair(story.hairDef);
+            string beardKind = pawn.style != null ? HairParts.Beard(pawn.style.beardDef) : null;
 
             string hatKind = Dress(look, build, pawn.apparel != null ? pawn.apparel.WornApparel : null, look.skin, null);
 
             // Hair shows unless a helmet or hood covers the whole head; under a hat only hair that
             // hangs below it shows.
             bool covered = hatKind == "helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
-            bool hangs = hairKind == "long" || hairKind == "medium" || hairKind == "ponytail" || hairKind == "short";
-            if (hairKind != null && !covered && (hatKind == null || hangs))
+            if (hairKind != null && !covered && (hatKind == null || HairParts.Hangs(hairKind)))
             {
                 look.hair = Part("person_hair_" + hairKind);
+                if (hatKind == null && HairParts.Exists("person_hair_" + hairKind + "_bun"))
+                {
+                    look.hairTop = Part("person_hair_" + hairKind + "_bun");
+                }
             }
             if (beardKind != null && !SealedHelmet(hatKind))
             {
@@ -898,47 +898,6 @@ namespace IsoRim
                 }
             }
             return false;
-        }
-
-        // Which of the mod's hair shapes is nearest to one of the game's many hair styles, going
-        // by its name. Null means no hair.
-        private static string HairKind(string name)
-        {
-            if (name.Length == 0 || Has(name, "Bald") || Has(name, "Shaved"))
-            {
-                return null;
-            }
-            if (Has(name, "Mohawk") || Has(name, "Fauxhawk") || Has(name, "Warhawk") || Has(name, "Fin"))
-            {
-                return "mohawk";
-            }
-            if (Has(name, "Afro") || Has(name, "Curly") || Has(name, "Poof") || Has(name, "Fro"))
-            {
-                return "afro";
-            }
-            if (Has(name, "Pony") || Has(name, "Tail") || Has(name, "Braid") || Has(name, "Queue"))
-            {
-                return "ponytail";
-            }
-            if (Has(name, "Bun") || Has(name, "Topknot") || Has(name, "Knot") || Has(name, "Dango"))
-            {
-                return "bun";
-            }
-            if (Has(name, "Spik") || Has(name, "Mess") || Has(name, "Wild") || Has(name, "Scat") || Has(name, "Rebel") || Has(name, "Flowy"))
-            {
-                return "spiky";
-            }
-            if (Has(name, "Long") || Has(name, "Princess") || Has(name, "Wavy") || Has(name, "Lace") || Has(name, "Mane") || Has(name, "Elder")
-                || Has(name, "Senorita") || Has(name, "Curtain"))
-            {
-                return "long";
-            }
-            if (Has(name, "Bob") || Has(name, "Mop") || Has(name, "Shoulder") || Has(name, "Pigtails") || Has(name, "Decent") || Has(name, "Greasy")
-                || Has(name, "Bowl") || Has(name, "Lackland") || Has(name, "Tuft"))
-            {
-                return "medium";
-            }
-            return "short";
         }
 
         private static bool SealedHelmet(string hatKind)
