@@ -4914,4 +4914,98 @@
     <builtFor>(2, 2)</builtFor>
     <surfaceHeight>0.22</surfaceHeight>
   </IsoRim.ModelDef>
+
+  <!-- Coop batch 3 class A (cut-off 2026-10-14 06:50): Anomaly and Odyssey buildings, bind-only -->
+  <IsoRim.ModelDef>
+    <defName>R3D_ElectricInhibitor</defName>
+    <thingDef>ElectricInhibitor</thingDef>
+    <model>Models/electric_inhibitor.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteShaper</defName>
+    <thingDef>BioferriteShaper</thingDef>
+    <model>Models/bioferrite_shaper.obj</model>
+    <builtFor>(3, 1)</builtFor>
+    <surfaceHeight>0.60</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SerumCentrifuge</defName>
+    <thingDef>SerumCentrifuge</thingDef>
+    <model>Models/serum_lab.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.59</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SleepSuppressor</defName>
+    <thingDef>SleepSuppressor</thingDef>
+    <model>Models/sleep_suppressor.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteGenerator</defName>
+    <thingDef>BioferriteGenerator</thingDef>
+    <model>Models/bioferrite_generator.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_ProximityDetector</defName>
+    <thingDef>ProximityDetector</thingDef>
+    <model>Models/proximity_detector.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_PilotConsole</defName>
+    <thingDef>PilotConsole</thingDef>
+    <model>Models/pilot_console.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SmallThruster</defName>
+    <thingDef>SmallThruster</thingDef>
+    <model>Models/small_thruster.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeThruster</defName>
+    <thingDef>LargeThruster</thingDef>
+    <model>Models/large_thruster.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_ChemfuelTank</defName>
+    <thingDef>ChemfuelTank</thingDef>
+    <model>Models/chemfuel_tank.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeChemfuelTank</defName>
+    <thingDef>LargeChemfuelTank</thingDef>
+    <model>Models/large_chemfuel_tank.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GravFieldExtender</defName>
+    <thingDef>GravFieldExtender</thingDef>
+    <model>Models/grav_extender.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_OxygenPump</defName>
+    <thingDef>OxygenPump</thingDef>
+    <model>Models/oxygen_pump.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_OrbitalScanner</defName>
+    <thingDef>OrbitalScanner</thingDef>
+    <model>Models/orbital_scanner.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SignalJammer</defName>
+    <thingDef>SignalJammer</thingDef>
+    <model>Models/signal_jammer.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
 </Defs>
