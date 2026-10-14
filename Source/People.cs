@@ -130,6 +130,7 @@ namespace IsoRim
         private const int RefreshFrames = 90;
         private const float HeadHeight = 0.98f;   // where the middle of the head is on the figure
         private const float GibbetScale = 0.78f;  // a corpse hanging in a gibbet cage, shrunk to stay under its dome
+        private const float FigureHeight = 1.12f; // top of the head of a figure of size 1
 
         private static readonly Dictionary<int, Look> looks = new Dictionary<int, Look>();
         private static readonly Dictionary<string, Model> models = new Dictionary<string, Model>();
@@ -173,14 +174,32 @@ namespace IsoRim
             // A corpse in a gibbet cage shown as its model hangs upright in the cage (lying, an
             // adult would reach out through the bars), feet on the cage floor.
             Building_GibbetCage gibbet = dead ? GibbetOf(pawn) : null;
-            bool lying = gibbet == null && (dead || pawn.GetPosture() != PawnPosture.Standing);
+            // A person held in a glass vat shown as its model that floats them upright (growth vat):
+            // standing in the vat, shrunk to fit under its roof.
+            Building holder = dead ? null : Glass.HolderOf(pawn);
+            ModelEntry vat = holder != null ? Glass.EntryFor(holder) : null;
+            if (vat != null && !vat.def.heldPawnUpright)
+            {
+                vat = null;
+            }
+            bool lying = gibbet == null && vat == null && (dead || pawn.GetPosture() != PawnPosture.Standing);
             float size = look.size * (gibbet != null ? GibbetScale : 1f);
+            float rise = 0f;
+            if (vat != null)
+            {
+                rise = Glass.FloatRise(Find.TickManager.TicksGame);
+                size = Mathf.Min(size, (Glass.Room(vat) - rise - 0.02f) / FigureHeight);
+            }
             float yaw;
             float phase = 0f;
             float gait = 0f;
             if (gibbet != null)
             {
                 yaw = 180f + (Hashing.Unit(pawn.thingIDNumber, 3, 9) - 0.5f) * 50f;
+            }
+            else if (vat != null)
+            {
+                yaw = holder.Rotation.AsAngle + vat.def.rotation + 180f;   // facing the vat's front
             }
             else if (dead)
             {
@@ -211,12 +230,12 @@ namespace IsoRim
                     headOnly = ground > 0.05f && bed.def.building != null && !bed.def.building.bed_showSleeperBody;
                     pose = Matrix4x4.Translate(new Vector3(0f, (headOnly ? 0.24f : 0.15f) * size, HeadHeight * size)) * Matrix4x4.Rotate(onBack);
                 }
-                else if (!dead && pawn.ParentHolder is IThingHolderWithDrawnPawn holder && holder is Building inside && inside.Spawned)
+                else if (!dead && holder != null && pawn.ParentHolder is IThingHolderWithDrawnPawn drawnIn)
                 {
-                    // Lying in a building that shows who is inside (gene extractor): on its couch,
-                    // along the body angle the game draws them at, centred where the game draws them.
-                    yaw = holder.HeldPawnBodyAngle + 180f;
-                    ground = Forms.HeightOf(inside);
+                    // Lying in a building that shows who is inside (gene extractor, biosculpter pod): on its
+                    // couch, along the body angle the game draws them at, centred where the game draws them.
+                    yaw = drawnIn.HeldPawnBodyAngle + 180f;
+                    ground = Forms.HeightOf(holder);
                     pose = Matrix4x4.Translate(new Vector3(0f, 0.15f * size, HeadHeight * 0.5f * size)) * Matrix4x4.Rotate(onBack);
                 }
                 else
@@ -227,6 +246,14 @@ namespace IsoRim
                         yaw += 180f;   // crawling: head first, the way they are going
                     }
                 }
+            }
+            else if (vat != null)
+            {
+                // Floating still in the middle of the vat.
+                ground = Glass.Floor(vat) + rise;
+                pose = Matrix4x4.identity;
+                Vector3 c = Glass.ContentCentre(holder, vat);
+                drawLoc = new Vector3(c.x, drawLoc.y, c.z);
             }
             else if (gibbet != null)
             {

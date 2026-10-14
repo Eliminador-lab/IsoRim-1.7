@@ -290,6 +290,15 @@ namespace IsoRim
                 prefix: nameof(GibbetDrawAt_Prefix));
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompDryadHolder), "PostDraw"),
                 prefix: nameof(DryadHolderPostDraw_Prefix));
+            // Glass over contents (Glass.cs): the flat glass, top and window sprites are left out, the contents placed in the chamber.
+            Patch("3D glass", AccessTools.DeclaredMethod(typeof(Building_MechGestator), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(MechGestatorDrawAt_Prefix));
+            Patch("3D glass", AccessTools.DeclaredMethod(typeof(Building_GrowthVat), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(GrowthVatDrawAt_Prefix));
+            Patch("3D glass", AccessTools.DeclaredMethod(typeof(Building_WastepackAtomizer), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(AtomizerDrawAt_Prefix));
+            Patch("3D glass", AccessTools.DeclaredMethod(typeof(CompBiosculpterPod), "PostDraw"),
+                prefix: nameof(BiosculpterPostDraw_Prefix));
             // A new paint colour: the game redraws only things in the map mesh.
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
                 postfix: nameof(BodyColorChanged_Postfix));
@@ -1248,8 +1257,8 @@ namespace IsoRim
                         // Lying down stays flat, but is raised onto the bed (or the couch of a building
                         // that shows who is inside, such as the gene extractor) if it has height.
                         Building_Bed bed = pawn.Dead ? null : pawn.CurrentBed();
-                        float bedTop = bed != null ? Forms.HeightOf(bed)
-                            : (pawn.ParentHolder is IThingHolderWithDrawnPawn && pawn.ParentHolder is Building holder ? Forms.HeightOf(holder) : 0f);
+                        Building holder = pawn.Dead ? null : Glass.HolderOf(pawn);
+                        float bedTop = bed != null ? Forms.HeightOf(bed) : (holder != null ? Forms.HeightOf(holder) : 0f);
                         Building_GibbetCage gibbet = pawn.Dead ? People.GibbetOf(pawn) : null;
                         if (gibbet != null)
                         {
@@ -1881,6 +1890,85 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a dryad cocoon failed: " + e, 93611252);
+                return true;
+            }
+        }
+
+        public static bool MechGestatorDrawAt_Prefix(Building_MechGestator __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                ModelEntry entry = Glass.EntryFor(__instance);
+                Action<Thing, Vector3, bool> baseDraw = entry != null ? BookcaseBaseDraw() : null;
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                Glass.DrawMechGestator(__instance, entry, drawLoc, flip, baseDraw);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a mech gestator failed: " + e, 93611262);
+                return true;
+            }
+        }
+
+        public static bool GrowthVatDrawAt_Prefix(Building_GrowthVat __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                ModelEntry entry = Glass.EntryFor(__instance);
+                Action<Thing, Vector3, bool> baseDraw = entry != null ? BookcaseBaseDraw() : null;
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                Glass.DrawGrowthVat(__instance, entry, drawLoc, flip, baseDraw);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a growth vat failed: " + e, 93611263);
+                return true;
+            }
+        }
+
+        public static bool AtomizerDrawAt_Prefix(Building_WastepackAtomizer __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                ModelEntry entry = Glass.EntryFor(__instance);
+                Action<Thing, Vector3, bool> baseDraw = entry != null ? BookcaseBaseDraw() : null;
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                Glass.DrawAtomizer(__instance, entry, drawLoc, flip, baseDraw);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a wastepack atomizer failed: " + e, 93611264);
+                return true;
+            }
+        }
+
+        public static bool BiosculpterPostDraw_Prefix(CompBiosculpterPod __instance)
+        {
+            try
+            {
+                ModelEntry entry = __instance.parent != null ? Glass.EntryFor(__instance.parent) : null;
+                if (entry == null)
+                {
+                    return true;
+                }
+                Glass.DrawBiosculpter(__instance, entry);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a biosculpter pod failed: " + e, 93611265);
                 return true;
             }
         }

@@ -83,6 +83,15 @@ namespace IsoRim
         public string litMaterial;          // a material of spinModel that lights up while the part turns (the lightball's
                                             // lenses, party_lens): unlit, in litColors, one colour per separate piece in turn
         public List<Color> litColors;
+        // See-through parts (Glass.cs): a glass cover or window built in the same space as model, drawn
+        // every frame over the body and over what is inside it, in one shared pale glass colour, darkening
+        // with the scene at night. The game's flat glass, top and window sprites over the contents are
+        // left out in 3D (mech gestators, growth vat, biosculpter pod, wastepack atomizer).
+        public string glassModel;
+        public float contentTop = -1f;      // roof of the chamber under the glass: what stands inside (a forming
+                                            // mech, a vat embryo or child) is fitted between surfaceHeight and this
+        public bool heldPawnUpright = false; // the person held inside floats upright (growth vat) instead of lying
+        public float barHeight = -1f;       // height of the game's progress bar over it (mech gestator console); -1 surfaceHeight
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -323,6 +332,7 @@ namespace IsoRim
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
         public Model spin;        // spinModel, or null
         public Model spinLit;     // spinModel with its litMaterial lit, or null
+        public Model glass;       // glassModel, or null
 
         public bool HasModel
         {
@@ -591,6 +601,10 @@ namespace IsoRim
                 {
                     entry.spinLit = ObjLoader.Relit(entry.spin, md.litMaterial, md.litColors);
                 }
+            }
+            if (!md.glassModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.glass = LoadFile(Path.Combine(md.modContentPack.RootDir, md.glassModel));
             }
             return entry;
         }

@@ -218,6 +218,7 @@ namespace IsoRim
                 Probe.Lap(6);
                 Effects.DrawAll();
                 Spinners.DrawAll();
+                Glass.DrawAll();
                 Probe.Lap(7);
                 try
                 {

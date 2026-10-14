@@ -5017,4 +5017,51 @@
     <model>Models/signal_jammer.obj</model>
     <builtFor>(2, 2)</builtFor>
   </IsoRim.ModelDef>
+  <!-- Coop batch 2 class B: glass over contents (Glass.cs; one shared glass colour, user decision 2026-10-14) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_MechGestator</defName>
+    <thingDef>MechGestator</thingDef>
+    <model>Models/mech_gestator.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/mech_gestator_glass.obj</glassModel>
+    <surfaceHeight>0.32</surfaceHeight>
+    <contentTop>1.5</contentTop>
+    <barHeight>0.31</barHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeMechGestator</defName>
+    <thingDef>LargeMechGestator</thingDef>
+    <model>Models/large_mech_gestator.obj</model>
+    <builtFor>(4, 3)</builtFor>
+    <glassModel>Models/large_mech_gestator_glass.obj</glassModel>
+    <surfaceHeight>0.32</surfaceHeight>
+    <contentTop>1.97</contentTop>
+    <barHeight>0.31</barHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GrowthVat</defName>
+    <thingDef>GrowthVat</thingDef>
+    <model>Models/growth_vat.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <glassModel>Models/growth_vat_glass.obj</glassModel>
+    <surfaceHeight>0.26</surfaceHeight>
+    <contentTop>0.64</contentTop>
+    <heldPawnUpright>true</heldPawnUpright>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BiosculpterPod</defName>
+    <thingDef>BiosculpterPod</thingDef>
+    <model>Models/biosculpter_pod.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/biosculpter_pod_glass.obj</glassModel>
+    <surfaceHeight>0.30</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_WastepackAtomizer</defName>
+    <thingDef>WastepackAtomizer</thingDef>
+    <model>Models/wastepack_atomizer.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/wastepack_atomizer_window.obj</glassModel>
+    <surfaceHeight>0.50</surfaceHeight>
+  </IsoRim.ModelDef>
 </Defs>
