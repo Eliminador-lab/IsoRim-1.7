@@ -22,6 +22,7 @@ namespace IsoRim
         private static int sweepFrame = -1;
         private static Vector3 sweepStep;
         private static int sweepEvery = 1;
+        private static int sweepStop = -1;
         private static bool cutMark = true;
         private static double cellMs;
         private static readonly List<double> sweepCost = new List<double>();
@@ -54,6 +55,7 @@ namespace IsoRim
                     sweepLeft = Math.Max(1, I(a[4]));
                     sweepEvery = a.Length > 5 ? Math.Max(1, I(a[5])) : 1;
                     sweepFrame = 0;
+                    sweepStop = -1;
                     sweepCost.Clear();
                     return true;
                 case "cutfade":
@@ -110,8 +112,12 @@ namespace IsoRim
             sweepFrame++;
             if (sweepLeft <= 0 && sweepFrame > 0)
             {
-                // Summary once the pointer has stopped and things have had 30 frames to catch up.
-                if (sweepCost.Count > 0 && sweepFrame % 30 == 0)
+                // Summary once the pointer has stopped and things have had 60 frames to catch up.
+                if (sweepStop < 0)
+                {
+                    sweepStop = sweepFrame;
+                }
+                if (sweepCost.Count > 0 && sweepFrame - sweepStop >= 60)
                 {
                     List<double> s = new List<double>(sweepCost);
                     s.Sort();
@@ -123,6 +129,7 @@ namespace IsoRim
                     Log.Message("[IsoRim probe] cutsweep summary over " + s.Count + " frames: mean " + (sum / s.Count).ToString("0.000")
                         + " ms, median " + s[s.Count / 2].ToString("0.000") + " ms, max " + s[s.Count - 1].ToString("0.000") + " ms, total " + sum.ToString("0.0") + " ms");
                     sweepFrame = -1;
+                    sweepStop = -1;
                 }
             }
         }
