@@ -58,14 +58,28 @@ namespace IsoRim
             IsoRimSettings st = IsoRimMod.Settings;
             ThingForm f = new ThingForm();
 
-            // Only things drawn into the static map mesh can be reshaped.
-            if (def.drawerType == DrawerType.RealtimeOnly || def.drawerType == DrawerType.None)
+            if (def.drawerType == DrawerType.None)
             {
                 return f;
             }
-
             ModelEntry entry;
             bool listed = ModelLibrary.TryGet(def, out entry);
+
+            // Things the game draws every frame (drawerType RealtimeOnly) are never printed into the
+            // map mesh, so only a building with a hand-made model is reshaped: its model is baked
+            // by SectionLayer_IsoRimBodies, and the game keeps drawing everything else about it.
+            if (def.drawerType == DrawerType.RealtimeOnly)
+            {
+                if (def.category != ThingCategory.Building || def.IsFrame || def.IsBlueprint || !listed || entry.def.flat
+                    || entry.def.animal || !entry.HasModel || !st.models3D || typeof(Building_Door).IsAssignableFrom(def.thingClass))
+                {
+                    return f;
+                }
+                f.form = Form3D.Model;
+                f.model = entry;
+                f.height = entry.SurfaceHeight * entry.Fit(def).y;
+                return f;
+            }
             if (listed && entry.def.flat)
             {
                 return f;
@@ -1807,6 +1821,10 @@ namespace IsoRim
         // of the model itself (see SectionLayer_IsoRimDamage).
         public static int DamageMarks;
 
+        // While set, Bake leaves out flames and embers (ModelMaterial.fire): a torch or campfire
+        // whose fuel has run out (see SectionLayer_IsoRimBodies).
+        public static bool NoFire;
+
         private static bool WriteDamage(SectionLayer layer, Thing thing, Model m, Vector3 center, Quaternion turn, Quaternion lay, Vector3 layLift,
             Vector3 scale, Vector3 offset, float baseHeight)
         {
@@ -1923,9 +1941,9 @@ namespace IsoRim
             {
                 int mi = m.material != null ? m.material[i] : 0;
                 ModelMaterial mm = m.materials != null ? m.materials[mi] : null;
-                if (mm != null && ((bare && mm.leaf) || (!bare && mm.twig)))
+                if (mm != null && ((bare && mm.leaf) || (!bare && mm.twig) || (NoFire && mm.fire)))
                 {
-                    continue;   // no leaves on a bare tree; no hidden twigs on a leafy one
+                    continue;   // no leaves on a bare tree; no hidden twigs on a leafy one; no flame once the fire is out
                 }
 
                 bool glow = mm != null && mm.glow;

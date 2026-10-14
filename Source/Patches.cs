@@ -256,6 +256,17 @@ namespace IsoRim
             }
             Patch("3D doors", movers, prefix: nameof(DrawMovers_Prefix));
 
+            // Buildings the game draws every frame (campfire, torches, caskets): their model is baked
+            // into the map mesh (SectionLayer_IsoRimBodies); only the body sprite is held back, and
+            // the flat sprites that would double what the model shows (an open casket's lid, the
+            // fire over a torch whose model has its own flame).
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(ThingDrawAt_Prefix));
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompEmptyStateGraphic), "PostDraw"),
+                prefix: nameof(EmptyStatePostDraw_Prefix));
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompFireOverlay), "PostDraw"),
+                prefix: nameof(FireOverlayPostDraw_Prefix), finalizer: nameof(FireOverlayPostDraw_Finalizer));
+
             // Turret guns: a 3D gun turning on its 3D base.
             Type turretTop = AccessTools.TypeByName("RimWorld.TurretTop");
             if (turretTop != null)
@@ -1145,6 +1156,11 @@ namespace IsoRim
                         // A door makes (or unmakes) a room: the walls and rock in front of it may change.
                         MapSections.QueueAround(map, t.Position, WallBoxes.RockReach + 1, typeof(SectionLayer_IsoRimWalls), true);
                     }
+                    if (SectionLayer_IsoRimBodies.Handles(t))
+                    {
+                        // The game does not redraw the map mesh for things it draws every frame.
+                        MapSections.QueueAround(map, t.Position, 0, typeof(SectionLayer_IsoRimBodies), true);
+                    }
                     if (Forms.For(t.def).form == Form3D.Block)
                     {
                         // Its own block and the ones beside it: a neighbour's side shows or hides.
@@ -1516,6 +1532,54 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Drawing a door failed: " + e, 93611017);
                 return true;
+            }
+        }
+
+        public static bool ThingDrawAt_Prefix(Thing __instance)
+        {
+            try
+            {
+                if (__instance.def.drawerType == DrawerType.RealtimeOnly)
+                {
+                    bool held = SectionLayer_IsoRimBodies.StandsIn(__instance);
+                    if (Probe.On)
+                    {
+                        Probe.CountBody(__instance, held);
+                    }
+                    if (held)
+                    {
+                        SectionLayer_IsoRimBodies.Track(__instance);
+                        return false;   // the baked model stands in for the body sprite
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Checking a building's 3D model failed: " + e, 93611022);
+            }
+            return true;
+        }
+
+        public static bool EmptyStatePostDraw_Prefix(ThingComp __instance)
+        {
+            return __instance.parent == null || !SectionLayer_IsoRimBodies.StandsIn(__instance.parent);
+        }
+
+        public static void FireOverlayPostDraw_Prefix(ThingComp __instance, out bool __state)
+        {
+            __state = false;
+            if (__instance.parent != null && !DrawHook.skip && SectionLayer_IsoRimBodies.FlameStandsIn(__instance.parent))
+            {
+                __state = true;
+                DrawHook.skip = true;   // the fire sprite goes through DrawHook (Graphic draws are redirected)
+            }
+        }
+
+        public static void FireOverlayPostDraw_Finalizer(bool __state)
+        {
+            if (__state)
+            {
+                DrawHook.skip = false;
             }
         }
 

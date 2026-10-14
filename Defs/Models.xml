@@ -27,7 +27,7 @@
          <builtFor>(3, 2)</builtFor>         the footprint the model was made for; stretched to fit the thing
          <topModel>Models/x.obj</topModel> <topHeight>0.6</topHeight>   a turret's turning gun
        <match><li>Wreck</li></match> in place of <thingDef> covers every building or item whose
-       name contains one of these and that has no entry of its own (first match wins).
+       name has one of these as a whole word (Car: AncientCar, not AncientCardboardBox) and that has no entry of its own (first match wins).
        <fallback>SmallPlants</fallback> in place of <thingDef> covers every plant that is
        not a tree and has no entry of its own.
        Animals (<animal>true</animal>, <thingDef> is the animal's race): <model> is the body,
@@ -1946,6 +1946,26 @@
     <scaleJitter>0.12</scaleJitter>
   </IsoRim.ModelDef>
 
+  <!-- Name matching (<match> below) picks the first entry with a word of the defName; these
+       entries of their own keep a few things away from a wrong one. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientRustedCarFrame</defName>
+    <thingDef>AncientRustedCarFrame</thingDef>
+    <model>Models/wreck_car_frame.obj</model>
+    <surfaceHeight>0.00</surfaceHeight>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_NoMatch_AncientTankTrap</defName>
+    <thingDef>AncientTankTrap</thingDef>   <!-- an anti-tank obstacle, not a tank: automatic shape -->
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_NoMatch_ScrapCubeSculpture</defName>
+    <thingDef>ScrapCubeSculpture</thingDef>   <!-- a sculpture like the other cube sculptures, not scrap: automatic shape -->
+  </IsoRim.ModelDef>
+
   <IsoRim.ModelDef>
     <defName>R3D_Match_194_wreck_car</defName>
     <match>
@@ -1984,6 +2004,7 @@
     <defName>R3D_Match_197_wreck_truck</defName>
     <match>
       <li>Truck</li>
+      <li>Chemtruck</li>
       <li>Lorry</li>
       <li>Hauler</li>
     </match>

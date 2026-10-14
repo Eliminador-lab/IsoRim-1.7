@@ -1585,6 +1585,18 @@ namespace IsoRim
             return m;
         }
 
+        // Whether Campfire draws 3D flames over this thing now (its flat fire sprite is then left out).
+        public static bool DrawsFlamesFor(Thing fire)
+        {
+            IsoRimSettings st = IsoRimMod.Settings;
+            if (!st.effects3D || !st.models3D || fire == null || fire.def.defName != "Campfire" || fire.Map != Find.CurrentMap || flame == null && tried)
+            {
+                return false;
+            }
+            ModelEntry entry;
+            return ModelLibrary.TryGet(fire.def, out entry) && entry.HasModel;
+        }
+
         private static void Campfire(Thing fire, float t, float wind)
         {
             ModelEntry entry;

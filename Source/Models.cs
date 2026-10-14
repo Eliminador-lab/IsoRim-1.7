@@ -49,8 +49,8 @@ namespace IsoRim
         public float outline = 1f;          // how bold the dark outline is; 0 for none
         public bool linked = false;         // the first model stands in the cell; the second is added toward each neighbour it joins
 
-        // Matching by name: every building or item whose defName contains any of these (ignoring
-        // case) and that has no entry of its own or of its category. Used for the wrecks and junk
+        // Matching by name: every building or item whose defName has one of these as a whole word or
+        // run of words (ignoring case, plural allowed; see ModelLibrary.NameMatches) and that has no entry of its own or of its category. Used for the wrecks and junk
         // that other content scatters over maps, whose exact names vary.
         public List<string> match;
         public Vector2 builtFor = Vector2.zero; // the footprint (x, z) in cells the model was built for; it is stretched to the thing's real size
@@ -258,6 +258,7 @@ namespace IsoRim
         public bool leaf;        // left out while a tree is bare
         public bool twig;        // only drawn while a tree is bare (fine branches the leaves would hide)
         public bool glow;        // gives off its own light (flames, embers, lamps): never shaded
+        public bool fire;        // a flame or embers: left out while the thing's fire is out
     }
 
     public class ModelEntry
@@ -334,10 +335,50 @@ namespace IsoRim
     {
         private static readonly Dictionary<ThingDef, ModelEntry> byThing = new Dictionary<ThingDef, ModelEntry>();
         private static readonly Dictionary<string, Model> byPath = new Dictionary<string, Model>();
+        private static readonly Dictionary<ThingDef, string> how = new Dictionary<ThingDef, string>();
 
         public static bool TryGet(ThingDef def, out ModelEntry entry)
         {
             return byThing.TryGetValue(def, out entry);
+        }
+
+        // How a thing got its entry: "thingDef", "category:<name>", "match:<name part>" or
+        // "fallback:SmallPlants"; null if it has none (for the harness's model sweep).
+        public static string HowBound(ThingDef def)
+        {
+            string h;
+            return how.TryGetValue(def, out h) ? h : null;
+        }
+
+        // Whether a <match> name part names a word (or run of words) of the defName: it must start
+        // where a capitalised word starts and end where one ends, ignoring case. "Car" finds
+        // AncientCar and RustedCarWreck but not AncientCardboardBox; "APC" finds AncientAPC but not
+        // ScrapCubeSculpture. Plain substring matching put a car wreck in place of a cardboard box.
+        public static bool NameMatches(string defName, string part)
+        {
+            if (defName.NullOrEmpty() || part.NullOrEmpty())
+            {
+                return false;
+            }
+            int from = 0;
+            while (true)
+            {
+                int at = defName.IndexOf(part, from, StringComparison.OrdinalIgnoreCase);
+                if (at < 0)
+                {
+                    return false;
+                }
+                int end = at + part.Length;
+                bool starts = at == 0 || !char.IsLetter(defName[at - 1]) || char.IsUpper(defName[at]);
+                // A plural counts too: "AncientPipe" finds AncientPipes.
+                bool ends = end == defName.Length || !char.IsLower(defName[end])
+                    || (defName[end] == 's' && (end + 1 == defName.Length || !char.IsLower(defName[end + 1])));
+                if (starts && ends)
+                {
+                    return true;
+                }
+                from = at + 1;
+            }
         }
 
         // Loads a model file once; null if it is missing or unreadable.
@@ -417,6 +458,7 @@ namespace IsoRim
                 if (thing != null)
                 {
                     byThing[thing] = MakeEntry(md);
+                    how[thing] = "thingDef";
                 }
             }
 
@@ -444,6 +486,7 @@ namespace IsoRim
                         entry = MakeEntry(md);
                     }
                     byThing[thing] = entry;
+                    how[thing] = "category:" + md.thingCategory;
                 }
             }
 
@@ -463,12 +506,15 @@ namespace IsoRim
                     {
                         continue;
                     }
-                    bool hit = false;
-                    for (int k = 0; k < md.match.Count && !hit; k++)
+                    string hit = null;
+                    for (int k = 0; k < md.match.Count && hit == null; k++)
                     {
-                        hit = !md.match[k].NullOrEmpty() && thing.defName.IndexOf(md.match[k], StringComparison.OrdinalIgnoreCase) >= 0;
+                        if (NameMatches(thing.defName, md.match[k]))
+                        {
+                            hit = md.match[k];
+                        }
                     }
-                    if (!hit)
+                    if (hit == null)
                     {
                         continue;
                     }
@@ -477,6 +523,7 @@ namespace IsoRim
                         entry = MakeEntry(md);
                     }
                     byThing[thing] = entry;
+                    how[thing] = "match:" + hit;
                 }
             }
 
@@ -505,6 +552,7 @@ namespace IsoRim
                         entry = MakeEntry(md);
                     }
                     byThing[thing] = entry;
+                    how[thing] = "fallback:SmallPlants";
                 }
             }
 
@@ -717,6 +765,7 @@ namespace IsoRim
             mat.twig = name.StartsWith("twig", StringComparison.OrdinalIgnoreCase);
             mat.glow = name.StartsWith("flame", StringComparison.OrdinalIgnoreCase) || name.StartsWith("glow", StringComparison.OrdinalIgnoreCase)
                 || name.StartsWith("ember", StringComparison.OrdinalIgnoreCase);
+            mat.fire = name.StartsWith("flame", StringComparison.OrdinalIgnoreCase) || name.StartsWith("ember", StringComparison.OrdinalIgnoreCase);
             mat.color = mat.tinted ? Color.white : DefaultColor;
             materials.Add(mat);
             materialIndex[name] = materials.Count - 1;

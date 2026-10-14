@@ -36,6 +36,13 @@ namespace IsoRim
     //                                (SpriteSweep; writes IsoRimSpriteSweep.tsv/.txt, IsoRimSpriteColours.tsv)
     //   spritestats=1                logs the sprite sampling counters (time, reads, cache size)
     //   itemsheet=k,x0,z0,cols,rows  lays batch k of the extruded items out in a grid (contact sheets)
+    //   modelsweep=1                 lists the 3D form, model entry and drawing of every vanilla/DLC def
+    //                                (ModelSweep; writes IsoRimModelSweep.tsv/.txt)
+    //   perf=N[,label]               logs frame times (median, mean, p95) and IsoRim's tick over the next N frames,
+    //                                with the realtime building bodies the game drew / IsoRim held back per frame
+    //   uncap=1                      lifts the game's frame cap (Application.targetFrameRate) for perf
+    //   fuel=x,z,0|1                 the refuelable building in the cell emptied or filled
+    //   casket=x,z,0|1               the casket in the cell emptied, or given a new colonist to hold
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
     //                                roof, fertility, areas) are drawn in the shots; overlay=home
     //                                shows the home area
@@ -279,6 +286,62 @@ namespace IsoRim
                 case "spritesweep":
                     SpriteSweep.Run();
                     break;
+                case "perf":
+                    PerfHooks();
+                    perfLeft = I(a[0]);
+                    perfLabel = a.Length > 1 ? a[1] : "";
+                    perfDt.Clear();
+                    perfTick.Clear();
+                    perfUpdate.Clear();
+                    perfDynamic.Clear();
+                    perfMesh.Clear();
+                    bodiesDrawn = 0;
+                    bodiesHeld = 0;
+                    break;
+                case "uncap":
+                    Application.targetFrameRate = a[0] == "1" ? 1000 : Mathf.RoundToInt((float)Screen.currentResolution.refreshRateRatio.value);
+                    break;
+                case "modelsweep":
+                    ModelSweep.Run();
+                    break;
+                case "fuel":
+                {
+                    Building b = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompRefuelable fuel = b != null ? b.TryGetComp<CompRefuelable>() : null;
+                    if (fuel == null)
+                    {
+                        Log.Warning("[IsoRim probe] no refuelable building at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    if (a[2] == "0")
+                    {
+                        fuel.ConsumeFuel(fuel.Fuel);
+                    }
+                    else
+                    {
+                        fuel.Refuel(fuel.Props.fuelCapacity - fuel.Fuel);
+                    }
+                    break;
+                }
+                case "casket":
+                {
+                    Building_Casket casket = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_Casket;
+                    if (casket == null)
+                    {
+                        Log.Warning("[IsoRim probe] no casket at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    if (a[2] == "0")
+                    {
+                        casket.GetDirectlyHeldThings().ClearAndDestroyContents();
+                    }
+                    else if (!casket.HasAnyContents)
+                    {
+                        Pawn p = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+                        casket.TryAcceptThing(p, false);
+                    }
+                    break;
+                }
                 case "spritestats":
                     SpriteSweep.Stats();
                     break;
@@ -332,6 +395,137 @@ namespace IsoRim
         }
 
         private static bool uiPatched;
+
+        private static int perfLeft;
+        private static string perfLabel;
+        private static readonly List<float> perfDt = new List<float>();
+        private static readonly List<float> perfTick = new List<float>();
+        private static readonly List<float> perfUpdate = new List<float>();
+        private static readonly List<float> perfDynamic = new List<float>();
+        private static readonly List<float> perfMesh = new List<float>();
+        private static double updMs, dynMs, meshMs;
+        private static long updStart, dynStart, meshStart;
+        private static bool perfHooked;
+
+        // CPU time of the game's whole frame update (Root_Play.Update), of the per-frame thing drawing
+        // (DynamicDrawManager.DrawDynamicThings) and of the map mesh drawing (MapDrawer.DrawMapMesh):
+        // the frame time itself is held at the screen's refresh rate by the swapchain.
+        private static void PerfHooks()
+        {
+            if (perfHooked)
+            {
+                return;
+            }
+            perfHooked = true;
+            Harmony h = new Harmony("peren.isorim17.probeperf");
+            h.Patch(AccessTools.Method(typeof(Root_Play), "Update"), new HarmonyMethod(typeof(Probe), nameof(UpdBegin)), new HarmonyMethod(typeof(Probe), nameof(UpdEnd)));
+            h.Patch(AccessTools.Method(typeof(DynamicDrawManager), "DrawDynamicThings"), new HarmonyMethod(typeof(Probe), nameof(DynBegin)), new HarmonyMethod(typeof(Probe), nameof(DynEnd)));
+            h.Patch(AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"), new HarmonyMethod(typeof(Probe), nameof(MeshBegin)), new HarmonyMethod(typeof(Probe), nameof(MeshEnd)));
+        }
+
+        public static void UpdBegin() { updStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
+        public static void UpdEnd() { updMs += (System.Diagnostics.Stopwatch.GetTimestamp() - updStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+        public static void DynBegin() { dynStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
+        public static void DynEnd() { dynMs += (System.Diagnostics.Stopwatch.GetTimestamp() - dynStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+        public static void MeshBegin() { meshStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
+        public static void MeshEnd() { meshMs += (System.Diagnostics.Stopwatch.GetTimestamp() - meshStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+
+        // The realtime-body layer's meshes over the whole map: sections holding any, draws (sub-meshes), vertices.
+        private static string BodyMeshes()
+        {
+            Map map = Find.CurrentMap;
+            Array secs = map != null ? MapSections.SectionsOf(map) : null;
+            MethodInfo gl = AccessTools.Method(AccessTools.TypeByName("Verse.Section"), "GetLayer", new[] { typeof(Type) });
+            int sections = 0, subs = 0, verts = 0;
+            if (secs != null && gl != null)
+            {
+                foreach (object s in secs)
+                {
+                    SectionLayer l = gl.Invoke(s, new object[] { typeof(SectionLayer_IsoRimBodies) }) as SectionLayer;
+                    if (l == null)
+                    {
+                        continue;
+                    }
+                    int before = subs;
+                    foreach (LayerSubMesh sm in l.subMeshes)
+                    {
+                        if (sm.finalized && sm.mesh != null && sm.mesh.vertexCount > 0)
+                        {
+                            subs++;
+                            verts += sm.mesh.vertexCount;
+                        }
+                    }
+                    if (subs > before)
+                    {
+                        sections++;
+                    }
+                }
+            }
+            return "body layer: " + sections + " sections, " + subs + " sub-meshes, " + verts + " vertices";
+        }
+
+        private static float Median(List<float> l)
+        {
+            List<float> c = new List<float>(l);
+            c.Sort();
+            return c.Count > 0 ? c[c.Count / 2] : 0f;
+        }
+
+        private static int bodiesDrawn;
+        private static int bodiesHeld;
+
+        // Called by Patches.ThingDrawAt_Prefix for every realtime building body (harness counter;
+        // only things with a hand-made model count).
+        public static void CountBody(Thing t, bool held)
+        {
+            ModelEntry e;
+            if (perfLeft > 0 && ModelLibrary.TryGet(t.def, out e) && e.HasModel)
+            {
+                if (held)
+                {
+                    bodiesHeld++;
+                }
+                else
+                {
+                    bodiesDrawn++;
+                }
+            }
+        }
+
+        private static void PerfFrame(float dt, float tickMs)
+        {
+            if (perfLeft <= 0)
+            {
+                updMs = dynMs = meshMs = 0;
+                return;
+            }
+            perfDt.Add(dt);
+            perfTick.Add(tickMs);
+            perfUpdate.Add((float)updMs);
+            perfDynamic.Add((float)dynMs);
+            perfMesh.Add((float)meshMs);
+            updMs = dynMs = meshMs = 0;
+            if (--perfLeft > 0)
+            {
+                return;
+            }
+            int n = perfDt.Count;
+            List<float> d = new List<float>(perfDt);
+            d.Sort();
+            List<float> k = new List<float>(perfTick);
+            k.Sort();
+            float mean = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                mean += d[i];
+            }
+            mean /= n;
+            Log.Message("[IsoRim probe] perf " + perfLabel + ": " + n + " frames, frame median " + d[n / 2].ToString("0.00") + " ms, mean "
+                + mean.ToString("0.00") + ", p95 " + d[Mathf.Min(n - 1, (int)(n * 0.95f))].ToString("0.00") + ", IsoRim tick median "
+                + k[n / 2].ToString("0.000") + " ms; CPU medians: frame update " + Median(perfUpdate).ToString("0.000") + " ms, dynamic things "
+                + Median(perfDynamic).ToString("0.000") + " ms, map mesh " + Median(perfMesh).ToString("0.000") + " ms; modelled realtime bodies per frame: game drew " + (bodiesDrawn / (float)n).ToString("0.0")
+                + ", held back " + (bodiesHeld / (float)n).ToString("0.0") + "; " + BodyMeshes() + "; 3D " + View3D.Active + ", targetFrameRate " + Application.targetFrameRate);
+        }
 
         public static void OverlaysOn()
         {

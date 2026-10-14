@@ -1,0 +1,165 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using RimWorld;
+using Verse;
+
+namespace IsoRim
+{
+    // Harness only (probe key modelsweep=1): for every vanilla and DLC building, plant and item,
+    // which 3D form IsoRim gives it, which model entry it has and how that entry was found, and
+    // what draws it. Writes IsoRimModelSweep.tsv (one row per def) and IsoRimModelSweep.txt (counts
+    // and the flagged rows) to the save data folder. Flags:
+    //   NOT_DRAWN      has a hand-made model, but nothing draws it (the sprite shows instead)
+    //   MISSING_FILE   has an entry naming a model file that did not load
+    //   NAME_CHANGED   the <match> rule picks a different entry than plain substring matching did
+    //                  (oldMatch / newMatch columns), e.g. AncientCardboardBox once took AncientCar
+    //   REALTIME       drawn by the game every frame (drawerType RealtimeOnly) and has a model
+    //   ITEM_ART       an item with a model entry that is made from its sprite instead (setting
+    //                  "Items and weapons use the game's art"); by design, listed for completeness
+    // Never runs in normal play (Probe.On needs dev mode, -isorim3d and a probe file).
+    public static class ModelSweep
+    {
+        public static void Run()
+        {
+            IsoRimSettings st = IsoRimMod.Settings;
+            List<ModelDef> modelDefs = DefDatabase<ModelDef>.AllDefsListForReading;
+            StringBuilder tsv = new StringBuilder();
+            tsv.Append("defName\tpack\tcategory\tthingClass\tdrawerType\tform\theight\tentry\thow\tmodelFile\thasModel\tdrawnBy\toldMatch\tnewMatch\tflags\n");
+            Dictionary<string, int> counts = new Dictionary<string, int>();
+            Dictionary<string, int> forms = new Dictionary<string, int>();
+            List<string> flagged = new List<string>();
+            int rows = 0;
+
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs.OrderBy(d => d.defName))
+            {
+                if (def.modContentPack == null || !def.modContentPack.IsOfficialMod || def.IsBlueprint || def.IsFrame
+                    || (def.category != ThingCategory.Building && def.category != ThingCategory.Plant && def.category != ThingCategory.Item))
+                {
+                    continue;
+                }
+                rows++;
+                ThingForm form = Forms.For(def);
+                ModelEntry entry;
+                bool listed = ModelLibrary.TryGet(def, out entry);
+                string how = ModelLibrary.HowBound(def);
+                bool hasModel = listed && entry.HasModel;
+                bool flat = listed && entry.def.flat;
+                string file = listed ? (entry.def.model ?? (entry.def.models != null ? string.Join(",", entry.def.models) : "")) : "";
+
+                string drawnBy = "sprite";
+                if (form.form == Form3D.Model)
+                {
+                    drawnBy = def.drawerType == DrawerType.RealtimeOnly ? "model (realtime body layer)" : "model (map mesh)";
+                }
+                else if (form.form != Form3D.Flat)
+                {
+                    drawnBy = form.form.ToString().ToLowerInvariant();
+                }
+                bool door = typeof(Building_Door).IsAssignableFrom(def.thingClass) && def.size.x == 1 && def.size.z == 1 && st.doors3D;
+                if (door)
+                {
+                    drawnBy = "Doors.Draw";
+                }
+
+                // Which name entry the <match> lists pick, with the old substring rule and with the
+                // current word rule (only for things with no entry of their own or of a category).
+                string oldMatch = "", newMatch = "";
+                bool nameScope = (how == null || how.StartsWith("match:")) && def.category != ThingCategory.Plant;
+                if (nameScope)
+                {
+                    oldMatch = FirstMatch(modelDefs, def.defName, true);
+                    newMatch = FirstMatch(modelDefs, def.defName, false);
+                }
+
+                List<string> flags = new List<string>();
+                bool item = def.category == ThingCategory.Item;
+                bool plantOff = def.category == ThingCategory.Plant
+                    && (def.plant != null && def.plant.IsTree ? !st.trees3D : !st.smallPlants3D);
+                if (hasModel && !flat && form.form != Form3D.Model && !door && st.models3D && !plantOff)
+                {
+                    if (item && st.itemsFromArt && !Forms.IsChunk(def))
+                    {
+                        flags.Add("ITEM_ART");
+                    }
+                    else
+                    {
+                        flags.Add("NOT_DRAWN");
+                    }
+                }
+                if (listed && !hasModel && (!entry.def.model.NullOrEmpty() || entry.def.models != null))
+                {
+                    flags.Add("MISSING_FILE");
+                }
+                if (oldMatch != newMatch)
+                {
+                    flags.Add("NAME_CHANGED");
+                }
+                if (hasModel && def.drawerType == DrawerType.RealtimeOnly)
+                {
+                    flags.Add("REALTIME");
+                }
+
+                string formName = form.form.ToString();
+                forms[formName] = (forms.TryGetValue(formName, out int fc) ? fc : 0) + 1;
+                foreach (string f in flags)
+                {
+                    counts[f] = (counts.TryGetValue(f, out int c) ? c : 0) + 1;
+                }
+                string line = def.defName + "\t" + def.modContentPack.PackageId + "\t" + def.category + "\t" + (def.thingClass != null ? def.thingClass.Name : "")
+                    + "\t" + def.drawerType + "\t" + formName + "\t" + form.height.ToString("0.00") + "\t" + (listed ? entry.def.defName : "")
+                    + "\t" + (how ?? "") + "\t" + file + "\t" + (hasModel ? "1" : "0") + "\t" + drawnBy + "\t" + oldMatch + "\t" + newMatch
+                    + "\t" + string.Join(",", flags) + "\n";
+                tsv.Append(line);
+                if (flags.Count > 0 && !(flags.Count == 1 && flags[0] == "ITEM_ART"))
+                {
+                    flagged.Add(line);
+                }
+            }
+
+            StringBuilder txt = new StringBuilder();
+            txt.Append("IsoRim model sweep, vanilla + DLC buildings/plants/items: ").Append(rows).Append(" defs\n");
+            txt.Append("settings: models3D=").Append(st.models3D).Append(" itemsFromArt=").Append(st.itemsFromArt)
+                .Append(" trees3D=").Append(st.trees3D).Append(" smallPlants3D=").Append(st.smallPlants3D).Append(" doors3D=").Append(st.doors3D).Append('\n');
+            txt.Append("forms: ").Append(string.Join(", ", forms.OrderBy(p => p.Key).Select(p => p.Key + " " + p.Value))).Append('\n');
+            txt.Append("flags: ").Append(string.Join(", ", counts.OrderBy(p => p.Key).Select(p => p.Key + " " + p.Value))).Append('\n');
+            txt.Append("\nflagged rows (ITEM_ART-only rows left out):\n");
+            foreach (string l in flagged)
+            {
+                txt.Append(l);
+            }
+            string dir = GenFilePaths.SaveDataFolderPath;
+            File.WriteAllText(Path.Combine(dir, "IsoRimModelSweep.tsv"), tsv.ToString());
+            File.WriteAllText(Path.Combine(dir, "IsoRimModelSweep.txt"), txt.ToString());
+            Log.Message("[IsoRim probe] model sweep: " + rows + " defs; forms " + string.Join(", ", forms.Select(p => p.Key + " " + p.Value))
+                + "; flags " + string.Join(", ", counts.Select(p => p.Key + " " + p.Value)));
+        }
+
+        // The first name entry whose <match> list names this defName (same order as ModelLibrary).
+        private static string FirstMatch(List<ModelDef> all, string defName, bool substring)
+        {
+            for (int i = 0; i < all.Count; i++)
+            {
+                ModelDef md = all[i];
+                if (md.match == null)
+                {
+                    continue;
+                }
+                for (int k = 0; k < md.match.Count; k++)
+                {
+                    string part = md.match[k];
+                    bool hit = substring
+                        ? !part.NullOrEmpty() && defName.IndexOf(part, StringComparison.OrdinalIgnoreCase) >= 0
+                        : ModelLibrary.NameMatches(defName, part);
+                    if (hit)
+                    {
+                        return md.defName + ":" + part;
+                    }
+                }
+            }
+            return "";
+        }
+    }
+}

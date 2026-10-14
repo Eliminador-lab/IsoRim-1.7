@@ -560,6 +560,173 @@ namespace IsoRim
         }
     }
 
+    // ------------------------------------------------------------------ realtime bodies
+
+    // Buildings the game draws every frame instead of printing into the map mesh (drawerType
+    // RealtimeOnly: campfire, torches, passive cooler, cryptosleep caskets) never reach
+    // TakePrintFrom, so their hand-made model is baked here instead, the same way as any other
+    // furniture (ModelBaker: outline, ground shading, stuff colour, wall mounting). The game goes
+    // on drawing everything else about them every frame (flames, status icons, comps); only the
+    // body sprite is held back while the model stands in (see Patches.ThingDrawAt_Prefix).
+    public class SectionLayer_IsoRimBodies : SectionLayer
+    {
+        // Things whose model is in a built mesh now, with whether its flames were left in.
+        private static readonly Dictionary<int, bool> baked = new Dictionary<int, bool>();
+
+        public SectionLayer_IsoRimBodies(Section section) : base(section)
+        {
+            MapSections.SetChangeFlags(this, "Things", "Buildings", "FogOfWar");
+        }
+
+        public override bool Visible
+        {
+            get { return View3D.Ready; }
+        }
+
+        public static bool Handles(Thing t)
+        {
+            return t != null && t.def != null && t.def.drawerType == DrawerType.RealtimeOnly && t.Spawned && View3D.Active
+                && !(t is Pawn) && Forms.For(t.def).form == Form3D.Model;
+        }
+
+        // True while the model stands in for this thing's body sprite.
+        public static bool StandsIn(Thing t)
+        {
+            return View3D.Ready && Handles(t) && baked.ContainsKey(t.thingIDNumber);
+        }
+
+        // Flames and embers burn while there is fuel, as the game's own fire overlay does.
+        public static bool Lit(Thing t)
+        {
+            CompRefuelable fuel = t.TryGetComp<CompRefuelable>();
+            return fuel == null || fuel.HasFuel;
+        }
+
+        // Every frame the body is held back: rebuilds the block once the fire goes out or is lit.
+        public static void Track(Thing t)
+        {
+            bool was;
+            if (!baked.TryGetValue(t.thingIDNumber, out was))
+            {
+                return;
+            }
+            ModelEntry entry = Forms.For(t.def).model;
+            if (entry == null || !HasFire(entry))
+            {
+                return;
+            }
+            bool lit = Lit(t);
+            if (lit != was)
+            {
+                baked[t.thingIDNumber] = lit;
+                MapSections.QueueAround(t.Map, t.Position, 0, typeof(SectionLayer_IsoRimBodies), true);
+            }
+        }
+
+        // Whether the model carries its own flames (torches) or embers (campfire).
+        public static bool HasFire(ModelEntry entry)
+        {
+            if (entry == null || !entry.HasModel)
+            {
+                return false;
+            }
+            for (int v = 0; v < entry.variants.Length; v++)
+            {
+                Model m = entry.variants[v];
+                if (m != null && m.materials != null)
+                {
+                    for (int i = 0; i < m.materials.Length; i++)
+                    {
+                        if (m.materials[i].fire)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Whether the game's flat fire sprite over this thing is left out: a 3D flame stands in for
+        // it (the model's own, or the campfire's flames from Effects).
+        public static bool FlameStandsIn(Thing t)
+        {
+            if (!StandsIn(t))
+            {
+                return false;
+            }
+            ModelEntry entry = Forms.For(t.def).model;
+            bool ownFlame = false;
+            if (entry != null && entry.HasModel)
+            {
+                for (int v = 0; v < entry.variants.Length && !ownFlame; v++)
+                {
+                    Model m = entry.variants[v];
+                    if (m != null && m.materials != null)
+                    {
+                        for (int i = 0; i < m.materials.Length; i++)
+                        {
+                            if (m.materials[i].fire && m.materials[i].name.StartsWith("flame", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ownFlame = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return ownFlame || Effects.DrawsFlamesFor(t);
+        }
+
+        public override void Regenerate()
+        {
+            ClearSubMeshes(MeshParts.All);
+            if (!View3D.Active)
+            {
+                return;
+            }
+            try
+            {
+                Map map = Map;
+                foreach (IntVec3 c in section.CellRect)
+                {
+                    List<Thing> things = map.thingGrid.ThingsListAtFast(c);
+                    for (int i = 0; i < things.Count; i++)
+                    {
+                        Thing t = things[i];
+                        if (t.Position != c || !Handles(t))
+                        {
+                            continue;
+                        }
+                        baked.Remove(t.thingIDNumber);
+                        if (!t.def.seeThroughFog && map.fogGrid.IsFogged(c))
+                        {
+                            continue;   // as the game leaves fogged things out of the map mesh
+                        }
+                        bool lit = Lit(t);
+                        ModelBaker.NoFire = !lit;
+                        try
+                        {
+                            if (ModelBaker.Bake(this, t, Forms.For(t.def).model, 0f))
+                            {
+                                baked[t.thingIDNumber] = lit;
+                            }
+                        }
+                        finally
+                        {
+                            ModelBaker.NoFire = false;
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing realtime buildings failed: " + e, 93611114);
+            }
+            FinalizeMesh(MeshParts.All);
+        }
+    }
+
     // ------------------------------------------------------------------ roofs
 
     // Roofs as solid lids at the top of the walls, switched on and off as a whole with the button in
