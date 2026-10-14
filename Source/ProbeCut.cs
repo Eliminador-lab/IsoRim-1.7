@@ -7,7 +7,8 @@ namespace IsoRim
 {
     // Harness-only keys for the cut-away (Cutaway reads the real mouse, which the harness cannot move):
     //   cutptr=x,z | cutptr=off        the cut-away's pointer is at that ground point (cells) from now on, or back to the mouse
-    //   cutsweep=x0,z0,dx,dz,frames    the cut-away's pointer starts at (x0, z0) and moves (dx, dz) every frame for that many
+    //   cutsweep=x0,z0,dx,dz,steps[,every]  the cut-away's pointer starts at (x0, z0) and moves (dx, dz) every frame (or every
+    //                                  that many frames) for that many steps
     //                                  frames, then stays; every frame logs "[IsoRim probe] cutframe k ..." with the pointer and
     //                                  the cut-away's own work that frame (Cutaway.TrackPointer + the cell texture update)
     //   cutfade=seconds                (shader cut-away) how long a cell takes to go down or come back up
@@ -19,6 +20,7 @@ namespace IsoRim
         private static int sweepLeft;
         private static int sweepFrame = -1;
         private static Vector3 sweepStep;
+        private static int sweepEvery = 1;
         private static bool cutMark = true;
         private static double cellMs;
         private static readonly List<double> sweepCost = new List<double>();
@@ -49,6 +51,7 @@ namespace IsoRim
                     CutPointer = new Vector3(F(a[0]), 0f, F(a[1]));
                     sweepStep = new Vector3(F(a[2]), 0f, F(a[3]));
                     sweepLeft = Math.Max(1, I(a[4]));
+                    sweepEvery = a.Length > 5 ? Math.Max(1, I(a[5])) : 1;
                     sweepFrame = 0;
                     sweepCost.Clear();
                     return true;
@@ -68,7 +71,7 @@ namespace IsoRim
         // Every frame, before IsoRim's own work (from Sticky): moves the swept pointer.
         private static void CutTick()
         {
-            if (sweepFrame > 0 && sweepLeft > 0)
+            if (sweepFrame > 0 && sweepLeft > 0 && sweepFrame % sweepEvery == 0)
             {
                 CutPointer += sweepStep;
                 sweepLeft--;
