@@ -108,13 +108,17 @@ namespace IsoRim
         // restraint chains are fixed to. Each chain runs from the ring nearest the game's own end point on
         // the platform up to the held entity (or across it, ring to ring, for an entity with no points of its own).
         public List<Vector3> chainAnchors;
-        // Outfit stands (Stands.cs): headModel is the stand's head, drawn only while no worn headgear hides
-        // the head (as the game). The apparel and weapon the stand shows are the game's own sprites, stood
-        // upright facing the camera: the body's at apparelHeight, the headgear's at apparelHeadHeight (cells),
-        // both apparelScale times the game's size.
+        // Outfit stands (Stands.cs): headModel is the stand's head, drawn only while no worn apparel hides
+        // the head (as the game). The clothes are a 3D colonist's clothing parts, the body's scaled by
+        // dressScale and raised by dressRise (model space), the hat's scaled by dressHeadScale and centred on
+        // dressHeadCentre (the height of the middle of the stand's head). Clothing with no 3D part is the
+        // game's sprite, stood upright facing the camera at apparelHeight, apparelScale times the game's size.
         public string headModel;
+        public Vector3 dressScale = Vector3.one;
+        public float dressRise = 0f;
+        public float dressHeadScale = 1f;
+        public float dressHeadCentre = 1f;
         public float apparelHeight = 0.85f;
-        public float apparelHeadHeight = 1.4f;
         public float apparelScale = 1f;
         // Things made of several OBJ files that stay together: parts are merged into model when loaded (an
         // ancient stockpile hatch's frame, cover and readout; the stockpile exit's frame and ladder).

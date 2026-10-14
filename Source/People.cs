@@ -20,9 +20,11 @@ namespace IsoRim
     public static class People
     {
         // What one person looks like. Worked out from the pawn now and then, not every frame.
-        private class Look
+        internal class Look
         {
             public int frame;
+            public bool upperWorn;   // some clothing covers the upper body (the shirt part shows it)
+            public bool lowerWorn;   // and the legs
             public float size = 1f;
             public float headWide = 1f;
             public float shoulders = 1f;
@@ -400,33 +402,14 @@ namespace IsoRim
             Pawn_StoryTracker story = pawn.story;
 
             // Build.
-            string bodyName = story.bodyType != null ? (story.bodyType.defName ?? "") : "";
-            string build = "male";
-            if (Has(bodyName, "Female"))
-            {
-                build = "female";
-            }
-            else if (Has(bodyName, "Thin") || Has(bodyName, "Child"))
-            {
-                build = "thin";
-            }
-            else if (Has(bodyName, "Hulk"))
-            {
-                build = "hulk";
-            }
-            else if (Has(bodyName, "Fat") || Has(bodyName, "Baby"))
-            {
-                build = "fat";
-            }
-            look.shoulders = build == "hulk" ? 1.36f : (build == "male" || build == "fat" ? 1f : 0.84f);
+            string build = BuildOf(story.bodyType);
+            look.shoulders = Shoulders(build);
             float grown = 1f;
             if (pawn.ageTracker != null && pawn.ageTracker.CurLifeStage != null)
             {
                 grown = pawn.ageTracker.CurLifeStage.bodySizeFactor;
             }
             look.size = Mathf.Lerp(0.5f, 1f, Mathf.Clamp01(grown));
-            look.lower = Part("person_" + build + "_lower");
-            look.upper = Part("person_" + build + "_upper");
 
             // Head, hair and beard.
             string headName = story.headType != null ? (story.headType.defName ?? "") : "";
@@ -444,10 +427,63 @@ namespace IsoRim
                 }
             }
 
+            string hatKind = Dress(look, build, pawn.apparel != null ? pawn.apparel.WornApparel : null, look.skin, null);
+
+            // Hair shows unless a helmet or hood covers the whole head; under a hat only hair that
+            // hangs below it shows.
+            bool covered = hatKind == "helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
+            bool hangs = hairKind == "long" || hairKind == "medium" || hairKind == "ponytail" || hairKind == "short";
+            if (hairKind != null && !covered && (hatKind == null || hangs))
+            {
+                look.hair = Part("person_hair_" + hairKind);
+            }
+            if (beardKind != null && !SealedHelmet(hatKind))
+            {
+                look.beard = Part("person_beard_" + beardKind);
+            }
+            return look;
+        }
+
+        // The mod's body shape ("male", "female", "thin", "hulk", "fat") for one of the game's body types.
+        internal static string BuildOf(BodyTypeDef bodyType)
+        {
+            string bodyName = bodyType != null ? (bodyType.defName ?? "") : "";
+            if (Has(bodyName, "Female"))
+            {
+                return "female";
+            }
+            if (Has(bodyName, "Thin") || Has(bodyName, "Child"))
+            {
+                return "thin";
+            }
+            if (Has(bodyName, "Hulk"))
+            {
+                return "hulk";
+            }
+            if (Has(bodyName, "Fat") || Has(bodyName, "Baby"))
+            {
+                return "fat";
+            }
+            return "male";
+        }
+
+        internal static float Shoulders(string build)
+        {
+            return build == "hulk" ? 1.36f : (build == "male" || build == "fat" ? 1f : 0.84f);
+        }
+
+        // What a figure of this build wearing these clothes looks like (also the outfit stands, Stands.cs): the
+        // body parts (trousers, shirt, coat or armour, leg armour, shoulder pads) and the hat, each in the colour
+        // of what it shows; bare is the colour of whatever no clothing covers. Clothing with no 3D part (belts,
+        // packs) goes into unshown if given. Returns the kind of hat worn, or null.
+        internal static string Dress(Look look, string build, List<Apparel> worn, Color bare, List<Apparel> unshown)
+        {
             // Clothes. Each layer over the body gives its colour to the part it covers; the
             // outermost one wins. A shell layer becomes a coat worn over the rest.
-            look.upperColor = look.skin;
-            look.lowerColor = look.skin;
+            look.lower = Part("person_" + build + "_lower");
+            look.upper = Part("person_" + build + "_upper");
+            look.upperColor = bare;
+            look.lowerColor = bare;
             int upperLayer = -1;
             int lowerLayer = -1;
             string hatKind = null;
@@ -457,9 +493,8 @@ namespace IsoRim
             string shellArmourKind = null;
             Color vestColour = Color.white;
             Color shellArmourColour = Color.white;
-            if (pawn.apparel != null)
+            if (worn != null)
             {
-                List<Apparel> worn = pawn.apparel.WornApparel;
                 for (int i = 0; i < worn.Count; i++)
                 {
                     Apparel a = worn[i];
@@ -514,7 +549,8 @@ namespace IsoRim
                     int layer = OnLayer(props, "Shell") ? 2 : (OnLayer(props, "Middle") ? 1 : (OnLayer(props, "OnSkin") ? 0 : -1));
                     if (layer < 0)
                     {
-                        continue;   // belts and the like
+                        unshown?.Add(a);   // belts and the like
+                        continue;
                     }
                     if (layer == 2 && torso)
                     {
@@ -571,22 +607,12 @@ namespace IsoRim
                 look.visor = hatKind == "fullhelm";
                 look.faceHidden = SealedHelmet(hatKind) || hatKind == "combat";
             }
-            // Hair shows unless a helmet or hood covers the whole head; under a hat only hair that
-            // hangs below it shows.
-            bool covered = hatKind == "helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
-            bool hangs = hairKind == "long" || hairKind == "medium" || hairKind == "ponytail" || hairKind == "short";
-            if (hairKind != null && !covered && (hatKind == null || hangs))
-            {
-                look.hair = Part("person_hair_" + hairKind);
-            }
-            if (beardKind != null && !SealedHelmet(hatKind))
-            {
-                look.beard = Part("person_beard_" + beardKind);
-            }
-            return look;
+            look.upperWorn = upperLayer >= 0;
+            look.lowerWorn = lowerLayer >= 0;
+            return hatKind;
         }
 
-        private static bool Covers(ApparelProperties props, string group)
+        internal static bool Covers(ApparelProperties props, string group)
         {
             if (props.bodyPartGroups == null)
             {
@@ -702,7 +728,7 @@ namespace IsoRim
         // The colour of a piece of clothing as the game shows it. Things made from cloth or
         // leather are drawn in that material's colour; things that are not (power armour, flak)
         // have their colours painted into the sprite, so its average colour is used instead.
-        private static Color ApparelColour(Apparel a)
+        internal static Color ApparelColour(Apparel a)
         {
             Color c = a.DrawColor;
             if (a.def.MadeFromStuff)

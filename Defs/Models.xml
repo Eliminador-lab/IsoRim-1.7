@@ -5129,15 +5129,18 @@
       <li>(-1.32, 0.215, -1.30)</li>
     </chainAnchors>
   </IsoRim.ModelDef>
-  <!-- Coop batch 3 class B: outfit stands (head model, the game's apparel and weapon stood up over the body: Stands.cs) -->
+  <!-- Coop batch 3 class B: outfit stands (head model; dressed with the 3D colonists' clothing parts, the weapon held as theirs: Stands.cs) -->
   <IsoRim.ModelDef>
     <defName>R3D_Building_OutfitStand</defName>
     <thingDef>Building_OutfitStand</thingDef>
     <model>Models/outfit_stand.obj</model>
     <headModel>Models/outfit_stand_head.obj</headModel>
     <builtFor>(1, 1)</builtFor>
+    <dressScale>(1.28, 1.30, 1.28)</dressScale>
+    <dressRise>0.12</dressRise>
+    <dressHeadScale>0.8</dressHeadScale>
+    <dressHeadCentre>1.405</dressHeadCentre>
     <apparelHeight>0.97</apparelHeight>
-    <apparelHeadHeight>1.27</apparelHeadHeight>
     <apparelScale>1.15</apparelScale>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
@@ -5146,8 +5149,11 @@
     <model>Models/kid_outfit_stand.obj</model>
     <headModel>Models/kid_outfit_stand_head.obj</headModel>
     <builtFor>(1, 1)</builtFor>
+    <dressScale>(1.08, 1.02, 1.08)</dressScale>
+    <dressRise>0.025</dressRise>
+    <dressHeadScale>0.6</dressHeadScale>
+    <dressHeadCentre>1.012</dressHeadCentre>
     <apparelHeight>0.64</apparelHeight>
-    <apparelHeadHeight>0.99</apparelHeadHeight>
     <apparelScale>1.0</apparelScale>
   </IsoRim.ModelDef>
   <!-- Coop batch 4 class B: ancient stockpile hatch (closed / open parts by MapPortal.IsEnterable) and exit (ladder as a part) -->

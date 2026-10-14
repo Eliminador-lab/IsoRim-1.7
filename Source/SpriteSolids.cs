@@ -54,6 +54,37 @@ namespace IsoRim
             return true;
         }
 
+        // The same slab stood up in the map's east-west upright plane (as the game's flat sprite is seen from
+        // the south), centred at centre (x, z in map cells, y height in cells), turned clockwise by angle as the
+        // game turns its mesh, mirrored as the game's flipped mesh if flip, scale times the figures' size.
+        public static bool DrawUpright(Thing weapon, Vector3 centre, float angle, bool flip, float scale)
+        {
+            Graphic g = weapon.Graphic;
+            Material mat = g != null ? g.MatSingleFor(weapon) : null;
+            Material sideMat = R3DMaterials.Solid;
+            if (mat == null || sideMat == null || !mat.HasProperty("_MainTex") || mat.mainTexture == null)
+            {
+                return false;
+            }
+            Solid solid = For(mat);
+            if (solid == null)
+            {
+                return false;
+            }
+            Vector2 draw = g.drawSize;
+            float s = View3D.Squash;
+            // Seen from the south, a turn about +z looks anticlockwise; the half turn about up mirrors the slab
+            // (it is the same on both faces), which turns the other way round.
+            Matrix4x4 m = Matrix4x4.Translate(new Vector3(centre.x, centre.y / s, centre.z))
+                * Matrix4x4.Scale(new Vector3(1f, 1f / s, 1f))
+                * (flip ? Matrix4x4.Rotate(Quaternion.AngleAxis(180f, Vector3.up)) * Matrix4x4.Rotate(Quaternion.AngleAxis(angle, Vector3.forward))
+                    : Matrix4x4.Rotate(Quaternion.AngleAxis(-angle, Vector3.forward)))
+                * Matrix4x4.Scale(new Vector3(draw.x * Size * scale, draw.y * Size * scale, 1f));
+            IsoGlow.DrawLit(solid.sides, m, sideMat, 0);
+            Graphics.DrawMesh(solid.faces, m, mat, 0);
+            return true;
+        }
+
         private static Solid For(Material mat)
         {
             int key = mat.GetInstanceID();

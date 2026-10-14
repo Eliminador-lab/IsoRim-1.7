@@ -1622,23 +1622,31 @@ namespace IsoRim
                     ? new Vector3(0f, pawnHandHeight, 0f) + aim * 0.30f
                     : View3D.CardUp * (HandHeight * pawnSize) + aim * HandReach;
                 Vector3 position = new Vector3(pawnFeet.x + hand.x, hand.y, pawnFeet.z + hand.z);
-                if (st.itemsFromArt && SpriteSolids.DrawHeld(__0, position, __2))
-                {
-                    return false;
-                }
-                ModelEntry entry;
-                if (!st.models3D || !ModelLibrary.TryGet(__0.def, out entry) || !entry.HasModel)
-                {
-                    return true;
-                }
-                DynamicModels.Draw(entry.Pick(__0), position, yaw, Vector3.one * entry.def.scale, __0.DrawColor, R3DTextures.StuffSwatch(__0));
-                return false;
+                return !HeldWeapon3D(__0, position, __2);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a held weapon failed: " + e, 93611016);
                 return true;
             }
+        }
+
+        // A held weapon as a real object (from its art, or its model), lying level at position and pointing aim
+        // degrees clockwise from north. False if it has neither: the caller draws the game's sprite.
+        public static bool HeldWeapon3D(Thing weapon, Vector3 position, float aim)
+        {
+            IsoRimSettings st = IsoRimMod.Settings;
+            if (st.itemsFromArt && SpriteSolids.DrawHeld(weapon, position, aim))
+            {
+                return true;
+            }
+            ModelEntry entry;
+            if (!st.models3D || !ModelLibrary.TryGet(weapon.def, out entry) || !entry.HasModel)
+            {
+                return false;
+            }
+            DynamicModels.Draw(entry.Pick(weapon), position, aim - 90f, Vector3.one * entry.def.scale, weapon.DrawColor, R3DTextures.StuffSwatch(weapon));
+            return true;
         }
 
         // A wind turbine drawing its blades. If the turbine has a 3D model, a turning 3D rotor is
