@@ -1324,10 +1324,8 @@ namespace IsoRim
         // The outline of moving models (people, animals, doors, tools). Each part (body, head,
         // hair, hat) has its own shell; where one part tucks into another, the lower rim of its
         // shell sits just in front of the other part and showed as a dark ring. The vertex shader
-        // pushes the corners of the shell that face the camera straight away from it by
-        // View3D.OutlinePush, which hides those rims behind the surface without moving anything on
-        // screen. Corners facing away (the far rim, which draws the outline against what stands
-        // behind) stay put, so a wall close behind does not hide the outline.
+        // pushes the whole shell straight away from the camera by View3D.OutlinePush, which hides
+        // those rims behind the surface without moving anything on screen (same as 45b20f5).
         private static Material outlineMoving;
 
         public static Material OutlineMoving

@@ -69,7 +69,6 @@ namespace IsoRim
         private static readonly List<Model> mergeModels = new List<Model>();
         private static readonly List<Matrix4x4> mergeLocals = new List<Matrix4x4>();
         private static readonly List<Color> mergeTints = new List<Color>();
-        private static readonly List<bool> mergeTucked = new List<bool>();
 
         // The body (head = false) or the head of a figure as ready-made meshes.
         private static List<DynamicModels.Part> Merged(Look look, bool headPart, bool dead, int turned)
@@ -84,7 +83,6 @@ namespace IsoRim
             mergeModels.Clear();
             mergeLocals.Clear();
             mergeTints.Clear();
-            mergeTucked.Clear();
             if (headPart)
             {
                 Matrix4x4 headPlace = Matrix4x4.Scale(new Vector3(look.headWide, 1f, 1f));
@@ -94,7 +92,7 @@ namespace IsoRim
                 {
                     AddPart(face, headPlace, Color.white);
                 }
-                AddPart(look.hair, headPlace, look.hairColor, look.hat != null);   // under a hat: its outline is pushed back all round
+                AddPart(look.hair, headPlace, look.hairColor);
                 AddPart(look.beard, headPlace, look.hairColor);
                 AddPart(look.hat, headPlace, look.hatColor);
                 if (look.hat != null && look.visor)
@@ -113,12 +111,12 @@ namespace IsoRim
                     AddPart(pads, Matrix4x4.Scale(new Vector3(look.shoulders, 1f, 1.05f)), look.coat != null ? look.coatColor : look.upperColor);
                 }
             }
-            parts = DynamicModels.BuildMerged(mergeModels, mergeLocals, mergeTints, turned, mergeTucked);
+            parts = DynamicModels.BuildMerged(mergeModels, mergeLocals, mergeTints, turned);
             look.meshes[key] = parts;
             return parts;
         }
 
-        private static void AddPart(Model m, Matrix4x4 local, Color tint, bool tucked = false)
+        private static void AddPart(Model m, Matrix4x4 local, Color tint)
         {
             if (m == null)
             {
@@ -127,7 +125,6 @@ namespace IsoRim
             mergeModels.Add(m);
             mergeLocals.Add(local);
             mergeTints.Add(tint);
-            mergeTucked.Add(tucked);
         }
 
         private const int RefreshFrames = 90;

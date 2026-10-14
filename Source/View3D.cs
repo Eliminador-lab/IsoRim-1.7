@@ -34,8 +34,8 @@ namespace IsoRim
         public static Matrix4x4 LightingMatrix = Matrix4x4.identity;
         public static Matrix4x4 FogMatrix = Matrix4x4.identity;
 
-        // Outline shells of moving models: how far (in cells) the parts of a shell facing the camera
-        // are pushed straight away from it (R3DMaterials.OutlineMoving, IsoRim.vert.glsl).
+        // Outline shells of moving models: how far (in cells) they are pushed straight away from the
+        // camera (R3DMaterials.OutlineMoving, IsoRim.vert.glsl).
         public const float OutlinePush = 0.20f;
 
         private static bool haveFrame;

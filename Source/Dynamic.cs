@@ -45,7 +45,6 @@ namespace IsoRim
             public List<Color32> colors = new List<Color32>();
             public List<Vector2> uvs = new List<Vector2>();
             public List<int> tris = new List<int>();
-            public List<Vector3> normals;   // outline shells only: which way each corner was pushed out
             public Material material;
 
             public void Add(Vector3 v, Color32 c, Vector2 uv)
@@ -56,26 +55,12 @@ namespace IsoRim
                 uvs.Add(uv);
             }
 
-            public void Add(Vector3 v, Color32 c, Vector2 uv, Vector3 normal)
-            {
-                Add(v, c, uv);
-                if (normals == null)
-                {
-                    normals = new List<Vector3>();
-                }
-                normals.Add(normal);
-            }
-
             public Mesh ToMesh()
             {
                 Mesh mesh = new Mesh();
                 mesh.SetVertices(verts);
                 mesh.SetColors(colors);
                 mesh.SetUVs(0, uvs);
-                if (normals != null && normals.Count == verts.Count)
-                {
-                    mesh.SetNormals(normals);
-                }
                 mesh.SetTriangles(tris, 0);
                 mesh.RecalculateBounds();
                 return mesh;
@@ -196,7 +181,7 @@ namespace IsoRim
         // mesh is lit per pixel by the shader (glowing parts go into a separate unlit mesh), so it
         // does not depend on the light or on which way the whole is turned (turned is unused).
         // Textures are left off.
-        public static List<Part> BuildMerged(List<Model> models, List<Matrix4x4> locals, List<Color> tints, int turned, List<bool> tucked = null)
+        public static List<Part> BuildMerged(List<Model> models, List<Matrix4x4> locals, List<Color> tints, int turned)
         {
             List<Part> parts = new List<Part>();
             Material solidMat = R3DMaterials.Solid;
@@ -215,9 +200,6 @@ namespace IsoRim
                     Model m = models[k];
                     Matrix4x4 local = locals[k];
                     Color tint = tints[k];
-                    // A part tucked under another (hair under a hat) has its outline pushed back all
-                    // round (no direction given), so it cannot poke out through the part over it.
-                    bool under = tucked != null && k < tucked.Count && tucked[k];
                     int n = m.positions.Length;
                     for (int i = 0; i + 2 < n; i += 3)
                     {
@@ -234,7 +216,7 @@ namespace IsoRim
                             into.Add(local.MultiplyPoint3x4(m.positions[v]), R3DMaterials.Shaded(c, 1f), Vector2.zero);
                             if (m.hull != null)
                             {
-                                outline.Add(local.MultiplyPoint3x4(m.positions[v] + m.hull[v]), R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero, under ? Vector3.zero : local.MultiplyVector(m.hull[v]));
+                                outline.Add(local.MultiplyPoint3x4(m.positions[v] + m.hull[v]), R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
                             }
                         }
                     }
@@ -402,7 +384,7 @@ namespace IsoRim
                     into.Add(tl != null ? m.positions[k] - hull * ModelBaker.Inset : m.positions[k], R3DMaterials.Shaded(c, 1f), Vector2.zero);
                     if (m.hull != null)
                     {
-                        outline.Add(m.positions[k] + hull, R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero, hull);
+                        outline.Add(m.positions[k] + hull, R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
                     }
                     if (tl != null)
                     {

@@ -9,11 +9,10 @@
 //    edge of each (stored on the corner) moves into its face by its share of the full width, given
 //    in uv.xy: half each when both faces are turned equally toward the camera, all of it on the one
 //    face that shows when the other is turned away (the block's silhouette).
-// 2. Outline shells of moving models (_OutlinePush > 0, normal = the direction each corner was
-//    pushed out by). Corners facing the camera are pushed straight away from it by _OutlinePush
-//    (true cells), which hides the rims where one part's shell tucks into another, without moving
-//    anything on screen. Corners facing away stay put: they draw the outline against whatever stands
-//    behind, and a push would sink them behind a wall close behind the model.
+// 2. Outline shells of moving models (_OutlinePush > 0): pushed straight away from the camera by
+//    _OutlinePush (true cells), which hides the rims where one part's shell tucks into another
+//    (hat crown, hair line, waist) without moving anything on screen. Trade-off: a part close in
+//    front of a wall loses its outline where the wall is less than that far behind it.
 
 layout(location = 0) in vec3 inPosition; // @vertex Position required
 layout(location = 1) in vec3 inNormal;   // @vertex Normal optional @default = vec4(0.0, 1.0, 0.0, 0.0)
@@ -48,10 +47,6 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     float _OutlinePush; // @default = 0.0   vertex stage only (IsoRim.vert.glsl): moving outlines
 } uMaterial;
 
-// How the push of an outline corner grows with how much it faces the camera (cosine).
-const float PUSH_FROM = -0.25;
-const float PUSH_FULL = 0.25;
-
 void main()
 {
     vec4 world = push.modelMatrix * vec4(inPosition, 1.0);
@@ -80,12 +75,7 @@ void main()
     float pushBy = uMaterial._OutlinePush;
     if (pushBy > 0.0 && squash > 0.0)
     {
-        vec3 h = mat3(push.modelMatrix) * inNormal;
-        h.y *= squash;                          // to true space
-        float lh = length(h);
-        // No direction (a part tucked under another, such as hair under a hat): pushed all round.
-        float d = pushBy * (lh > 1e-6 ? smoothstep(PUSH_FROM, PUSH_FULL, dot(h / lh, toCamera)) : 1.0);
-        world.xyz -= vec3(toCamera.x, toCamera.y / squash, toCamera.z) * d;
+        world.xyz -= vec3(toCamera.x, toCamera.y / squash, toCamera.z) * pushBy;
     }
 
     gl_Position = uVertex.ViewProj * world;

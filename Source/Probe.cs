@@ -113,6 +113,9 @@ namespace IsoRim
                     case "pitch":
                         st.isoPitch = float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture);
                         break;
+                    case "olpush":   // outline push of moving models (A/B in one run)
+                        R3DMaterials.OutlineMoving.SetFloat(Shader.PropertyToID("_OutlinePush"), float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture));
+                        break;
                     case "hour":
                         SetLocalHour(float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture));
                         break;
