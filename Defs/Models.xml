@@ -5115,4 +5115,18 @@
     <hackTerminalModel>Models/blast_terminal.obj</hackTerminalModel>
     <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: holding platform (entity on the deck, chains from the eye rings: HoldingChains.cs) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_HoldingPlatform</defName>
+    <thingDef>HoldingPlatform</thingDef>
+    <model>Models/holding_platform.obj</model>
+    <builtFor>(3, 3)</builtFor>
+    <surfaceHeight>0.14</surfaceHeight>
+    <chainAnchors>
+      <li>(-1.32, 0.215, 1.30)</li>
+      <li>(1.32, 0.215, 1.30)</li>
+      <li>(1.32, 0.215, -1.30)</li>
+      <li>(-1.32, 0.215, -1.30)</li>
+    </chainAnchors>
+  </IsoRim.ModelDef>
 </Defs>

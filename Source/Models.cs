@@ -104,6 +104,10 @@ namespace IsoRim
         public List<Vector3> workPanel;
         public Color workPanelColor = new Color(1f, 0.5f, 0.2f);
         public float workPanelWidth = 0.08f;
+        // Holding platform (HoldingChains.cs): the eye rings (x, height, z; model space, facing north) the game's
+        // restraint chains are fixed to. Each chain runs from the ring nearest the game's own end point on
+        // the platform up to the held entity (or across it, ring to ring, for an entity with no points of its own).
+        public List<Vector3> chainAnchors;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first

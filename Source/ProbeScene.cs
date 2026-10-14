@@ -75,6 +75,7 @@ namespace IsoRim
     //   embryo=x,z[,<done 0-1>]      a new embryo started in the powered growth vat, optionally that far along
     //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
     //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
+    //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
     //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
@@ -728,6 +729,12 @@ namespace IsoRim
                     Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied);
                     break;
                 }
+                case "chaincheck":
+                    foreach (Building_HoldingPlatform hp2 in map.listerThings.AllThings.OfType<Building_HoldingPlatform>().ToList())
+                    {
+                        Log.Message("[IsoRim probe] chaincheck " + hp2.Position + ": " + HoldingChains.Report(hp2) + ", floor " + Forms.HeightOf(hp2));
+                    }
+                    break;
                 case "workcheck":
                     foreach (Thing wt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && x.TryGetComp<CompCableConnection>() != null).ToList())
                     {
