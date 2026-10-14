@@ -4868,4 +4868,13 @@
     </byStyle>
   </IsoRim.ModelDef>
 
+  <!-- Coop batch 2 class B: turning part (Spinners) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_LightBall</defName>
+    <thingDef>LightBall</thingDef>
+    <model>Models/lightball.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <spinModel>Models/lightball_rotor.obj</spinModel>
+    <spinMote>Mote_LightBall</spinMote>
+  </IsoRim.ModelDef>
 </Defs>

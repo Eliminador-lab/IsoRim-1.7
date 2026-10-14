@@ -289,6 +289,10 @@ namespace IsoRim
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
                 postfix: nameof(BodyColorChanged_Postfix));
 
+            // Parts that turn in 3D (the lightball's ball, Spinners): the game's flat mote for them is left out.
+            Patch("3D turning parts", AccessTools.DeclaredMethod(typeof(Mote), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(MoteDrawAt_Prefix));
+
             // Shield bubbles: a dome over the circle instead of a flat ring on the ground (ShieldDomes).
             Patch("shield domes", AccessTools.DeclaredMethod(typeof(CompProjectileInterceptor), "PostDraw"), transpiler: nameof(ShieldDraw_Transpiler));
 
@@ -1806,6 +1810,11 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Repainting a building's 3D model failed: " + e, 93611123);
             }
+        }
+
+        public static bool MoteDrawAt_Prefix(Mote __instance)
+        {
+            return Spinners.MoteDrawAt_Prefix(__instance);
         }
 
         public static bool EmptyStatePostDraw_Prefix(ThingComp __instance)

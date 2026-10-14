@@ -70,6 +70,12 @@ namespace IsoRim
         public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
         public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
+        // A part that turns about the thing's upright axis (the lightball's ball), drawn every frame
+        // (Spinners.cs). Built in the same space as model (same ground origin, facing north); it turns
+        // while the thing is powered and wants to be on, and stands still otherwise.
+        public string spinModel;
+        public float spinSpeed = 90f;       // degrees a second at normal game speed
+        public string spinMote;             // the game's flat mote for that part (Mote_LightBall), left out in 3D
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -308,6 +314,7 @@ namespace IsoRim
         public Model doorLeaf;    // wide doors only
         public Model doorTop;
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
+        public Model spin;        // spinModel, or null
 
         public bool HasModel
         {
@@ -568,6 +575,10 @@ namespace IsoRim
             if (!md.topModelLoaded.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.topLoaded = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModelLoaded));
+            }
+            if (!md.spinModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.spin = LoadFile(Path.Combine(md.modContentPack.RootDir, md.spinModel));
             }
             return entry;
         }

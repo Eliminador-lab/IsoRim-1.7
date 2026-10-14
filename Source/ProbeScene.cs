@@ -66,6 +66,8 @@ namespace IsoRim
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   style=x,z,<ThingStyleDef>|-   the building in the cell given that style (as the game's "Set style" debug action)
+    //   ritual=x,z                   the building in the cell counts as the target of a running ritual (RitualUtility.IsRitualTarget)
+    //   spincheck=1                  logs each building with a turning part (Spinners): turning or still, angle; and every mote
     //   power=x,z                    the building in the cell counts as powered from now on
     //   enter=x,z[,<Xenotype>]       the nearest free colonist (made that xenotype) is sent into the enterable building (as its select button)
     //   entercheck=1                 logs each enterable building: working, chosen person, people inside
@@ -505,6 +507,40 @@ namespace IsoRim
                     powered.Add(pw);
                     break;
                 }
+                case "ritual":
+                {
+                    // ritual=x,z: the building counts as the target of a running ritual (a party at the lightball);
+                    // its own comps then react as in a real one.
+                    Building rb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (rb == null)
+                    {
+                        Log.Warning("[IsoRim probe] no building at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    if (!ritualPatched)
+                    {
+                        ritualPatched = true;
+                        new Harmony("peren.isorim17.probe.ritual").Patch(AccessTools.Method(typeof(RitualUtility), nameof(RitualUtility.IsRitualTarget)),
+                            postfix: new HarmonyMethod(typeof(Probe), nameof(RitualPostfix)));
+                    }
+                    ritualTargets.Add(rb);
+                    break;
+                }
+                case "spincheck":
+                    foreach (Thing st in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building).ToList())
+                    {
+                        ModelEntry se;
+                        if (ModelLibrary.TryGet(st.def, out se) && se.spin != null)
+                        {
+                            Log.Message("[IsoRim probe] spincheck " + st.def.defName + " " + st.Position + " " + Spinners.Report(st));
+                            // Motes are not in the lister: the ones in its cell.
+                            foreach (Thing mt in st.Position.GetThingList(map).Where(x => x is Mote).ToList())
+                            {
+                                Log.Message("[IsoRim probe] spincheck   mote " + mt.def.defName + " drawn " + Spinners.MoteDrawAt_Prefix((Mote)mt));
+                            }
+                        }
+                    }
+                    break;
                 case "enter":
                 {
                     // enter=x,z: as the building's "select a person" button: the nearest free colonist walks in.
@@ -907,6 +943,17 @@ namespace IsoRim
             }
         }
         private static readonly HashSet<Thing> powered = new HashSet<Thing>();
+        private static readonly HashSet<Thing> ritualTargets = new HashSet<Thing>();
+        private static bool ritualPatched;
+
+        // ritual=x,z: the building counts as a running ritual's target.
+        public static void RitualPostfix(Thing thing, ref bool __result)
+        {
+            if (!__result && ritualTargets.Contains(thing))
+            {
+                __result = true;
+            }
+        }
 
         // power=x,z: the building counts as powered (the harness scenes have no power grid).
         public static void PoweredPostfix(CompPowerTrader __instance, ref bool __result)

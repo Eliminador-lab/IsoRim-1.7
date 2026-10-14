@@ -217,6 +217,7 @@ namespace IsoRim
                 Cutaway.TrackPointer();
                 Probe.Lap(6);
                 Effects.DrawAll();
+                Spinners.DrawAll();
                 Probe.Lap(7);
                 try
                 {
