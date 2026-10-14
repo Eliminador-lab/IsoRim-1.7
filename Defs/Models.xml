@@ -4797,4 +4797,59 @@
     <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
 
+  <!-- Coop batch 2, user decisions 2026-10-14: these replace the name match (ruin_machine) and the
+       small-plant fallback (herbs). Altars: the default-style model for every style until models
+       can be chosen by ThingStyleDef (Morbid/Totemic models delivered, not bound yet). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientTerminal</defName>
+    <thingDef>AncientTerminal</thingDef>
+    <model>Models/ancient_terminal.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientTerminal_Worshipful</defName>
+    <thingDef>AncientTerminal_Worshipful</thingDef>
+    <model>Models/ancient_terminal.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <!-- Sprite order A-C. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Plant_PodGauranlen</defName>
+    <thingDef>Plant_PodGauranlen</thingDef>
+    <models>
+      <li>Models/gauranlen_pod_a.obj</li>
+      <li>Models/gauranlen_pod_b.obj</li>
+      <li>Models/gauranlen_pod_c.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.00</surfaceHeight>
+    <growthScale>true</growthScale>
+    <outline>0.55</outline>
+    <groundShadow>false</groundShadow>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Altar_Small</defName>
+    <thingDef>Altar_Small</thingDef>
+    <model>Models/altar_small.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Altar_Medium</defName>
+    <thingDef>Altar_Medium</thingDef>
+    <model>Models/altar_medium.obj</model>
+    <builtFor>(3, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Altar_Large</defName>
+    <thingDef>Altar_Large</thingDef>
+    <model>Models/altar_large.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Altar_Grand</defName>
+    <thingDef>Altar_Grand</thingDef>
+    <model>Models/altar_grand.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
 </Defs>
