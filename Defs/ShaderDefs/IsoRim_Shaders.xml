@@ -3,9 +3,9 @@
 
   <!--
     IsoRim 3D view shaders. All use Shaders\IsoRimSolid.frag.glsl (vertex colour * _Color [* texture])
-    and vanilla SceneDefault.vert.glsl, or Shaders\IsoRim.vert.glsl (the same plus wall end lines and
-    moving outlines) where noted; only the render state differs. Depth is reverse-Z (compare
-    GreaterOrEqual), front face clockwise. Materials may override renderQueue. The card and fog-lid defs
+    and vanilla SceneDefault.vert.glsl, or Shaders\IsoRim.vert.glsl (the same plus wall end lines, moving
+    outlines and instancing) or Shaders\IsoRimTex.vert.glsl (the same plus instancing only) where noted;
+    only the render state differs. Depth is reverse-Z (compare GreaterOrEqual), front face clockwise. Materials may override renderQueue. The card and fog-lid defs
     at the end use copies of the game's own fragment stages with IsoRim's vertex stages.
   -->
 
@@ -29,6 +29,7 @@
   <ShaderDef>
     <defName>IsoRimSolidTex</defName>
     <shaderProgram>
+      <vertexShaderFileName>IsoRimTex.vert.glsl</vertexShaderFileName>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
       <blendMode>Opaque</blendMode>
       <cullMode>None</cullMode>
@@ -113,6 +114,7 @@
   <ShaderDef>
     <defName>IsoRimLitMarkTex</defName>
     <shaderProgram>
+      <vertexShaderFileName>IsoRimTex.vert.glsl</vertexShaderFileName>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
       <blendMode>Custom</blendMode>
       <blendSrcFactor>DstColor</blendSrcFactor>

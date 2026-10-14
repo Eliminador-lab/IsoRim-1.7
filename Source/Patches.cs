@@ -415,11 +415,13 @@ namespace IsoRim
         public static void CullThings_Prefix()
         {
             Cull.ThingsBegin();
+            PartBatches.Begin();
         }
 
         public static Exception CullThings_Finalizer(Exception __exception)
         {
             Cull.ThingsEnd();
+            PartBatches.Flush();
             return __exception;
         }
 

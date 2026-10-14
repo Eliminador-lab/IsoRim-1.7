@@ -22,6 +22,17 @@ layout(location = 3) in vec4 inUv0; // @vertex TexCoord0 optional @default = vec
 
 layout(push_constant) uniform Push { mat4 modelMatrix; } push;
 
+// Instanced draws (DrawMeshInstanced: the same part of many doors, animals or people at once,
+// PartBatches): the engine compiles this variant with INSTANCED and fills _InstanceTransforms with one
+// matrix per copy. Binding 4 (2 is the glow texture); declared in IsoRimSolid.frag.glsl too, where the
+// engine reads the material layout from.
+#ifdef INSTANCED
+layout(std430, set = 2, binding = 4) readonly buffer _InstanceTransforms
+{
+    mat4 instanceTransforms[];
+};
+#endif
+
 layout(location = 0) out vec4 vColor;
 layout(location = 1) out vec2 vUv;
 layout(location = 2) out vec3 vWorldPos;
@@ -50,7 +61,11 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
 
 void main()
 {
+#ifdef INSTANCED
+    vec4 world = instanceTransforms[gl_InstanceIndex] * vec4(inPosition, 1.0);
+#else
     vec4 world = push.modelMatrix * vec4(inPosition, 1.0);
+#endif
     vec3 toCamera = uMaterial._IsoView.xyz;
     float squash = uMaterial._IsoView.w;
 

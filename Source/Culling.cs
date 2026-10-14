@@ -488,6 +488,7 @@ namespace IsoRim
                 // Position passed straight through (checked in the 1.7 shader sources).
                 case "":
                 case "SceneDefault.vert.glsl":
+                case "IsoRimTex.vert.glsl":      // SceneDefault plus instancing
                 case "MapWorldUV.vert.glsl":
                 case "TerrainWater.vert.glsl":
                 case "Transparent.vert.glsl":

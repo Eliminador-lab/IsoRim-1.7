@@ -45,6 +45,15 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
 layout(set = 2, binding = 1) uniform sampler2D _MainTex;
 layout(set = 2, binding = 2) uniform sampler2D _IsoGlowTex;   // global: texel (x, z) = cell corner (x, z)
 
+// Read by the vertex stages of instanced draws (IsoRim.vert.glsl, IsoRimTex.vert.glsl); declared here
+// because the engine takes the material layout (and so this binding) from the fragment stage.
+#ifdef INSTANCED
+layout(std430, set = 2, binding = 4) readonly buffer _InstanceTransforms
+{
+    mat4 instanceTransforms[];
+};
+#endif
+
 const float DEG = 0.017453292519943295;
 
 vec3 Dir(float azimuthDeg, float elevationDeg)

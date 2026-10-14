@@ -975,6 +975,8 @@ namespace IsoRim
                 case "cullab":
                 case "cullcheck":
                 case "cullshrink":
+                case "batch":
+                case "abswitch":
                     PerfKey(key, a, map);
                     break;
                 default:

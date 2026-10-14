@@ -20,6 +20,8 @@ namespace IsoRim
     //   cull=0|1                              culling (Cull) off or on from now on
     //   cullshrink=f                          culling against a screen f times the real one (f < 1: a negative control)
     //   cullcheck=0|1                         pawns and doors culled whole are drawn anyway; their model parts that show are counted
+    //   batch=0|1                             instanced drawing of moving model parts (PartBatches) off or on from now on
+    //   abswitch=cull|batch                   what cullab turns off and on (default cull)
     //   cullab=x,z,size,tag                   camera held there; three screenshots 5 frames apart: culling off, on, off
     //                                         (renders<harness tag>cullab_<tag>_off1/_on/_off2.png)
     public static partial class Probe
@@ -39,6 +41,12 @@ namespace IsoRim
                     break;
                 case "cull":
                     Cull.Enabled = a[0] == "1";
+                    break;
+                case "batch":
+                    PartBatches.Enabled = a[0] == "1";
+                    break;
+                case "abswitch":
+                    abSwitch = a[0];
                     break;
                 case "cullcheck":
                     Cull.checkThings = a[0] == "1";
@@ -125,6 +133,7 @@ namespace IsoRim
 
         private static readonly List<KeyValuePair<Vector3, string>> abQueue = new List<KeyValuePair<Vector3, string>>();
         private static int abFrame = -1;
+        private static string abSwitch = "cull";   // what cullab turns off and on: "cull" (Cull) or "batch" (PartBatches)
 
         private static void CullAbTick()
         {
@@ -147,14 +156,22 @@ namespace IsoRim
             {
                 Find.WindowStack.TryRemove(w, doCloseSound: false);
             }
-            Cull.Enabled = abFrame >= 5 && abFrame < 10;
+            bool abOn = abFrame >= 5 && abFrame < 10;
+            if (abSwitch == "batch")
+            {
+                PartBatches.Enabled = abOn;
+            }
+            else
+            {
+                Cull.Enabled = abOn;
+            }
             if (abFrame == 2 || abFrame == 7 || abFrame == 12)
             {
                 string dir = System.IO.Path.Combine(GenFilePaths.SaveDataFolderPath, "renders", HarnessTag());
                 System.IO.Directory.CreateDirectory(dir);
                 string name = "cullab_" + abTag + (abFrame == 2 ? "_off1" : abFrame == 7 ? "_on" : "_off2");
                 ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, name + ".png"));
-                Log.Message("[IsoRim probe] " + name + ": yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0") + ", cull " + Cull.Enabled
+                Log.Message("[IsoRim probe] " + name + ": yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0") + ", cull " + Cull.Enabled + ", batch " + PartBatches.Enabled
                     + ", sections tested " + Cull.sectionsTested + " culled " + Cull.sectionsCulled + " unknown " + Cull.sectionsUnknown + ", model parts culled " + Cull.culledParts);
             }
             if (++abFrame >= 15)
@@ -162,6 +179,7 @@ namespace IsoRim
                 abQueue.RemoveAt(0);
                 abFrame = abQueue.Count > 0 ? -5 : -1;
                 Cull.Enabled = true;
+                PartBatches.Enabled = true;
             }
         }
 
@@ -308,6 +326,12 @@ namespace IsoRim
                 new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RtBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RtEnd)));
             h.Patch(HarmonyLib.AccessTools.Method(typeof(Waylith.Rendering.FrameRenderer), "RecordFrame"),
                 new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RecBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(RecEnd)));
+            h.Patch(HarmonyLib.AccessTools.DeclaredMethod(typeof(MapDrawLayer), "DrawLayer"),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CatLayerBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CatLayerEnd)));
+            h.Patch(HarmonyLib.AccessTools.Method(typeof(PartBatches), nameof(PartBatches.Flush)),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(FlushCmdBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(FlushCmdEnd)));
+            h.Patch(HarmonyLib.AccessTools.Method(typeof(Thing), "DynamicDrawPhase"),
+                new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CatThingBegin)), new HarmonyLib.HarmonyMethod(typeof(Probe), nameof(CatThingEnd)));
         }
 
         private static int CmdCount
@@ -315,10 +339,82 @@ namespace IsoRim
             get { return drawCommands != null ? drawCommands.Count : 0; }
         }
 
-        public static void MeshCmdBegin() { cmdAtMesh = CmdCount; }
-        public static void MeshCmdEnd() { cmdMesh += CmdCount - cmdAtMesh; }
-        public static void DynCmdBegin() { cmdAtDyn = CmdCount; }
-        public static void DynCmdEnd() { cmdDyn += CmdCount - cmdAtDyn; }
+        public static void MeshCmdBegin() { cmdAtMesh = CmdCount; CatMark("map:other"); }
+        public static void MeshCmdEnd() { cmdMesh += CmdCount - cmdAtMesh; CatMark("other"); }
+        public static void DynCmdBegin() { cmdAtDyn = CmdCount; CatMark("dyn:other"); }
+        public static void DynCmdEnd() { cmdDyn += CmdCount - cmdAtDyn; CatMark("other"); }
+
+        // PartBatches.Flush runs in DrawDynamicThings' finalizer, after the postfix above: counted with the dynamic things.
+        private static int cmdAtFlush;
+        public static void FlushCmdBegin() { cmdAtFlush = CmdCount; CatMark("dyn:batched"); }
+        public static void FlushCmdEnd() { cmdDyn += CmdCount - cmdAtFlush; CatMark("other"); }
+
+        // ---- draw commands by who submitted them (harness): markers (command index, category) of the
+        // frame, read with the command list by Histogram.
+        private static readonly List<int> catIdx = new List<int>();
+        private static readonly List<string> catName = new List<string>();
+        private static readonly Dictionary<string, int> catThings = new Dictionary<string, int>();
+        private static readonly Dictionary<string, int> catThingsFrame = new Dictionary<string, int>();
+        private static int catThingAt;
+        private static string catThing;
+
+        private static void CatMark(string cat)
+        {
+            catIdx.Add(CmdCount);
+            catName.Add(cat);
+        }
+
+        public static void CatLayerBegin(MapDrawLayer __instance) { CatMark("map:" + __instance.GetType().Name.Replace("SectionLayer_", "")); }
+        public static void CatLayerEnd() { CatMark("map:other"); }
+
+        public static void CatThingBegin(Thing __instance, DrawPhase phase)
+        {
+            if (phase != DrawPhase.Draw)
+            {
+                return;
+            }
+            catThing = ThingCat(__instance);
+            catThingAt = CmdCount;
+            CatMark("dyn:" + catThing);
+        }
+
+        public static void CatThingEnd(DrawPhase phase)
+        {
+            if (phase != DrawPhase.Draw || catThing == null)
+            {
+                return;
+            }
+            if (CmdCount > catThingAt)
+            {
+                int n;
+                catThingsFrame.TryGetValue(catThing, out n);
+                catThingsFrame[catThing] = n + 1;
+            }
+            catThing = null;
+            CatMark("dyn:other");
+        }
+
+        private static string ThingCat(Thing t)
+        {
+            Pawn p = t as Pawn;
+            if (p != null)
+            {
+                return p.RaceProps == null ? "pawn" : p.RaceProps.Humanlike ? "humanlike" : p.RaceProps.Animal ? "animal" : p.RaceProps.IsMechanoid ? "mech" : "pawn";
+            }
+            if (t is Building_Door) return "door";
+            if (t is Building_Turret) return "turret";
+            if (t is Corpse) return "corpse";
+            if (t is Plant) return "plant";
+            if (t is Building) return "building";
+            return t.def.category.ToString().ToLowerInvariant();
+        }
+
+        private static void CatClear()
+        {
+            catIdx.Clear();
+            catName.Clear();
+            catThingsFrame.Clear();
+        }
 
         public static void CapBegin()
         {
@@ -336,7 +432,7 @@ namespace IsoRim
             capStart = System.Diagnostics.Stopwatch.GetTimestamp();
         }
 
-        public static void CapEnd() { capMs += (System.Diagnostics.Stopwatch.GetTimestamp() - capStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; }
+        public static void CapEnd() { capMs += (System.Diagnostics.Stopwatch.GetTimestamp() - capStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; CatClear(); }
         public static void RtBegin() { rtStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
         public static void RtEnd() { rtSum += (System.Diagnostics.Stopwatch.GetTimestamp() - rtStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency; rtCount++; }
         public static void RecBegin() { recStart = System.Diagnostics.Stopwatch.GetTimestamp(); }
@@ -396,7 +492,7 @@ namespace IsoRim
             string s = "render: commands median " + Median(perfCmd).ToString("0") + " (map mesh " + Median(perfCmdMesh).ToString("0") + ", dynamic things "
                 + Median(perfCmdDyn).ToString("0") + "), CaptureFrame median " + Median(perfCap).ToString("0.000") + " ms; render thread RenderFrame mean "
                 + (rtCount > 0 ? rtSum / rtCount : 0).ToString("0.000") + " ms (RecordFrame " + (rtCount > 0 ? recSum / rtCount : 0).ToString("0.000") + ") over " + rtCount + " frames"
-                + "; cull " + Cull.Enabled + " per frame: sections tested " + (cullTested / (float)Math.Max(1, perfCmd.Count)).ToString("0.0")
+                + "; batch " + PartBatches.Enabled + "; cull " + Cull.Enabled + " per frame: sections tested " + (cullTested / (float)Math.Max(1, perfCmd.Count)).ToString("0.0")
                 + ", culled " + (cullCulled / (float)Math.Max(1, perfCmd.Count)).ToString("0.0") + ", unknown " + (cullUnknown / (float)Math.Max(1, perfCmd.Count)).ToString("0.0")
                 + ", model parts culled " + (cullParts / (float)Math.Max(1, perfCmd.Count)).ToString("0")
                 + ", frames rendered with another camera than culled against " + camMismatch
@@ -418,14 +514,25 @@ namespace IsoRim
             }
             PropertyInfo cmdProp = null;
             Dictionary<string, int[]> by = new Dictionary<string, int[]>();
+            Dictionary<string, int> byCat = new Dictionary<string, int>();
+            int idx = -1, mk = 0;
+            string cat = "other";
             foreach (object o in drawCommands)
             {
+                idx++;
+                while (mk < catIdx.Count && catIdx[mk] <= idx)
+                {
+                    cat = catName[mk++];
+                }
                 if (cmdProp == null)
                 {
                     cmdProp = o.GetType().GetProperty("Command");
                 }
                 Waylith.Rendering.MeshDrawCommand c = (Waylith.Rendering.MeshDrawCommand)cmdProp.GetValue(o);
-                string key = c.Material != null && c.Material.Shader != null ? c.Material.Shader.Name : "?";
+                string key = cat + "|" + (c.Material != null && c.Material.Shader != null ? c.Material.Shader.Name : "?");
+                int cn;
+                byCat.TryGetValue(cat, out cn);
+                byCat[cat] = cn + 1;
                 int[] v;
                 if (!by.TryGetValue(key, out v))
                 {
@@ -435,7 +542,9 @@ namespace IsoRim
                 v[0]++;
                 v[1] += c.Mesh != null ? c.Mesh.IndexCount / 3 : 0;
             }
-            return string.Join(", ", by.OrderByDescending(kv => kv.Value[0]).Select(kv => kv.Key + " " + kv.Value[0] + "/" + (kv.Value[1] / 1000) + "k tris"));
+            return "BY CATEGORY: " + string.Join(", ", byCat.OrderByDescending(kv => kv.Value).Select(kv => kv.Key + " " + kv.Value
+                + (catThingsFrame.ContainsKey(kv.Key.Replace("dyn:", "")) ? " (" + catThingsFrame[kv.Key.Replace("dyn:", "")] + " things)" : "")))
+                + " || BY CATEGORY AND SHADER: " + string.Join(", ", by.OrderByDescending(kv => kv.Value[0]).Select(kv => kv.Key + " " + kv.Value[0] + "/" + (kv.Value[1] / 1000) + "k tris"));
         }
     }
 }

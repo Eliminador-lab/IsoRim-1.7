@@ -286,7 +286,10 @@ namespace IsoRim
                 {
                     continue;
                 }
-                IsoGlow.DrawLit(p.mesh, matrix, p.material, 0);
+                if (!PartBatches.Add(p.mesh, matrix, p.material))
+                {
+                    IsoGlow.DrawLit(p.mesh, matrix, p.material, 0);
+                }
             }
         }
 
