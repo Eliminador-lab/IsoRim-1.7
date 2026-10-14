@@ -5181,7 +5181,7 @@
     <builtFor>(3, 3)</builtFor>
   </IsoRim.ModelDef>
   <!-- Coop batches 4-5 class B: mechanoids (Mechs.cs). model = the body; mechParts move about their pivots
-       (wheels roll, legs step, guns aim, work parts move while working); Ancient-look mechs keep the sprite. -->
+       (wheels roll, legs step, guns aim, work parts move while working); Ancient-look mechs are drawn worn (darker, rust patches). -->
   <IsoRim.ModelDef>
     <defName>R3D_Mech_Lifter</defName>
     <thingDef>Mech_Lifter</thingDef>

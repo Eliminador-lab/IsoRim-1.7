@@ -151,7 +151,7 @@ namespace IsoRim
         // Mechanoids (Mechs.cs). thingDef is the mech's race; model is the body (everything that does not move),
         // facing north, standing on the ground; mechParts are the pieces that move, each built in the same space
         // as the body (not re-centred), turned about its pivot. A mech whose game sprite is not the first one of
-        // its kind (the Ancient look, over 100 years old) keeps the game's sprite.
+        // its kind (the Ancient look, over 100 years old) is drawn worn (ObjLoader.Weathered).
         public bool mech = false;
         public List<MechPart> mechParts;
         public List<string> factionMaterials; // faces of these materials take the faction's mech colour, half and half
@@ -1024,6 +1024,94 @@ namespace IsoRim
             }
             m.id = nextId++;
             return m;
+        }
+
+        private static readonly Color Rust = new Color(0.42f, 0.24f, 0.13f);
+        private static readonly Color RustDark = new Color(0.27f, 0.16f, 0.10f);
+
+        // A worn copy of a model (Ancient mechanoids): every face darker and duller, with rust-coloured blotches
+        // where a smooth noise over the model's own space is high. offset (in model cells) shifts the noise, so
+        // copies made with different offsets rust in different places; the same offset always rusts the same
+        // way. Faces whose material is in keep (lenses, faction marks), glowing faces and faces tinted by the
+        // thing's colour are left as they are.
+        public static Model Weathered(Model src, Vector3 offset, List<string> keep)
+        {
+            if (src == null || src.materials == null || src.material == null)
+            {
+                return src;
+            }
+            Model m = new Model();
+            m.positions = src.positions;
+            m.normals = src.normals;
+            m.uvs = src.uvs;
+            m.hull = src.hull;
+            m.maxY = src.maxY;
+            m.halfDepth = src.halfDepth;
+            m.minX = src.minX;
+            m.maxX = src.maxX;
+            m.minZ = src.minZ;
+            m.maxZ = src.maxZ;
+            m.materials = src.materials;
+            m.material = src.material;
+            m.tinted = src.tinted;
+            m.colors = (Color[])src.colors.Clone();
+            int n = src.positions.Length;
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                ModelMaterial mm = src.materials[src.material[i]];
+                if (mm.glow || src.tinted[i] || (keep != null && keep.Exists(k => string.Equals(k, mm.name, StringComparison.OrdinalIgnoreCase))))
+                {
+                    continue;
+                }
+                Vector3 c = (src.positions[i] + src.positions[i + 1] + src.positions[i + 2]) / 3f + offset;
+                float rust = Mathf.Clamp01((Blotch(c * 5.5f) - 0.55f) * 4f);       // patches
+                float grime = Blotch(c * 13f + new Vector3(7.1f, 3.3f, 1.9f));     // fine variation
+                for (int k = i; k < i + 3; k++)
+                {
+                    Color col = src.colors[k];
+                    float lum = col.r * 0.3f + col.g * 0.59f + col.b * 0.11f;
+                    // Darker, a little desaturated toward a brown-grey.
+                    Color worn = Color.Lerp(col, new Color(lum, lum * 0.95f, lum * 0.86f), 0.45f) * (0.58f + 0.1f * grime);
+                    Color rusty = Color.Lerp(Rust, RustDark, grime) * Mathf.Lerp(0.7f, 1.1f, lum);
+                    Color o = Color.Lerp(worn, rusty, rust * 0.85f);
+                    o.a = col.a;
+                    m.colors[k] = o;
+                }
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        // Smooth value noise, 0..1.
+        private static float Blotch(Vector3 p)
+        {
+            Vector3 f = new Vector3(Mathf.Floor(p.x), Mathf.Floor(p.y), Mathf.Floor(p.z));
+            Vector3 t = p - f;
+            t = new Vector3(t.x * t.x * (3f - 2f * t.x), t.y * t.y * (3f - 2f * t.y), t.z * t.z * (3f - 2f * t.z));
+            float v = 0f;
+            for (int dz = 0; dz < 2; dz++)
+            {
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    for (int dx = 0; dx < 2; dx++)
+                    {
+                        float w = (dx == 1 ? t.x : 1f - t.x) * (dy == 1 ? t.y : 1f - t.y) * (dz == 1 ? t.z : 1f - t.z);
+                        v += w * Hash01((int)f.x + dx, (int)f.y + dy, (int)f.z + dz);
+                    }
+                }
+            }
+            return v;
+        }
+
+        private static float Hash01(int x, int y, int z)
+        {
+            unchecked
+            {
+                uint h = (uint)(x * 374761393 + y * 668265263 + z * 1274126177);
+                h = (h ^ (h >> 13)) * 1274126177u;
+                h ^= h >> 16;
+                return (h & 0xFFFFFF) / 16777215f;
+            }
         }
 
         // Several models in one: their triangles one after another, each keeping its own materials.

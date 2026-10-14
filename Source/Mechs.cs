@@ -18,8 +18,8 @@ namespace IsoRim
     // shows when the game shows it, pointing where the game points it, a turret follows its comp,
     // a hauled thing is held in front of it, it rises with a jump, and downed or dead it lies on its
     // side. While it works, the parts made for the work (brushes, cutter discs, sensor heads, digging
-    // arms) move. A mech the game draws with another look (the Ancient sprites of mechs over 100
-    // years old) keeps its sprite.
+    // arms) move. A mech the game draws with its other look (the Ancient sprites of mechs over 100
+    // years old, which includes almost every raider) is drawn worn: darker, rusty, marks kept.
     public static class Mechs
     {
         private enum Motion { Fixed, Wheel, Leg, Spin, Pitch, Arm, Upper, Head, Weapon, Turret }
@@ -31,6 +31,8 @@ namespace IsoRim
             public Model model;
             public Model marked;      // with the faction marks tinted, or null
             public int parent = -1;
+            public Model[] worn;      // weathered copies (Ancient), by variant; made when first needed
+            public Model[] wornMarked;
         }
 
         private class Rig
@@ -42,6 +44,47 @@ namespace IsoRim
             public float minX, maxX, minZ, maxZ, height;   // the whole mech, guns left out
             public bool legs;
             public bool weaponPart;
+            public Model[] bodyWorn;
+            public Model[] bodyWornMarked;
+        }
+
+        // Ancient mechs (the game's other sprite of the kind, over 100 years old) are drawn worn: darker, with rust
+        // patches, in one of a few patterns picked by the mech's id (so each keeps its own).
+        private const int WornVariants = 3;
+
+        private static Vector3 WornOffset(int v)
+        {
+            return new Vector3(v * 17.3f, v * 3.1f, v * 9.7f);
+        }
+
+        // The model to draw for one piece (body: piece null): plain or worn, with or without faction marks.
+        private static Model Pick(Rig rig, ModelDef def, Piece p, int worn, bool marked)
+        {
+            Model plain = p != null ? p.model : rig.body;
+            if (worn < 0)
+            {
+                Model m = p != null ? p.marked : rig.bodyMarked;
+                return marked && m != null ? m : plain;
+            }
+            if (p == null && rig.bodyWorn == null)
+            {
+                rig.bodyWorn = new Model[WornVariants];
+                rig.bodyWornMarked = new Model[WornVariants];
+            }
+            if (p != null && p.worn == null)
+            {
+                p.worn = new Model[WornVariants];
+                p.wornMarked = new Model[WornVariants];
+            }
+            Model[] w = p != null ? p.worn : rig.bodyWorn;
+            Model[] wm = p != null ? p.wornMarked : rig.bodyWornMarked;
+            if (w[worn] == null)
+            {
+                w[worn] = ObjLoader.Weathered(plain, WornOffset(worn), def.factionMaterials);
+                Color unused;
+                wm[worn] = ObjLoader.Marked(w[worn], def.factionMaterials, out unused);
+            }
+            return marked && wm[worn] != null ? wm[worn] : w[worn];
         }
 
         // Half the game's allegiance overlay: it lays the colour over the sprite's mask at half strength.
@@ -61,16 +104,16 @@ namespace IsoRim
         {
             ModelEntry entry;
             return pawn != null && pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.mech && entry.HasModel
-                && !OtherLook(pawn) && !People.Hidden(pawn);
+                && !People.Hidden(pawn);
         }
 
-        // Draws the mech at drawLoc. Returns false if it has no model (or keeps its sprite), in which
+        // Draws the mech at drawLoc. Returns false if it has no model, in which
         // case the game's sprite must be drawn as usual.
         public static bool Draw(Pawn pawn, Vector3 drawLoc)
         {
             ModelEntry entry;
             if (pawn.def == null || !ModelLibrary.TryGet(pawn.def, out entry) || !entry.def.mech || !entry.HasModel
-                || OtherLook(pawn) || People.Hidden(pawn))
+                || People.Hidden(pawn))
             {
                 return false;
             }
@@ -159,7 +202,8 @@ namespace IsoRim
             Color mark = faction != null ? Color.Lerp(rig.markBase, faction.AllegianceColor, FactionMix) : rig.markBase;
             bool marked = faction != null;
 
-            DynamicModels.DrawLocal(marked && rig.bodyMarked != null ? rig.bodyMarked : rig.body, at, yaw, whole, mark, null);
+            int worn = OtherLook(pawn) ? (pawn.thingIDNumber & 0x7FFFFFFF) % WornVariants : -1;
+            DynamicModels.DrawLocal(Pick(rig, def, null, worn, marked), at, yaw, whole, mark, null);
 
             // Each moving piece, placed in the body's space (after its parent's movement).
             Matrix4x4[] places = new Matrix4x4[rig.pieces.Count];
@@ -246,7 +290,7 @@ namespace IsoRim
                 {
                     continue;
                 }
-                DynamicModels.DrawLocal(marked && p.marked != null ? p.marked : p.model, at, yaw, whole * places[i], mark, null);
+                DynamicModels.DrawLocal(Pick(rig, def, p, worn, marked), at, yaw, whole * places[i], mark, null);
             }
             if (showGun && !gunDrawn)
             {
@@ -486,7 +530,7 @@ namespace IsoRim
         {
             ModelEntry entry;
             bool bound = pawn.def != null && ModelLibrary.TryGet(pawn.def, out entry) && entry.def.mech && entry.HasModel;
-            string s = "bound " + bound + ", other look " + OtherLook(pawn) + ", model " + (bound && HasModel(pawn) && Patches.DrawnAsModel(pawn));
+            string s = "bound " + bound + ", ancient " + OtherLook(pawn) + ", model " + (bound && HasModel(pawn) && Patches.DrawnAsModel(pawn));
             s += ", posture " + pawn.GetPosture() + (pawn.Downed ? " downed" : "") + (pawn.Dead ? " dead" : "") + ", faction " + (pawn.Faction != null ? pawn.Faction.def.defName : "none");
             if (pawn.ageTracker != null)
             {
@@ -506,7 +550,11 @@ namespace IsoRim
                 CompTurretGun tg = pawn.TryGetComp<CompTurretGun>();
                 if (tg != null)
                 {
-                    s += ", turret " + (tg.TurretDestroyed ? "destroyed" : "rot " + tg.curRotation.ToString("0"));
+                    s += ", turret " + (tg.TurretDestroyed ? "destroyed" : "rot " + tg.curRotation.ToString("0"))
+                        + " target " + HarmonyLib.Traverse.Create(tg).Field("currentTarget").GetValue<LocalTargetInfo>().ToString()
+                        + " canShoot " + HarmonyLib.Traverse.Create(tg).Property("CanShoot").GetValue<bool>() + " fireAtWill " + HarmonyLib.Traverse.Create(tg).Field("fireAtWill").GetValue<bool>() + " cooldown " + HarmonyLib.Traverse.Create(tg).Field("burstCooldownTicksLeft").GetValue<int>();
+                    CompCanBeDormant dorm = pawn.TryGetComp<CompCanBeDormant>();
+                    s += ", awake " + (dorm == null || dorm.Awake);
                 }
             }
             return s;

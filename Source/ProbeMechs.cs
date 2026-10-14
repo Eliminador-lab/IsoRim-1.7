@@ -22,6 +22,7 @@ namespace IsoRim
     //   walkfilm=N,k,tag,x,z,size     N screenshots, k Unity frames apart (and each written before the next), the game
     //                                 running at normal speed meanwhile (renders\<harness tag>\walk_<tag>_<frame>.png), camera held at (x,z,size);
     //                                 with a 7th part "follow", centred on the pawns walking on a forced job instead
+    //   turrettarget=x,z,tx,tz        the turret comp of the pawn in (x,z) given the pawn (or cell) at (tx,tz) as its target
     //   mechcheck=1                   logs every mech and carrying pawn on the map (Mechs.Report)
     public static partial class Probe
     {
@@ -243,6 +244,24 @@ namespace IsoRim
                     jj.playerForced = true;
                     p.jobs.StartJob(jj, JobCondition.InterruptForced);
                     Log.Message("[IsoRim probe] jump: " + p.LabelShort + " " + jump.def.defName + " -> " + tc + ", job " + (p.CurJob != null ? p.CurJob.def.defName : "none"));
+                    return true;
+                }
+                case "turrettarget":
+                {
+                    // The CompTurretGun of the pawn in (x,z) given the thing (or cell) at (tx,tz) as its target, as its own
+                    // target search would; the game's tick then turns and fires it (the search itself did not pick our
+                    // harness raiders as threats).
+                    Pawn p = PawnAt(map, I(a[0]), I(a[1]));
+                    CompTurretGun tg = p != null ? p.TryGetComp<CompTurretGun>() : null;
+                    if (tg == null)
+                    {
+                        return true;
+                    }
+                    IntVec3 tc = new IntVec3(I(a[2]), 0, I(a[3]));
+                    Thing tt = tc.GetThingList(map).OfType<Pawn>().FirstOrDefault();
+                    HarmonyLib.Traverse.Create(tg).Field("currentTarget").SetValue(tt != null ? new LocalTargetInfo(tt) : new LocalTargetInfo(tc));
+                    HarmonyLib.Traverse.Create(tg).Field("burstWarmupTicksLeft").SetValue(60);
+                    Log.Message("[IsoRim probe] turrettarget: " + p.LabelShort + " -> " + (tt != null ? tt.LabelShort : tc.ToString()));
                     return true;
                 }
                 case "walkfilm":
