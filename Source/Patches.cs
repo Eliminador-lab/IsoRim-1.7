@@ -179,6 +179,13 @@ namespace IsoRim
             MethodInfo drawBox = AccessTools.Method(typeof(Widgets), "DrawBox", new[] { typeof(Rect), typeof(int), typeof(Texture2D) });
             Patch("drag area on the ground", drawBox, prefix: nameof(WidgetsDrawBox_Prefix));
 
+            // Mining, deconstructing and smoothing walls aim at the block the pointer shows, not the
+            // ground cell behind its top (Interaction.DesignatorMouseCell).
+            Patch("designators aim at blocks", AccessTools.Method(typeof(DesignatorManager), "ProcessInputEvents"), transpiler: nameof(DesignatorCell_Transpiler));
+            Patch("designators aim at blocks", AccessTools.Method(typeof(DesignationDragger), "StartDrag"), transpiler: nameof(DesignatorCell_Transpiler));
+            Patch("designators aim at blocks", AccessTools.Method(typeof(DesignationDragger), "GetCurrentBoundary"), transpiler: nameof(DesignatorCell_Transpiler));
+            Patch("designators aim at blocks", AccessTools.Method(typeof(GenUI), "RenderMouseoverBracket"), prefix: nameof(MouseoverBracket_Prefix));
+
             // The game lays dark sheets round the outside of the map to hide whatever lies past
             // its edge. In 3D they would cover the cut through the earth below the edge.
             Type clipper = AccessTools.TypeByName("Verse.MapEdgeClipDrawer");
@@ -2228,6 +2235,33 @@ namespace IsoRim
             if (__state)
             {
                 Emitters.End();
+            }
+        }
+
+        public static IEnumerable<CodeInstruction> DesignatorCell_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            MethodInfo from = AccessTools.Method(typeof(Verse.UI), "MouseCell");
+            MethodInfo to = AccessTools.Method(typeof(Interaction), nameof(Interaction.DesignatorMouseCell));
+            foreach (CodeInstruction ci in instructions)
+            {
+                if (ci.opcode == OpCodes.Call && from != null && ci.operand as MethodInfo == from)
+                {
+                    ci.operand = to;
+                }
+                yield return ci;
+            }
+        }
+
+        public static bool MouseoverBracket_Prefix()
+        {
+            try
+            {
+                return !Interaction.DrawBlockBracket();
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing the designator bracket failed: " + e, 93611164);
+                return true;
             }
         }
 

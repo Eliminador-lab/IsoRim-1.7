@@ -724,6 +724,7 @@ namespace IsoRim
                 case "drag":
                 case "dragpx":
                 case "zdrag":
+                case "ddrag":
                 case "click":
                 case "labels":
                     IxKey(key, a);

@@ -65,8 +65,7 @@ Known limitations:
 - On the very first launch the 3D view may show garbled colours for a few seconds while shaders compile. Only once.
 - Some trees without a model are flat cards facing the camera. They turn after the camera settles.
 - Fog may briefly lie flat after mining reveals cells.
-- Drag-box selection and pawn labels with a tilted camera are not fully tested.
-- Performance on large maps is not measured yet.
+- Smooth at normal zoom on a 250×250 map with a large base; zoomed fully out on a very large base it drops to about 75 fps.
 - More models are being added.
 
 Please report problems with a log on the Workshop page or on GitHub.
@@ -117,8 +116,7 @@ IsoRim Waylith（抢先体验，开发中）
 - 第一次启动时，3D 视角可能有几秒颜色错乱，这是在编译着色器，只发生一次。
 - 部分没有模型的树是面向镜头的平面卡片，镜头停下后才会转向。
 - 挖矿揭开格子后，迷雾可能短暂地平铺在地上。
-- 镜头倾斜时的框选和小人名字还没有完全测试。
-- 大地图上的性能还没有测量。
+- 250×250 大地图加大型基地，正常缩放下流畅；在超大基地上完全拉远时降到约 75 fps。
 - 新模型还在陆续加入。
 
 遇到问题请在创意工坊页面或 GitHub 上附日志反馈。</description>

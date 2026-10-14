@@ -28,6 +28,9 @@ namespace IsoRim
     //                                every mode logs the cell under the pointer and the 3D pick list
     //   zdrag=ax,az,bx,bz,tag        a stockpile zone dragged out with the game's designator between two ground points (shot of the
     //                                drag outline mid-drag, then the zone is made and its cells logged)
+    //   ddrag=mine|decon|smooth,ax,az,ah,bx,bz,bh,tag  that designator dragged between two map points (heights ah, bh, -1 = the block top; the same
+    //                                point twice = a click): the ground cell and the cell aimed at under each end, the cells
+    //                                designated, a shot mid-drag and one after; the designations are removed again
     //   labels=1                     pawn name labels drawn in the shots (the harness hides them)
     public static partial class Probe
     {
@@ -70,6 +73,11 @@ namespace IsoRim
                         a = new Vector3(F(a[0]), a.Length > 5 ? F(a[5]) : 0f, F(a[1])),
                         b = new Vector3(F(a[2]), a.Length > 6 ? F(a[6]) : 0f, F(a[3]))
                     });
+                    break;
+                case "ddrag":
+                    // ddrag=mine|decon|smooth,ax,az,ah,bx,bz,bh,tag
+                    HookMouse();
+                    ixJobs.Add(new IxJob { kind = "ddrag", mode = a[0], tag = a[7], a = new Vector3(F(a[1]), F(a[3]), F(a[2])), b = new Vector3(F(a[4]), F(a[6]), F(a[5])) });
                     break;
                 case "zdrag":
                     HookMouse();
@@ -172,6 +180,10 @@ namespace IsoRim
                 {
                     DragStep(map, j);
                 }
+                else if (j.kind == "ddrag")
+                {
+                    DesignatorDragStep(map, j);
+                }
                 else if (j.kind == "zdrag")
                 {
                     ZoneDragStep(map, j);
@@ -187,7 +199,7 @@ namespace IsoRim
                 j.frame = 1000;
             }
             j.frame++;
-            if (j.frame > (j.kind == "click" ? 72 : 40))
+            if (j.frame > (j.kind == "click" ? 72 : j.kind == "ddrag" ? 74 : 40))
             {
                 fakeMouse = null;
                 Find.Selector.dragBox.active = false;
@@ -417,6 +429,86 @@ namespace IsoRim
             if (j.frame == 26)
             {
                 IxShot(j, "zone");
+            }
+        }
+
+        private static string ixGroundA, ixAimA;
+
+        // A height below 0 means the top of the block in that cell (its pick height; fall back to 0).
+        private static Vector3 OnTop(Map map, Vector3 p)
+        {
+            if (p.y >= 0f)
+            {
+                return p;
+            }
+            Building b = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z)).GetEdifice(map);
+            return new Vector3(p.x, b != null ? Interaction.PickHeight(b) - 0.01f : 0f, p.z);
+        }
+
+        // The cell the block designators aim at (Interaction.DesignatorMouseCell; the ground cell in a build without it).
+        private static readonly MethodInfo aimCell = AccessTools.Method(typeof(Interaction), "DesignatorMouseCell");
+
+        private static IntVec3 AimCell()
+        {
+            return aimCell != null ? (IntVec3)aimCell.Invoke(null, null) : Verse.UI.MouseCell();
+        }
+
+        private static void DesignatorDragStep(Map map, IxJob j)
+        {
+            DesignatorManager dm = Find.DesignatorManager;
+            if (j.frame == 0)
+            {
+                j.a = OnTop(map, j.a);
+                j.b = OnTop(map, j.b);
+            }
+            Vector2 pa = ScreenOf(j.a);
+            Vector2 pb = ScreenOf(j.b);
+            if (j.frame == 0)
+            {
+                CloseWindows();
+                Find.UIRoot.screenshotMode.Active = false;
+                fakeMouse = pa;
+                Designator d = j.mode == "mine" ? (Designator)new Designator_Mine() : j.mode == "smooth" ? new Designator_SmoothWalls() : new Designator_Deconstruct();
+                dm.Select(d);
+            }
+            if (j.frame == 30)
+            {
+                // (the pointer rests a moment first: the cut-away settles)
+                ixGroundA = Verse.UI.MouseCell().ToString();
+                ixAimA = AimCell().ToString();
+                dm.Dragger.StartDrag();   // as DesignatorManager.ProcessInputEvents on a mouse-down
+            }
+            else if (j.frame > 30 && j.frame <= 38)
+            {
+                fakeMouse = Vector2.Lerp(pa, pb, (j.frame - 30) / 8f);
+            }
+            if (j.frame == 60)
+            {
+                IxShot(j, "drag");
+            }
+            if (j.frame == 64)
+            {
+                List<IntVec3> cells = new List<IntVec3>(dm.Dragger.DragCells);
+                string groundB = Verse.UI.MouseCell().ToString();
+                string aimB = AimCell().ToString();
+                int before = map.designationManager.AllDesignations.Count;
+                dm.SelectedDesignator.DesignateMultiCell(cells);   // as DesignatorManager on the mouse-up
+                dm.Dragger.EndDrag();
+                List<Designation> made = map.designationManager.AllDesignations.Skip(before).ToList();
+                Log.Message("[IsoRim probe] ix " + j.tag + " " + j.mode + " (" + Yp() + "): start ground " + ixGroundA + " aimed " + ixAimA + "; end ground " + groundB + " aimed " + aimB
+                    + "; drag cells " + cells.Count + "; designated " + made.Count + ": " + string.Join(" ", made.Take(12).Select(x => x.target.HasThing ? x.target.Thing.def.defName + "@" + x.target.Thing.Position.x + "," + x.target.Thing.Position.z : x.def.defName + "@" + x.target.Cell.x + "," + x.target.Cell.z)));
+            }
+            if (j.frame == 68)
+            {
+                IxShot(j, "done");
+            }
+            if (j.frame == 72)
+            {
+                foreach (Designation x in map.designationManager.AllDesignations.ToList())
+                {
+                    map.designationManager.RemoveDesignation(x);
+                }
+                dm.Deselect();
             }
         }
     }

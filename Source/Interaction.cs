@@ -245,6 +245,103 @@ namespace IsoRim
             return Forms.HeightOf(t);
         }
 
+        // ---- designators that work on solid blocks
+
+        // Mining, deconstructing and smoothing walls point at a block: in 3D their cell is the block
+        // (wall, rock, building) the pointer shows, not the ground behind its top. Everything else
+        // (zones, areas, building, orders on the ground, the cell readout) keeps the ground cell.
+        public static bool TargetsBlocks(Designator d)
+        {
+            return d is Designator_Mine || d is Designator_Deconstruct || d is Designator_SmoothWalls;
+        }
+
+        private static int snapFrame = -1;
+        private static Vector2 snapMouse;
+        private static IntVec3 snapCell;
+        private static float snapTop;
+
+        // Stands in for UI.MouseCell() in the designator code (DesignatorManager, DesignationDragger).
+        public static IntVec3 DesignatorMouseCell()
+        {
+            IntVec3 ground = Verse.UI.MouseCell();
+            DesignatorManager dm = Find.DesignatorManager;
+            Map map = Find.CurrentMap;
+            if (!View3D.Ready || dm == null || map == null || !TargetsBlocks(dm.SelectedDesignator))
+            {
+                return ground;
+            }
+            Vector2 mouse = Input.mousePosition;
+            if (snapFrame == Time.frameCount && snapMouse == mouse)
+            {
+                return snapCell;
+            }
+            snapFrame = Time.frameCount;
+            snapMouse = mouse;
+            IntVec3 hit;
+            if (!PickBlockCell(map, mouse, out hit, out snapTop))
+            {
+                hit = ground;
+                snapTop = 0f;
+            }
+            snapCell = hit;
+            return hit;
+        }
+
+        // The cell of the first building the line of sight through a screen point meets, nearest the
+        // camera first (walls cut down near the pointer count at their lowered height).
+        public static bool PickBlockCell(Map map, Vector2 mouse, out IntVec3 cell, out float top)
+        {
+            const float Top = 3.2f;
+            const float Step = 0.08f;
+            for (float h = Top; h >= 0.1f; h -= Step)
+            {
+                Vector3 p = View3D.ScreenToHeight(mouse, h);
+                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z));
+                if (!c.InBounds(map))
+                {
+                    continue;
+                }
+                List<Thing> things = map.thingGrid.ThingsListAtFast(c);
+                for (int i = 0; i < things.Count; i++)
+                {
+                    if (things[i] is Building)
+                    {
+                        float t = PickHeight(things[i]);
+                        if (t >= h)
+                        {
+                            cell = c;
+                            top = t;
+                            return true;
+                        }
+                    }
+                }
+            }
+            cell = IntVec3.Invalid;
+            top = 0f;
+            return false;
+        }
+
+        private static Material bracketMat;
+
+        // The mouse-over bracket of a block designator, on top of the block it points at
+        // (GenUI.RenderMouseoverBracket; false = the game draws its own).
+        public static bool DrawBlockBracket()
+        {
+            DesignatorManager dm = Find.DesignatorManager;
+            if (!View3D.Ready || dm == null || !TargetsBlocks(dm.SelectedDesignator))
+            {
+                return false;
+            }
+            IntVec3 c = DesignatorMouseCell();
+            if (bracketMat == null)
+            {
+                bracketMat = MaterialPool.MatFrom("UI/Overlays/MouseoverBracketTex", ShaderDatabase.MetaOverlay);
+            }
+            Vector3 pos = c.ToVector3ShiftedWithAltitude(AltitudeLayer.MetaOverlays);
+            Graphics.DrawMesh(MeshPool.plane10, View3D.LiftMatrix(snapTop + 0.02f) * Matrix4x4.Translate(pos), bracketMat, 0);
+            return true;
+        }
+
         // ---- ghosts along a drag
 
         private static PropertyInfo dragCells;
