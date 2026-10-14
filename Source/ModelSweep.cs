@@ -66,6 +66,7 @@ namespace IsoRim
                 else if (typeof(Building_MultiTileDoor).IsAssignableFrom(def.thingClass) && listed && entry.doorLeaf != null && entry.HasModel && st.doors3D)
                 {
                     drawnBy = "Doors.DrawWide";
+                    door = true;   // drawn every frame by the door code, not baked
                 }
 
                 // Which name entry the <match> lists pick, with the old substring rule and with the
