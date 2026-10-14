@@ -51,7 +51,7 @@ namespace IsoRim
             thingsLayer = AccessTools.TypeByName("Verse.SectionLayer_ThingsGeneral");
             if (sectionsField == null || getLayer == null)
             {
-                ModLog.Warn("[IsoRim] The game's map blocks were not found in the expected form; the whole map is redrawn at once instead.");
+                ModLog.Warn("[IsoRim] The game's map blocks were not found in the expected form, so turning, relighting and roofs on or off will not redraw the map.");
             }
         }
 
@@ -144,6 +144,26 @@ namespace IsoRim
             return 0;
         }
 
+        // The game's grid of blocks of a map, or null while the map is not drawn yet (the game
+        // makes it only when a long event such as loading or making the map has ended).
+        public static Array SectionsOf(Map map)
+        {
+            if (map == null || map.mapDrawer == null)
+            {
+                return null;
+            }
+            Look();
+            Array sections = sectionsField != null ? sectionsField.GetValue(map.mapDrawer) as Array : null;
+            return sections != null && sections.Rank == 2 ? sections : null;
+        }
+
+        // A call from the loading thread of a long event (things spawned while a map is made). The
+        // game redraws the whole map when the event ends, and the queue belongs to the main thread.
+        private static bool FromLoader()
+        {
+            return !UnityData.IsInMainThread && LongEventHandler.AnyEventNowOrWaiting;
+        }
+
         public static void Clear()
         {
             queue.Clear();
@@ -158,22 +178,14 @@ namespace IsoRim
             {
                 return;
             }
-            Look();
-            Array sections = sectionsField != null ? sectionsField.GetValue(map.mapDrawer) as Array : null;
-            if (sections == null || getLayer == null || sections.Rank != 2)
+            if (FromLoader())
             {
-                try
-                {
-                    MethodInfo all = AccessTools.Method(typeof(MapDrawer), "RegenerateEverythingNow");
-                    if (all != null)
-                    {
-                        all.Invoke(map.mapDrawer, null);
-                    }
-                }
-                catch (Exception e)
-                {
-                    Log.ErrorOnce("[IsoRim] Redrawing the map failed: " + e, 93611101);
-                }
+                return;
+            }
+            Array sections = SectionsOf(map);
+            if (sections == null || getLayer == null)
+            {
+                // Not drawn yet: the game draws the whole map itself when it is ready.
                 return;
             }
 
@@ -214,6 +226,10 @@ namespace IsoRim
         // Queues the given layers, those in view on the current map first.
         public static void QueueLayers(List<SectionLayer> layers)
         {
+            if (FromLoader())
+            {
+                return;
+            }
             CellRect view = Find.CameraDriver != null ? Find.CameraDriver.CurrentViewRect : CellRect.Empty;
             Map shown = Find.CurrentMap;
             List<Job> later = new List<Job>();
@@ -241,9 +257,12 @@ namespace IsoRim
             {
                 return;
             }
-            Look();
-            Array sections = sectionsField != null ? sectionsField.GetValue(map.mapDrawer) as Array : null;
-            if (sections == null || sections.Rank != 2 || getLayer == null)
+            if (FromLoader())
+            {
+                return;
+            }
+            Array sections = SectionsOf(map);
+            if (sections == null || getLayer == null)
             {
                 return;
             }

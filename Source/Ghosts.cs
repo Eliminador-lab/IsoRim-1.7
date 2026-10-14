@@ -9,6 +9,7 @@ namespace IsoRim
     // Things still to be built shown as see-through 3D ghosts of what they will become, in
     // place of the game's flat blue sprites: blueprints in blue, frames under construction in
     // pale sawdust, and the preview under the pointer while choosing where to build.
+    [StaticConstructorOnStartup]
     public static class Ghosts
     {
         public static readonly Color BlueprintColor = new Color(0.42f, 0.70f, 1f, 0.42f);

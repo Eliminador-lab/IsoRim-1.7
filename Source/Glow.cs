@@ -141,7 +141,7 @@ namespace IsoRim
             {
                 return;
             }
-            Stopwatch watch = uploads < 3 && Prefs.DevMode ? Stopwatch.StartNew() : null;
+            Stopwatch watch = uploads < 3 && ModLog.Diag ? Stopwatch.StartNew() : null;
             if (tex == null)
             {
                 tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
@@ -155,7 +155,7 @@ namespace IsoRim
             uploads++;
             if (watch != null)
             {
-                ModLog.Debug("[IsoRim] Glow texture " + width + "x" + height + " uploaded in " + watch.Elapsed.TotalMilliseconds.ToString("0.000") + " ms");
+                ModLog.Note("[IsoRim] Glow texture " + width + "x" + height + " uploaded in " + watch.Elapsed.TotalMilliseconds.ToString("0.000") + " ms");
             }
         }
 

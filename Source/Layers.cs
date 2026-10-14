@@ -21,7 +21,7 @@ namespace IsoRim
     [StaticConstructorOnStartup]
     public class SectionLayer_IsoRimWater : SectionLayer
     {
-        private const int Reach = 3;   // how far from the shore the colour keeps getting deeper, in cells
+        public const int Reach = 3;    // how far from the shore the colour keeps getting deeper, in cells
 
         // From the shore outward, then the deep.
         private static readonly Color[] Bands =
@@ -431,8 +431,9 @@ namespace IsoRim
                 object v = waterMovement.Invoke(map.waterInfo, new object[] { c.ToVector3Shifted() });
                 return v is Vector3 ? (Vector3)v : Vector3.zero;
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Log.ErrorOnce("[IsoRim] Reading which way the water flows failed: " + e, 93611192);
                 waterMovement = null;
                 return Vector3.zero;
             }
@@ -993,6 +994,7 @@ namespace IsoRim
     // surfaces: across the faces of a model, on the cap and open sides of a wall, and on the
     // top of anything raised from its sprite. More damage, more marks. Redrawn whenever the
     // game says a building's damage has changed.
+    [StaticConstructorOnStartup]
     public class SectionLayer_IsoRimDamage : SectionLayer
     {
         private const string TexturePath = "IsoRim/Damage/Marks";

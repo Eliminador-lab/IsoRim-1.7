@@ -175,6 +175,13 @@ namespace IsoRim
             {
                 return;
             }
+            // Like the game's own camera update: nothing while a long event (loading a save, making
+            // a map) runs, as that work changes the maps on another thread. The game draws the maps
+            // when the event ends, and the state check below then rebuilds them for 3D if needed.
+            if (LongEventHandler.ShouldWaitForEvent)
+            {
+                return;
+            }
 
             HandleKeys();
             TurnCamera();
@@ -188,7 +195,9 @@ namespace IsoRim
             if (Active)
             {
                 ApplyCamera(main);
-                Looks.Draw(main);
+#if !RW17
+                Looks.Draw(main);   // 1.7: no grade until it is rebuilt as a 1.7 shader (design step 3)
+#endif
             }
             else if (camerasOverridden)
             {
@@ -565,7 +574,7 @@ namespace IsoRim
             }
             float hour = GenLocalDate.HourFloat(map);
             Vector3 dir = R3DMaterials.LightAt(map, hour);
-            if (logLight && Prefs.DevMode)
+            if (ModLog.Diag)
             {
                 int h = GenLocalDate.HourOfDay(map);
                 if (h != loggedHour)
@@ -580,8 +589,7 @@ namespace IsoRim
             return dir;
         }
 
-        // Harness runs (-isorim3d) log the light once per game hour.
-        private static readonly bool logLight = GenCommandLine.CommandLineArgPassed("isorim3d");
+        // With ModLog.Diag the light is logged once per game hour.
         private static int loggedHour = -1;
 
         public static float SunHour()
@@ -646,6 +654,12 @@ namespace IsoRim
             if (regenMethod == null)
             {
                 Log.ErrorOnce("[IsoRim] MapDrawer.RegenerateEverythingNow was not found, so walls and models will not refresh.", 93611001);
+                return;
+            }
+            if (MapSections.SectionsOf(map) == null)
+            {
+                // Not drawn yet: the game draws the whole map itself when it is ready. Try again then.
+                stale.Add(map);
                 return;
             }
             try

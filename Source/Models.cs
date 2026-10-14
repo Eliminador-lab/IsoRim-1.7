@@ -516,7 +516,7 @@ namespace IsoRim
                     models++;
                 }
             }
-            ModLog.Debug("[IsoRim] " + models + " things have a hand-made 3D model.");
+            ModLog.Note("[IsoRim] " + models + " things have a hand-made 3D model.");
         }
     }
 

@@ -466,6 +466,9 @@ namespace IsoRim
 
         private static void ColourTab(Listing_Standard l, Listing_Standard r, IsoRimSettings st)
         {
+#if !RW17
+            // The colour grade is not drawn on 1.7 yet (it needs a shader 1.7 does not have), so
+            // its settings are hidden there until the 1.7 grade is built.
             if (l != null)
             {
                 Section(l, "Colour look", "A colour grade over the 3D view. The interface is not affected.");
@@ -529,6 +532,7 @@ namespace IsoRim
                     }
                 }
             }
+#endif
             if (r != null)
             {
                 Section(r, "Shadows");
@@ -680,7 +684,7 @@ namespace IsoRim
     {
         static IsoRimStartup()
         {
-            ModLog.Debug("[IsoRim] Code loaded.");
+            ModLog.Note("[IsoRim] Code loaded.");
 
             // 1.7 port testing: "-isorim3d" on the command line starts with the 3D view on
             // (used by the screenshot harness). The normal default (off) is unchanged.

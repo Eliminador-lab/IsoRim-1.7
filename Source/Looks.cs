@@ -393,7 +393,7 @@ namespace IsoRim
                     shader = null;
                     return;
                 }
-                ModLog.Debug("[IsoRim] Exact colour grading (LUT) is available.");
+                ModLog.Note("[IsoRim] Exact colour grading (LUT) is available.");
             }
             catch (Exception e)
             {

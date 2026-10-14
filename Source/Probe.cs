@@ -19,7 +19,7 @@ namespace IsoRim
     // folder for a run, delete it after). For about 1.5 s after each change it logs the frame times
     // and IsoRim's own per-frame work (View3D.Tick, which includes any map rebuilds), as
     // "[IsoRim probe] ..." lines.
-    public static class Probe
+    public static partial class Probe
     {
         private const int ApplyDelay = 10;     // frames after the clock jump (the harness respawns pawns then)
         private const float Window = 1.5f;     // seconds measured after a change
@@ -78,9 +78,10 @@ namespace IsoRim
             if (lastTicks >= 0 && Math.Abs(ticks - lastTicks) > 1000)
             {
                 pass++;
-                applyFrame = Time.frameCount + ApplyDelay;
+                applyFrame = Time.frameCount + DelayOf(pass);
             }
             lastTicks = ticks;
+            Sticky();
 
             if (applyFrame >= 0 && Time.frameCount >= applyFrame)
             {
@@ -118,6 +119,16 @@ namespace IsoRim
                         break;
                     case "hour":
                         SetLocalHour(float.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture));
+                        break;
+                    default:
+                        try
+                        {
+                            Scene(kv[0], kv[1].Split(","));
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error("[IsoRim probe] " + part + " failed: " + e);
+                        }
                         break;
                 }
             }

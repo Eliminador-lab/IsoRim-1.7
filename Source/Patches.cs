@@ -102,6 +102,10 @@ namespace IsoRim
             {
                 pawnOfRenderer = null;
             }
+            if (pawnOfRenderer == null)
+            {
+                missed.Add("upright pawns (PawnRenderer.pawn)");
+            }
             Patch("upright pawns", AccessTools.Method(typeof(PawnRenderer), "RenderPawnAt"),
                 prefix: nameof(RenderPawnAt_Prefix), finalizer: nameof(RenderPawnAt_Finalizer));
 
@@ -171,46 +175,10 @@ namespace IsoRim
             Type clipper = AccessTools.TypeByName("Verse.MapEdgeClipDrawer");
             Patch("earth below the map edge", clipper != null ? FindMethod(clipper, "DrawClippers") : null, prefix: nameof(DrawClippers_Prefix));
 
-            // RimWorld 1.6 draws the land around the map, flat, past the map's edges. Under the
-            // tilted 3D camera that sheet shows as a smeared, flickering second map round the
-            // diorama, so it is hidden while the earth edge is shown. The drawing code is found
-            // by name, so nothing happens on versions that do not have it.
-            int surroundHooks = 0;
-            foreach (Type t in AccessTools.AllTypes())
-            {
-                if (t == null || t.Assembly != typeof(Map).Assembly || t.IsInterface || t.ContainsGenericParameters)
-                {
-                    continue;
-                }
-                string tn = t.Name;
-                if (!(tn.Contains("Surround") || tn.Contains("OutOfBounds") || tn.Contains("BeyondMap") || tn.Contains("MapEdgeTerrain")))
-                {
-                    continue;
-                }
-                foreach (MethodInfo m in AccessTools.GetDeclaredMethods(t))
-                {
-                    if ((m.Name.StartsWith("Draw") || m.Name.StartsWith("Render") || m.Name == "DrawLayer") && m.ReturnType == typeof(void)
-                        && !m.IsAbstract && !m.ContainsGenericParameters
-                        && Patch("hiding the land past the map edge", m, prefix: nameof(Surroundings_Prefix)))
-                    {
-                        surroundHooks++;
-                        ModLog.Debug("[IsoRim] Hiding " + t.FullName + "." + m.Name + " in 3D.");
-                    }
-                }
-            }
+            // 1.7 draws nothing past the map edge on normal maps (only maps without the edge
+            // sheets, such as orbit, do; the earth edge is not shown there, see SectionLayer_IsoRimEdge).
 
             Diagnostics();
-
-            if (surroundHooks == 0 && Prefs.DevMode)
-            {
-                // Lists the game's map layers, so a log from a new game version shows what to hide.
-                List<string> names = new List<string>();
-                foreach (Type t in typeof(SectionLayer).AllSubclassesNonAbstract())
-                {
-                    names.Add(t.Name);
-                }
-                ModLog.Warn("[IsoRim] No drawing of the land past the map edge was found. Map layers: " + string.Join(", ", names));
-            }
 
             // The game's flat outlines of things seen through walls are made from the sprite work
             // skipped above, and do not fit 3D figures anyway, so they are left out in 3D.
@@ -267,6 +235,11 @@ namespace IsoRim
             Patch("cut-down walls keeping up with roofs", AccessTools.Method(typeof(RoofGrid), "SetRoof"),
                 postfix: nameof(SetRoof_Postfix));
 
+            // The water's colour bands reach a few cells from the shore, into the next blocks of the
+            // map, which the game does not redraw for a change of terrain.
+            Patch("water keeping up with the shore", AccessTools.Method(typeof(TerrainGrid), "DoTerrainChangedEffects"),
+                postfix: nameof(TerrainChanged_Postfix));
+
             MethodInfo movers = FindMethod(typeof(Building_Door), "DrawMovers");
             if (movers != null && !StartsWith(movers, typeof(Vector3), typeof(float)))
             {
@@ -308,7 +281,7 @@ namespace IsoRim
                 postfix: nameof(GenerateLightingOverlay_Postfix));
             Patch("night and indoor light on raised things", AccessTools.Method(typeof(MapDrawer), "DrawMapMesh"),
                 prefix: nameof(DrawMapMesh_Prefix));
-            if (Prefs.DevMode && GenCommandLine.CommandLineArgPassed("isorim3d"))
+            if (ModLog.Diag)
             {
                 IsoGlow.Benchmark();
             }
@@ -316,7 +289,7 @@ namespace IsoRim
             RedirectDrawCalls();
 
             // 1.7 port: one dev-mode line listing which hooks went in and which did not.
-            ModLog.Debug("[IsoRim] Hooks applied (" + hooked.Count + "): " + string.Join("; ", hooked));
+            ModLog.Note("[IsoRim] Hooks applied (" + hooked.Count + "): " + string.Join("; ", hooked));
             if (missed.Count > 0)
             {
                 ModLog.Warn("[IsoRim] Hooks missing (" + missed.Count + "): " + string.Join("; ", missed));
@@ -760,7 +733,7 @@ namespace IsoRim
             }
             catch (Exception e)
             {
-                Log.ErrorOnce("[IsoRim] Placing a name label failed: " + e, 93611020);
+                Log.ErrorOnce("[IsoRim] Placing a name label failed: " + e, 93611193);
                 return true;
             }
         }
@@ -1268,11 +1241,11 @@ namespace IsoRim
             }
         }
 
-        // With Development mode on, writes what the 3D view depends on to the log, so a report
-        // from a new game version shows straight away what has changed.
+        // With the -isorimdiag switch (see ModLog.Diag), writes what the 3D view depends on to the
+        // log, so a report from a new game version shows straight away what has changed.
         private static void Diagnostics()
         {
-            if (!Prefs.DevMode)
+            if (!ModLog.Diag)
             {
                 return;
             }
@@ -1280,7 +1253,7 @@ namespace IsoRim
             {
                 Material solid = R3DMaterials.Solid;
                 Shader cutout = ShaderDatabase.Cutout;
-                ModLog.Warn("[IsoRim] Diagnostics: game " + VersionControl.CurrentVersionStringWithRev
+                ModLog.Note("[IsoRim] Diagnostics: game " + VersionControl.CurrentVersionStringWithRev
                     + " | solid shader " + (solid != null && solid.shader != null ? solid.shader.name : "MISSING")
                     + " (has _Color " + (solid != null && solid.HasProperty("_Color")) + ")"
                     + " | cutout shader " + (cutout != null ? cutout.name : "MISSING")
@@ -1290,17 +1263,12 @@ namespace IsoRim
                 {
                     layers.Add(t.Name);
                 }
-                ModLog.Warn("[IsoRim] Diagnostics: map layers: " + string.Join(", ", layers));
+                ModLog.Note("[IsoRim] Diagnostics: map layers: " + string.Join(", ", layers));
             }
             catch (Exception e)
             {
                 ModLog.Warn("[IsoRim] Diagnostics failed: " + e.Message);
             }
-        }
-
-        public static bool Surroundings_Prefix()
-        {
-            return !(View3D.Ready && IsoRimMod.Settings.mapEdge3D);
         }
 
         public static bool DrawClippers_Prefix()
@@ -1327,8 +1295,9 @@ namespace IsoRim
                 }
                 return !DrawnAsModel(pawn);
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Log.ErrorOnce("[IsoRim] Skipping sprite work for a 3D pawn failed: " + e, 93611190);
                 return true;
             }
         }
@@ -1463,6 +1432,18 @@ namespace IsoRim
             }
         }
 
+        private static readonly AccessTools.FieldRef<TerrainGrid, Map> terrainMap = AccessTools.FieldRefAccess<TerrainGrid, Map>("map");
+
+        // The terrain at __0 changed from __1 to __2.
+        public static void TerrainChanged_Postfix(TerrainGrid __instance, IntVec3 __0, TerrainDef __1, TerrainDef __2)
+        {
+            if (!View3D.Ready || !IsoRimMod.Settings.waterStyle || !(Ground.IsWater(__1) || Ground.IsWater(__2)))
+            {
+                return;
+            }
+            MapSections.QueueAround(terrainMap(__instance), __0, SectionLayer_IsoRimWater.Reach, typeof(SectionLayer_IsoRimWater));
+        }
+
         // A roof was added or removed at __0.
         public static void SetRoof_Postfix(RoofGrid __instance, IntVec3 __0)
         {
@@ -1587,8 +1568,6 @@ namespace IsoRim
             DrawHook.active = true;
         }
 
-        private static Material forbiddenMat;
-        private static bool forbiddenLooked;
 
         // The forbidden cross: the game may draw it in a batch the mod cannot reach, so in 3D
         // it is drawn here instead, upright over the thing.
@@ -1600,13 +1579,7 @@ namespace IsoRim
             }
             try
             {
-                if (!forbiddenLooked)
-                {
-                    forbiddenLooked = true;
-                    Type overlays = AccessTools.TypeByName("RimWorld.OverlayDrawer");
-                    FieldInfo f = overlays != null ? AccessTools.Field(overlays, "ForbiddenMat") : null;
-                    forbiddenMat = f != null ? f.GetValue(null) as Material : null;
-                }
+                Material forbiddenMat = ForbiddenIcon.Mat;
                 if (forbiddenMat == null)
                 {
                     return true;
@@ -1689,8 +1662,9 @@ namespace IsoRim
             {
                 h = Interaction.PickHeight(__0);
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                Log.ErrorOnce("[IsoRim] Finding the height for a status icon failed: " + e, 93611191);
             }
             BeginBillboard(ref __state, h + IconGap, true, __0.TrueCenter());
         }
@@ -1781,7 +1755,7 @@ namespace IsoRim
             }
             else
             {
-                ModLog.Debug("[IsoRim] Drawing redirected in " + count + " methods.");
+                ModLog.Note("[IsoRim] Drawing redirected in " + count + " methods.");
             }
         }
 
@@ -1858,6 +1832,23 @@ namespace IsoRim
                 }
                 yield return ci;
             }
+        }
+    }
+}
+
+namespace IsoRim
+{
+    // The game's forbidden cross, looked up once on the main thread at startup.
+    [StaticConstructorOnStartup]
+    public static class ForbiddenIcon
+    {
+        public static readonly Material Mat = Find();
+
+        private static Material Find()
+        {
+            Type overlays = AccessTools.TypeByName("RimWorld.OverlayDrawer");
+            FieldInfo f = overlays != null ? AccessTools.Field(overlays, "ForbiddenMat") : null;
+            return f != null ? f.GetValue(null) as Material : null;
         }
     }
 }
