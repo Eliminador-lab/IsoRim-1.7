@@ -484,6 +484,9 @@ namespace IsoRim
             {
                 return;
             }
+            bool shaderCut = ShaderCut.On;
+            WallBoxes.FullHeights = shaderCut;   // (shader cut-away) baked whole; the vertex stage cuts
+            CutTags.Enabled = shaderCut;
             try
             {
                 Map map = Map;
@@ -500,10 +503,16 @@ namespace IsoRim
                     WallBoxes.PrintBlock(this, b, height);
                 }
                 HullCorners.Print(this, map, section.CellRect);   // gravship hull corner pieces (Gravship.cs)
+                CutTags.Finish(this);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing the walls failed: " + e, 93611112);
+            }
+            finally
+            {
+                WallBoxes.FullHeights = false;
+                CutTags.Enabled = false;
             }
             FinalizeMesh(MeshParts.All);
         }
@@ -537,6 +546,7 @@ namespace IsoRim
             {
                 return;
             }
+            CutTags.Enabled = ShaderCut.On;   // (shader cut-away) leaves and twigs tagged, thinned in the vertex stage
             try
             {
                 Map map = Map;
@@ -554,10 +564,15 @@ namespace IsoRim
                         ModelBaker.Bake(this, t, form.model, Forms.BaseUnder(t, false));
                     }
                 }
+                CutTags.Finish(this);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing the trees failed: " + e, 93611113);
+            }
+            finally
+            {
+                CutTags.Enabled = false;
             }
             FinalizeMesh(MeshParts.All);
         }
@@ -775,13 +790,19 @@ namespace IsoRim
             {
                 return;
             }
+            CutTags.Enabled = ShaderCut.On;   // (shader cut-away) every roof cell tagged, opened in the vertex stage
             try
             {
                 Build();
+                CutTags.Finish(this);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing the roofs failed: " + e, 93611111);
+            }
+            finally
+            {
+                CutTags.Enabled = false;
             }
             FinalizeMesh(MeshParts.All);
         }
@@ -796,7 +817,7 @@ namespace IsoRim
         // 3 (ShipRoofs.Kind): a built roof over a gravship, or a wall standing on Substructure under its edge (Gravship.cs).
         private static int LidKind(Map map, IntVec3 c)
         {
-            if (!c.InBounds(map) || Cutaway.RoofOpen(map, c))
+            if (!c.InBounds(map) || (!CutTags.Enabled && Cutaway.RoofOpen(map, c)))
             {
                 return 0;
             }
@@ -975,8 +996,12 @@ namespace IsoRim
             }
 
             Vector3[] p = new Vector3[4];
+            int cellMark = -1;
+            IntVec3 markCell = IntVec3.Invalid;
             foreach (IntVec3 c in section.CellRect)
             {
+                CutTags.Apply(this, cellMark, markCell, ShaderCut.Roof);   // (shader cut-away) the cell before: hidden while its roof is open
+                cellMark = -1;
                 int kind = KindAt(c.x, c.z);
                 if (kind == 0 || kind == ShipRoofs.Kind)
                 {
@@ -986,6 +1011,8 @@ namespace IsoRim
                 {
                     break;
                 }
+                cellMark = CutTags.Mark(this);
+                markCell = c;
                 for (int f = 0; f < 4; f++)
                 {
                     open[f] = KindAt(c.x + Side[f].x, c.z + Side[f].z) != kind;
@@ -1059,6 +1086,7 @@ namespace IsoRim
                         new Vector3(bo.x + inner.x, eave + lift, bo.z + inner.z), new Vector3(bo.x, eave + lift, bo.z), line);
                 }
             }
+            CutTags.Apply(this, cellMark, markCell, ShaderCut.Roof);
             ShipRoofs.Build(this, map, section.CellRect, KindAt);   // flat decks over gravships (Gravship.cs)
         }
 
@@ -1219,6 +1247,9 @@ namespace IsoRim
             {
                 return;
             }
+            bool shaderCut = ShaderCut.On;
+            WallBoxes.FullHeights = shaderCut;   // (shader cut-away) marks on blocks go down with the block in the vertex stage
+            CutTags.Enabled = shaderCut;
             try
             {
                 Map map = Map;
@@ -1242,6 +1273,12 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing damage marks failed: " + e, 93611150);
+            }
+            finally
+            {
+                CutTags.Finish(this);
+                WallBoxes.FullHeights = false;
+                CutTags.Enabled = false;
             }
             FinalizeMesh(MeshParts.All);
         }
@@ -1272,6 +1309,7 @@ namespace IsoRim
                     Map map = b.Map;
                     IntVec3 c = b.Position;
                     float h = WallBoxes.HeightFor(b, form.height);
+                    int blockMark = CutTags.Mark(this);   // (shader cut-away) the marks go down with the block
                     for (int k = 0; k < marks; k++)
                     {
                         int face = (int)(Hashing.Unit(id, k, 61) * 5f);   // 0 the cap, 1 to 4 the sides
@@ -1294,6 +1332,7 @@ namespace IsoRim
                         mid.y = h * v;
                         Mark(this, mid, n, size, id * 31 + k);
                     }
+                    CutTags.Apply(this, blockMark, c, WallBoxes.CanBeCut(b.def) ? ShaderCut.Lower : 0);
                     break;
                 }
 

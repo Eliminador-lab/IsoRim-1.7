@@ -40,10 +40,13 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     float _GlowMode;  // @default = 0.0
     float _MarkPass;  // @default = 0.0     1 on the light-pass materials (IsoRimLitMark*)
     float _OutlinePush; // @default = 0.0   vertex stage only (IsoRim.vert.glsl): moving outlines
+    vec4 _IsoCellMap; // global, no default: (origin x, origin z, W, H) of the cell texture (IsoCellMap)
+    vec4 _IsoLevel;   // global, no default: x = the map's ground height in cells, y = what is left of a cut wall
 } uMaterial;
 
 layout(set = 2, binding = 1) uniform sampler2D _MainTex;
 layout(set = 2, binding = 2) uniform sampler2D _IsoGlowTex;   // global: texel (x, z) = cell corner (x, z)
+layout(set = 2, binding = 3) uniform sampler2D _IsoCellTex;   // @vertex @default = black   global: the cell texture, read by the vertex stages (shader cut-away)
 
 // Read by the vertex stages of instanced draws (IsoRim.vert.glsl, IsoRimTex.vert.glsl); declared here
 // because the engine takes the material layout (and so this binding) from the fragment stage.

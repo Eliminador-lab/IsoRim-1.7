@@ -257,18 +257,31 @@ namespace IsoRim
             triEdges[2] = new WallBoxes.PrismEdge();
 
             WallKind kind = WallBoxes.KindOf(leg1);
-            if (!WallBoxes.PrintPrism(layer, tri, triEdges, 0f, height, kind, color))
+            // (shader cut-away) the piece goes down with leg 1, or with leg 2 if that is cut further (the lower leg).
+            int whole = CutTags.Mark(layer);
+            int own = CutTags.Enabled && WallBoxes.CanBeCut(leg1.def) ? ShaderCut.Lower | ShaderCut.Second(l2 - l1) : 0;
+            WallBoxes.prismOwner = c + l1;
+            WallBoxes.prismFlags = own;
+            try
             {
-                return;
-            }
+                if (!WallBoxes.PrintPrism(layer, tri, triEdges, 0f, height, kind, color))
+                {
+                    return;
+                }
 
-            // The cap's rim turns round the inner corner B where the cell diagonally inside is open.
-            IntVec3 inner = c + l1 + l2;
-            if (WallBoxes.BlockHeightAt(map, inner) < height - 0.01f)
-            {
-                WallBoxes.RimSquare(layer, B, new Vector2(-(l1.x + l2.x), -(l1.z + l2.z)), 0f, height, color);
+                // The cap's rim turns round the inner corner B where the cell diagonally inside is open.
+                IntVec3 inner = c + l1 + l2;
+                if (WallBoxes.BlockHeightAt(map, inner) < height - 0.01f)
+                {
+                    WallBoxes.RimSquare(layer, B, new Vector2(-(l1.x + l2.x), -(l1.z + l2.z)), 0f, height, color);
+                }
+                GroundBand(layer, tri, triEdges);
             }
-            GroundBand(layer, tri, triEdges);
+            finally
+            {
+                CutTags.Apply(layer, whole, c + l1, own);
+                WallBoxes.prismFlags = 0;
+            }
         }
 
         // The face of the hull block in cell leg looking out along dir: carries on past the corner piece's end
@@ -431,6 +444,10 @@ namespace IsoRim
         // the ground). Used for gravship hull corner pieces (a triangle); meant to serve any other angled
         // wall footprint too (e.g. Vanilla Diagonal Walls' joins). False, with nothing drawn, if the wall
         // textures are missing.
+        // (shader cut-away) the tag PrintPrism gives its textured sides (the caller tags the rest); 0 = none.
+        public static IntVec3 prismOwner;
+        public static int prismFlags;
+
         public static bool PrintPrism(SectionLayer layer, IList<Vector2> poly, PrismEdge[] edges, float baseHeight, float height, WallKind kind, Color tint)
         {
             int n = poly.Count;
@@ -509,8 +526,10 @@ namespace IsoRim
                     float u0 = along * 0.5f;
                     float u1 = (along + len) * 0.5f;
                     float v1 = height / SideCellsHigh;
+                    int sideMark = prismFlags != 0 ? CutTags.Mark(layer) : -1;
                     MeshWriter.TexturedQuad(side, p0, Raised(p0, topY), Raised(p1, topY), p1,
                         new Vector2(u0, 0f), new Vector2(u0, v1), new Vector2(u1, v1), new Vector2(u1, 0f), White);
+                    CutTags.Apply(layer, sideMark, prismOwner, prismFlags | ShaderCut.TexSide);
                 }
                 if (!room)
                 {
@@ -857,6 +876,7 @@ namespace IsoRim
                     continue;
                 }
                 Vector2 centre = new Vector2(c.x + 0.5f, c.z + 0.5f);
+                int cellMark = CutTags.Mark(layer);   // (shader cut-away) hidden while this cell's roof is open
                 if (p == 1)
                 {
                     Put(sm, square, centre, 1f, 0f, 0f, 1f, baseY);
@@ -906,6 +926,13 @@ namespace IsoRim
                     }
                     CornerAt(sm, map, kindAt, b, d, baseY);
                 }
+                // A corner piece's deck goes with the roof of its first leg (the corner cell itself is in no room).
+                IntVec3 owner = c, legA, legB;
+                if (p != 1 && HullCorners.Legs(type, out legA, out legB))
+                {
+                    owner = c + legA;
+                }
+                CutTags.Apply(layer, cellMark, owner, ShaderCut.Roof);
             }
         }
 

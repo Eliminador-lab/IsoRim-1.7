@@ -214,6 +214,7 @@ namespace IsoRim
             float tickMs = (float)((Stopwatch.GetTimestamp() - tickStart) * 1000.0 / Stopwatch.Frequency);
             float dt = Time.unscaledDeltaTime * 1000f;
             PerfFrame(dt, tickMs, lapFrame);
+            CutFrameLog(lapFrame);
             if (!measuring)
             {
                 beforeDt.Add(dt);

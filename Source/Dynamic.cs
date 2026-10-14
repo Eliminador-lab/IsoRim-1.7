@@ -753,6 +753,9 @@ namespace IsoRim
         private static readonly List<Vector3> pointerFoci = new List<Vector3>();
         private static readonly List<Vector3> colonistFoci = new List<Vector3>();
         private static readonly HashSet<Room> rooms = new HashSet<Room>();
+        private static readonly HashSet<Room> lastRooms = new HashSet<Room>();
+        private static int lastRoomCells = -1;
+        private static bool roomsSame;
         private static Map hoverMap;
         private static int appliedSig;
         private static int wantedSig;
@@ -783,12 +786,19 @@ namespace IsoRim
                 cutWalls.Clear();
                 thinTrees.Clear();
                 openRoofs.Clear();
+                lastRooms.Clear();
+                lastRoomCells = -1;
                 hoverMap = map;
                 appliedSig = 0;
                 wantedSig = 0;
             }
             if (map == null)
             {
+                return;
+            }
+            if (ShaderCut.On)
+            {
+                TrackShader(map);
                 return;
             }
             int frame = Time.frameCount;
@@ -847,6 +857,49 @@ namespace IsoRim
                 RedrawLayer(map, redrawRoofs[i], typeof(SectionLayer_IsoRimRoofs));
             }
             // The swapped-out sets now hold the old state; they are refilled on the next look.
+        }
+
+        // (shader cut-away, ShaderCut) Every frame: works out what is cut from where the pointer and the colonists are
+        // now, and hands every cell that changed to the cell texture (IsoCellMap), which the vertex stage reads. No
+        // waiting for the pointer to settle and nothing rebuilt.
+        private static void TrackShader(Map map)
+        {
+            try
+            {
+                Gather(map);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Working out what to see through failed: " + e, 93611072);
+                return;
+            }
+            Changed(map, cutWalls, wantWalls);
+            Changed(map, thinTrees, wantTrees);
+            Swap(ref cutWalls, ref wantWalls);
+            Swap(ref thinTrees, ref wantTrees);
+            if (!roomsSame)
+            {
+                Changed(map, openRoofs, wantRoofs);
+                Swap(ref openRoofs, ref wantRoofs);
+            }
+        }
+
+        private static void Changed(Map map, HashSet<IntVec3> now, HashSet<IntVec3> next)
+        {
+            foreach (IntVec3 c in now)
+            {
+                if (!next.Contains(c))
+                {
+                    IsoCellMap.Dirty(map, CellRect.SingleCell(c));
+                }
+            }
+            foreach (IntVec3 c in next)
+            {
+                if (!now.Contains(c))
+                {
+                    IsoCellMap.Dirty(map, CellRect.SingleCell(c));
+                }
+            }
         }
 
         private static void Swap(ref HashSet<IntVec3> a, ref HashSet<IntVec3> b)
@@ -938,6 +991,11 @@ namespace IsoRim
             Vector3 mouse = Input.mousePosition;
             bool pointer = !PointerOnInterface();
             Vector3 ground = View3D.ScreenToGround(new Vector2(mouse.x, mouse.y));
+            if (Probe.On && Probe.HasCutPointer)
+            {
+                pointer = true;   // harness: a virtual pointer (ProbeCut.cs)
+                ground = Probe.CutPointer;
+            }
             if (pointer)
             {
                 pointerFoci.Add(ground);
@@ -973,6 +1031,12 @@ namespace IsoRim
                     AddTrees(map, colonistFoci, st.treeRadius);
                 }
             }
+            roomsSame = false;
+            if (!st.showRoofs)
+            {
+                lastRooms.Clear();
+                lastRoomCells = -1;
+            }
             if (st.showRoofs)
             {
                 rooms.Clear();
@@ -987,6 +1051,20 @@ namespace IsoRim
                         AddRoom(map, colonistFoci[i].ToIntVec3());
                     }
                 }
+                // (shader cut-away, run every frame) the same rooms as last time, each as big: nothing to list again.
+                int cells = 0;
+                foreach (Room room in rooms)
+                {
+                    cells += room.CellCount;
+                }
+                if (ShaderCut.On && rooms.SetEquals(lastRooms) && cells == lastRoomCells)
+                {
+                    roomsSame = true;
+                    return;
+                }
+                lastRooms.Clear();
+                lastRooms.UnionWith(rooms);
+                lastRoomCells = cells;
                 foreach (Room room in rooms)
                 {
                     foreach (IntVec3 c in room.Cells)
