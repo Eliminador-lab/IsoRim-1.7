@@ -1,0 +1,126 @@
+# union of delivered anomaly_entities.mtl copies (batch 6)
+newmtl entity_skin
+Kd 0.61 0.34 0.36
+
+newmtl entity_flesh
+Kd 0.76 0.47 0.49
+
+newmtl entity_light
+Kd 0.85 0.6 0.59
+
+newmtl entity_dark
+Kd 0.29 0.2 0.23
+
+newmtl entity_mouth
+Kd 0.19 0.09 0.14
+
+newmtl entity_bone
+Kd 0.81 0.73 0.58
+
+newmtl entity_black
+Kd 0.18 0.19 0.22
+
+newmtl entity_grey
+Kd 0.4 0.43 0.45
+
+newmtl entity_steel
+Kd 0.58 0.59 0.58
+
+newmtl entity_pale
+Kd 0.83 0.74 0.54
+
+newmtl entity_shadow
+Kd 0.32 0.29 0.29
+
+newmtl entity_red
+Kd 0.66 0.15 0.17
+
+newmtl entity_teeth
+Kd 0.86 0.85 0.73
+
+newmtl entity_eye
+Kd 0.71 0.48 0.37
+
+newmtl chimera_a_coat
+Kd 0.4 0.46 0.43
+
+newmtl chimera_a_patch
+Kd 0.27599999999999997 0.3174 0.29669999999999996
+
+newmtl chimera_a_skin
+Kd 0.68 0.42 0.44
+
+newmtl chimera_b_coat
+Kd 0.43 0.43 0.34
+
+newmtl chimera_b_patch
+Kd 0.29669999999999996 0.29669999999999996 0.2346
+
+newmtl chimera_b_skin
+Kd 0.68 0.42 0.44
+
+newmtl chimera_c_coat
+Kd 0.56 0.47 0.37
+
+newmtl chimera_c_patch
+Kd 0.3864 0.3243 0.25529999999999997
+
+newmtl chimera_c_skin
+Kd 0.68 0.42 0.44
+
+newmtl chimera_d_coat
+Kd 0.35 0.34 0.44
+
+newmtl chimera_d_patch
+Kd 0.24149999999999996 0.2346 0.3036
+
+newmtl chimera_d_skin
+Kd 0.68 0.42 0.44
+
+newmtl gorehulk_a_skin
+Kd 0.87 0.77 0.56
+
+newmtl gorehulk_a_quill
+Kd 0.22 0.26 0.34
+
+newmtl gorehulk_b_skin
+Kd 0.77 0.59 0.51
+
+newmtl gorehulk_b_quill
+Kd 0.22 0.26 0.34
+
+newmtl gorehulk_c_skin
+Kd 0.9 0.83 0.57
+
+newmtl gorehulk_c_quill
+Kd 0.22 0.26 0.34
+
+newmtl gorehulk_d_skin
+Kd 0.77 0.64 0.44
+
+newmtl gorehulk_d_quill
+Kd 0.22 0.26 0.34
+
+newmtl gorehulk_e_skin
+Kd 0.67 0.48 0.32
+
+newmtl gorehulk_e_quill
+Kd 0.22 0.26 0.34
+
+newmtl gorehulk_f_skin
+Kd 0.93 0.85 0.7
+
+newmtl gorehulk_f_quill
+Kd 0.22 0.26 0.34
+
+newmtl nucleus_lattice
+Kd 0.29 0.29 0.30
+
+newmtl creep_preview_skin
+Kd 0.79 0.66 0.53
+
+newmtl creep_crease
+Kd 0.44 0.4 0.36
+
+newmtl creep_eye
+Kd 0.08 0.075 0.07

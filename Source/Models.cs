@@ -160,6 +160,33 @@ namespace IsoRim
                                             // (as the game lays its allegiance overlay over the sprite's mask)
         public Vector3 carryAt = new Vector3(0f, -1f, 0f); // where a hauled thing is held (x, height, z; model space);
                                             // height -1: in front of the body at half its height
+
+        // Entities (Anomaly creatures) drawn on the same path as mechs (Mechs.cs): entity = true, model and
+        // mechParts as for a mech (no faction marks, no worn look). looks are whole other models the game's own
+        // state picks (each its own model and mechParts), chosen by lookBy:
+        //   alternate  the kind's alternate graphic the game gave this individual (key = the end of its texPath,
+        //              e.g. Chimera_B); none: model
+        //   activity   the stage Graphic_ActivityStaged shows: looks[min(floor(count * activity), count - 1)]
+        //   digesting  looks[0] while CompDevourer is digesting (the closed mouth), else model
+        //   lifeStage  the look whose key is the entity's life stage (e.g. MetalhorrorLarva); none: model. These models are
+        //              made at each stage's own size, so the life stage does not shrink them again
+        // fixedFacing: always faces south, as the game draws it (useFixedRotation; the fleshmass nucleus).
+        public bool entity = false;
+        public string lookBy;
+        public List<EntityLook> looks;
+        public bool fixedFacing = false;
+        // Materials of an entity that give off light (unlit) in a colour that follows its activity
+        // (CompActivity.ActivityLevel): from half their own colour at 0 to glowColor at 1 (the nociosphere's red).
+        public List<string> glowMaterials;
+        public Color glowColor = new Color(0.89f, 0.21f, 0.13f);
+    }
+
+    // One other look of an entity (ModelDef.looks).
+    public class EntityLook
+    {
+        public string key;
+        public string model;
+        public List<MechPart> mechParts;
     }
 
     // One moving piece of a mechanoid (ModelDef.mechParts):
@@ -177,8 +204,13 @@ namespace IsoRim
     //   weapon  the mech's gun: shown only when the game shows it (aiming, drafted ...), pointing where the game
     //           points it; weapon names the gun ThingDef it shows (another gun is drawn as that gun's own 3D form)
     //   turret  a CompTurretGun's gun, pointing where the comp points it; hidden once the turret is destroyed
+    //   open    slides out by openOffset (x, height, z) times how far the entity has opened (the nociosphere's
+    //           shell segments, by CompNociosphere.segScale 0..1)
     // parent: name of another part (its file name without folder and .obj) this one moves with (claws on an arm,
     // a gun on an upper body).
+    // show: "closed" or "open" - drawn only while the entity is shut (opened under 0.1) or open (the nociosphere's
+    // dark lining and red core); left out, always. A closed part with fadeFrom/fadeTo shrinks (to fadeScale, about its
+    // pivot) between those two and is gone after fadeTo, so it sinks into what it covered instead of popping.
     public class MechPart
     {
         public string model;
@@ -192,6 +224,11 @@ namespace IsoRim
         public float maxTurn = 60f;
         public string parent;
         public string weapon;
+        public Vector3 openOffset = Vector3.zero;
+        public string show;
+        public float fadeFrom = -1f;        // show closed: from this openness it shrinks about its pivot toward fadeScale,
+        public float fadeTo = -1f;          // and from this one it is gone (instead of vanishing at 0.1)
+        public float fadeScale = 0.9f;
     }
 
     // Triangle soup: every three entries make one triangle, already in game axes
@@ -1035,6 +1072,34 @@ namespace IsoRim
                 return null;
             }
             m.id = nextId++;
+            return m;
+        }
+
+        // Like Marked, but the named materials' faces also give off light (unlit), in the colour the model is
+        // drawn with: an entity's glowing parts (the nociosphere's red core and seams, by its activity).
+        public static Model Glowing(Model src, List<string> names, out Color baseColor)
+        {
+            Model m = Marked(src, names, out baseColor);
+            if (m == null)
+            {
+                return null;
+            }
+            ModelMaterial lit = new ModelMaterial();
+            lit.name = "glow_entity";
+            lit.glow = true;
+            lit.color = Color.white;
+            List<ModelMaterial> mats = new List<ModelMaterial>(src.materials);
+            mats.Add(lit);
+            int to = mats.Count - 1;
+            m.materials = mats.ToArray();
+            m.material = (int[])src.material.Clone();
+            for (int i = 0; i < m.material.Length; i++)
+            {
+                if (m.tinted[i])
+                {
+                    m.material[i] = to;
+                }
+            }
             return m;
         }
 

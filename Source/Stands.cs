@@ -21,7 +21,8 @@ namespace IsoRim
     //     as a hood in its colour);
     //   - the clothes as the same 3D parts a colonist of that body type wears (People.Dress: trousers,
     //     shirt, coat or armour, hat or helmet), in the same colours;
-    //   - clothing with no 3D part (packs, belts, glasses) left out, as a 3D colonist leaves it out;
+    //   - packs, belts and waist tools with a 3D part (WornGear) on it as on a colonist; clothing with no 3D part
+    //     (glasses, some belt-layer artifacts) left out, as a 3D colonist leaves it out;
     //   - the weapon made solid from its sprite (as a colonist's held weapon), placed and turned as the
     //     game carries it on a stand (DrawWeapon); with no 3D form, its sprite stood upright over the
     //     figure (apparelHeight, apparelScale).
@@ -105,7 +106,7 @@ namespace IsoRim
                 weaponDrawn = DrawWeapon(stand, weapon, def, size, c, outfit);
             }
 
-            // Clothing with no 3D part (packs, belts, glasses) is left out, as on a 3D colonist (People.Dress).
+            // Clothing with no 3D part is left out, as on a 3D colonist (People.Dress).
             if (weaponDrawn)
             {
                 return true;
@@ -258,6 +259,12 @@ namespace IsoRim
             }
             Add(look.legArmour, Matrix4x4.identity, look.legArmourColor);
             Add(look.coat, Matrix4x4.identity, look.coatColor);
+            for (int i = 0; i < look.gear.Count; i++)
+            {
+                // The stand's body has no body-type scale: the gear as on a colonist of that build before it.
+                Matrix4x4 place = look.gearRigid[i] ? Matrix4x4.Translate((Vector3)look.gearPlace[i].GetColumn(3) - look.gearAnchor[i]) : look.gearPlace[i];
+                Add(look.gear[i], place, look.gearTint[i]);
+            }
             if (look.pads)
             {
                 Add(People.Part("person_pads"), Matrix4x4.Scale(new Vector3(People.Shoulders(build), 1f, 1.05f)), look.coat != null ? look.coatColor : look.upperColor);
@@ -322,7 +329,8 @@ namespace IsoRim
             {
                 Color32 t = partTints[i];
                 sb.Append('|').Append(partModels[i].id).Append(':').Append(t.r).Append(',').Append(t.g).Append(',').Append(t.b)
-                    .Append(':').Append(partLocals[i].m00.ToString("0.###"));
+                    .Append(':').Append(partLocals[i].m00.ToString("0.###")).Append(',').Append(partLocals[i].m22.ToString("0.###"))
+                    .Append(',').Append(partLocals[i].m03.ToString("0.###")).Append(',').Append(partLocals[i].m23.ToString("0.###"));
             }
             string key = sb.ToString();
             if (!meshes.ContainsKey(key))

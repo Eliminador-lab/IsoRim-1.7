@@ -68,6 +68,11 @@ namespace IsoRim
                 rings.Add(new Vector3(centre.x + local.x, local.y, centre.z + local.z));
             }
             float deck = Glass.Floor(entry) * fit.y;
+            // A held pawn drawn as its 3D model stands (or lies) on the deck: the chains meet it part way up its body
+            // (at the game's points on it), or, for one without points, at its middle.
+            Pawn held = platform.HeldPawn;
+            float tall = HeldHeight(held);
+            Vector3 body = platform.DrawPos + platform.PawnDrawOffset;
             string swatch = "Metal";
             for (int i = 0; i < chains.Count; i++)
             {
@@ -75,7 +80,7 @@ namespace IsoRim
                 Vector3 a = Nearest(rings, chain.from);
                 if (toEntity)
                 {
-                    Vector3 b = new Vector3(chain.to.x, deck + EntityRise, chain.to.z);
+                    Vector3 b = new Vector3(chain.to.x, deck + (tall > 0f ? Mathf.Clamp(tall * 0.5f, EntityRise, 0.45f) : EntityRise), chain.to.z);
                     DrawChain(a, b, 0.05f, swatch);
                     if ((b - a).sqrMagnitude > 0.01f)
                     {
@@ -92,11 +97,93 @@ namespace IsoRim
                     Vector3 b = Nearest(rings, chain.to);
                     Vector3 mid = (a + b) * 0.5f;
                     mid.y = deck + AcrossRise;
+                    if (tall > 0f)
+                    {
+                        mid = new Vector3(body.x, deck + Mathf.Clamp(tall * 0.8f, AcrossRise, 0.7f), body.z);
+                    }
                     DrawChain(a, mid, 0.02f, swatch);
                     DrawChain(mid, b, 0.02f, swatch);
                 }
             }
             return true;
+        }
+
+        // The game's struggle animation of a pawn held on a platform (Building_HoldingPlatform.UpdateAnimation: a light
+        // wiggle that starts at a random tick, a hard wiggle or a lunge toward a colonist nearby; none while downed or for
+        // kinds without one, e.g. the nociosphere): the Root keyframes at the renderer's animation tick, as
+        // AnimationWorker_Keyframes interpolates them, times posRotScale. angle in degrees (clockwise from above, as the
+        // game turns the sprite), offset in cells. The chains' ends (BuildTargetPointMapping) already follow it.
+        public static bool Sway(Pawn pawn, out float angle, out Vector3 offset)
+        {
+            angle = 0f;
+            offset = Vector3.zero;
+            PawnRenderTree tree = pawn != null && !pawn.Dead && pawn.Drawer != null && pawn.Drawer.renderer != null ? pawn.Drawer.renderer.renderTree : null;
+            AnimationDef anim = tree != null ? tree.currentAnimation : null;
+            if (anim == null || anim.keyframeParts == null)
+            {
+                return false;
+            }
+            List<Verse.Keyframe> keys = null;
+            foreach (KeyValuePair<PawnRenderNodeTagDef, KeyframeAnimationPart> kv in anim.keyframeParts)
+            {
+                if (kv.Key != null && kv.Key.defName == "Root" && kv.Value != null)
+                {
+                    keys = kv.Value.keyframes;
+                }
+            }
+            if (keys == null || keys.Count == 0)
+            {
+                return false;
+            }
+            int tick = tree.AnimationTick;
+            Verse.Keyframe a = keys[0], b = keys[keys.Count - 1];
+            if (tick <= a.tick)
+            {
+                b = a;
+            }
+            else if (tick >= b.tick)
+            {
+                a = b;
+            }
+            else
+            {
+                for (int i = 1; i < keys.Count; i++)
+                {
+                    if (tick <= keys[i].tick)
+                    {
+                        a = keys[i - 1];
+                        b = keys[i];
+                        break;
+                    }
+                }
+            }
+            float t = b.tick > a.tick ? (float)(tick - a.tick) / (b.tick - a.tick) : 0f;
+            angle = Mathf.Lerp(a.angle, b.angle, t) * anim.posRotScale;
+            offset = Vector3.Lerp(a.offset, b.offset, t) * anim.posRotScale;
+            offset.y = 0f;
+            return true;
+        }
+
+        private static string SwayNote(Pawn p)
+        {
+            float a;
+            Vector3 o;
+            return Sway(p, out a, out o) ? " sway " + a.ToString("0.0") + " deg " + o.ToString("F2") : " still";
+        }
+
+        // How high the held pawn lies over the deck as its 3D model (cells); 0 if it keeps its sprite.
+        private static float HeldHeight(Pawn pawn)
+        {
+            if (pawn == null || !Patches.DrawnAsModel(pawn))
+            {
+                return 0f;
+            }
+            float h;
+            if (Mechs.HeldHeight(pawn, out h))
+            {
+                return h;
+            }
+            return pawn.RaceProps.Humanlike ? 0.3f : Mathf.Clamp(0.35f * pawn.BodySize, 0.2f, 0.8f);   // a figure on its back, an animal lying down
         }
 
         private static Vector3 Nearest(List<Vector3> rings, Vector3 to)
@@ -153,7 +240,7 @@ namespace IsoRim
             List<Building_HoldingPlatform.Chain> chains = chainsField != null ? chainsField.GetValue(platform) as List<Building_HoldingPlatform.Chain> : null;
             Pawn held = platform.HeldPawn;
             return "holds " + (held != null ? held.def.defName : "nothing") + ", chains " + (chains != null ? chains.Count.ToString() : "none")
-                + (held != null ? ", to entity " + (targetPointsGetter.Invoke(platform, null) != null) : "") + ", form " + Forms.For(platform.def).form;
+                + (held != null ? ", to entity " + (targetPointsGetter.Invoke(platform, null) != null) : "") + (held != null ? ", anim " + (held.Drawer.renderer.CurAnimation != null ? held.Drawer.renderer.CurAnimation.defName : "none") + SwayNote(held) : "") + ", form " + Forms.For(platform.def).form;
         }
     }
 }

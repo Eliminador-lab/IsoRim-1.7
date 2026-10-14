@@ -74,7 +74,8 @@ namespace IsoRim
     //   vatchild=x,z,<age>           a new child colonist chosen for the growth vat (walks in: run tick= after it)
     //   embryo=x,z[,<done 0-1>]      a new embryo started in the powered growth vat, optionally that far along
     //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
-    //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
+    //   hold=x,z,<PawnKindDef>[,opt...]  a new entity held on the holding platform in the cell; opts: stage:<LifeStageDef>,
+    //                                open:<f> (nociosphere shells), shambler (made a shambler: people, animals), down
     //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
     //   sealflag=x,z                 the portal in the cell marked sealed (CompSealable) and its map mesh redrawn
     //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
@@ -729,9 +730,27 @@ namespace IsoRim
                         Log.Warning("[IsoRim probe] hold: no holding platform at " + a[0] + "," + a[1]);
                         return;
                     }
-                    Pawn ent = PawnGenerator.GeneratePawn(DefDatabase<PawnKindDef>.GetNamed(a[2]), Faction.OfEntities);
+                    PawnKindDef hk = DefDatabase<PawnKindDef>.GetNamed(a[2]);
+                    Pawn ent = PawnGenerator.GeneratePawn(hk, hk.RaceProps.Humanlike || hk.RaceProps.Animal ? null : Faction.OfEntities);
+                    for (int i = 3; i < a.Length; i++)
+                    {
+                        if (a[i].StartsWith("stage:")) SetLifeStage(ent, a[i].Substring(6));
+                        else if (a[i] == "shambler") MutantUtility.SetPawnAsMutantInstantly(ent, MutantDefOf.Shambler);
+                        else if (a[i] == "down") HealthUtility.DamageUntilDowned(ent, false);
+                        else if (a[i].StartsWith("open:"))
+                        {
+                            CompNociosphere hs = ent.TryGetComp<CompNociosphere>();
+                            if (hs != null)
+                            {
+                                hs.segScale = F(a[i].Substring(5));
+                                Traverse.Create(hs).Field("segScaleGoal").SetValue(hs.segScale);
+                            }
+                        }
+                    }
                     bool held = hp.innerContainer.TryAdd(ent);
-                    Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied);
+                    Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied
+                        + ", stage " + (ent.ageTracker != null && ent.ageTracker.CurLifeStage != null ? ent.ageTracker.CurLifeStage.defName : "-")
+                        + (ent.RaceProps.Humanlike ? ", " + People.Report(ent) : ", " + Mechs.Report(ent)));
                     break;
                 }
                 case "chaincheck":
@@ -1066,7 +1085,7 @@ namespace IsoRim
                     PerfKey(key, a, map);
                     break;
                 default:
-                    if (CutKey(key, a) || MechKey(key, a, map))
+                    if (CutKey(key, a) || MechKey(key, a, map) || EntityKey(key, a, map))
                     {
                         break;
                     }
