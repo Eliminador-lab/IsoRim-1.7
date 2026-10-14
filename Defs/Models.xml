@@ -4876,6 +4876,15 @@
     <builtFor>(1, 1)</builtFor>
     <spinModel>Models/lightball_rotor.obj</spinModel>
     <spinMote>Mote_LightBall</spinMote>
+    <litMaterial>party_lens</litMaterial>
+    <litColors>
+      <li>(1.0, 0.30, 0.30)</li>
+      <li>(0.35, 1.0, 0.40)</li>
+      <li>(0.40, 0.55, 1.0)</li>
+      <li>(1.0, 0.90, 0.30)</li>
+      <li>(1.0, 0.40, 0.90)</li>
+      <li>(0.35, 0.95, 1.0)</li>
+    </litColors>
   </IsoRim.ModelDef>
   <!-- Coop batch 2 class B: contents the game draws every frame, at the model's own anchors -->
   <IsoRim.ModelDef>

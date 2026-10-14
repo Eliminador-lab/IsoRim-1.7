@@ -80,6 +80,9 @@ namespace IsoRim
         public string spinModel;
         public float spinSpeed = 90f;       // degrees a second at normal game speed
         public string spinMote;             // the game's flat mote for that part (Mote_LightBall), left out in 3D
+        public string litMaterial;          // a material of spinModel that lights up while the part turns (the lightball's
+                                            // lenses, party_lens): unlit, in litColors, one colour per separate piece in turn
+        public List<Color> litColors;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -319,6 +322,7 @@ namespace IsoRim
         public Model doorTop;
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
         public Model spin;        // spinModel, or null
+        public Model spinLit;     // spinModel with its litMaterial lit, or null
 
         public bool HasModel
         {
@@ -583,6 +587,10 @@ namespace IsoRim
             if (!md.spinModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.spin = LoadFile(Path.Combine(md.modContentPack.RootDir, md.spinModel));
+                if (entry.spin != null && !md.litMaterial.NullOrEmpty())
+                {
+                    entry.spinLit = ObjLoader.Relit(entry.spin, md.litMaterial, md.litColors);
+                }
             }
             return entry;
         }
@@ -723,6 +731,121 @@ namespace IsoRim
         private static readonly Color DefaultColor = new Color(0.8f, 0.8f, 0.8f);
         private const float OutlineWidth = 0.03f;   // in cells
         private static int nextId = 1;
+
+        // A copy of a model whose faces of one material give off light (unlit, see ModelMaterial.glow),
+        // each separate piece of them (faces joined by shared corners) in the next of colors in turn:
+        // the lightball's lenses during a party. Null if the model has no such material.
+        public static Model Relit(Model src, string material, List<Color> colors)
+        {
+            if (src == null || src.materials == null || src.material == null)
+            {
+                return null;
+            }
+            int from = -1;
+            for (int i = 0; i < src.materials.Length; i++)
+            {
+                if (string.Equals(src.materials[i].name, material, StringComparison.OrdinalIgnoreCase))
+                {
+                    from = i;
+                }
+            }
+            if (from < 0)
+            {
+                ModLog.Warn("[IsoRim] litMaterial " + material + " is not used by the model");
+                return null;
+            }
+            if (colors == null || colors.Count == 0)
+            {
+                colors = new List<Color> { Color.white };
+            }
+            ModelMaterial lit = new ModelMaterial();
+            lit.name = "glow_" + material;
+            lit.glow = true;
+            lit.color = Color.white;
+            List<ModelMaterial> mats = new List<ModelMaterial>(src.materials);
+            mats.Add(lit);
+            int to = mats.Count - 1;
+
+            // The material's triangles grouped into pieces by shared corners.
+            int n = src.positions.Length;
+            Dictionary<long, int> corner = new Dictionary<long, int>();
+            List<int> parent = new List<int>();
+            int[] triPiece = new int[n / 3];
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                if (src.material[i] != from)
+                {
+                    continue;
+                }
+                int t = parent.Count;
+                triPiece[i / 3] = t;
+                parent.Add(t);
+                for (int k = i; k < i + 3; k++)
+                {
+                    Vector3 p = src.positions[k];
+                    long key = (((long)Mathf.RoundToInt(p.x * 2000f) & 0xFFFFF) << 40) | (((long)Mathf.RoundToInt(p.y * 2000f) & 0xFFFFF) << 20)
+                        | ((long)Mathf.RoundToInt(p.z * 2000f) & 0xFFFFF);
+                    int other;
+                    if (corner.TryGetValue(key, out other))
+                    {
+                        parent[Root(parent, other)] = Root(parent, t);
+                    }
+                    else
+                    {
+                        corner[key] = t;
+                    }
+                }
+            }
+
+            Model m = new Model();
+            m.positions = src.positions;
+            m.normals = src.normals;
+            m.uvs = src.uvs;
+            m.hull = src.hull;
+            m.maxY = src.maxY;
+            m.halfDepth = src.halfDepth;
+            m.minX = src.minX;
+            m.maxX = src.maxX;
+            m.minZ = src.minZ;
+            m.maxZ = src.maxZ;
+            m.materials = mats.ToArray();
+            m.colors = (Color[])src.colors.Clone();
+            m.tinted = (bool[])src.tinted.Clone();
+            m.material = (int[])src.material.Clone();
+            Dictionary<int, int> pieceOf = new Dictionary<int, int>();
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                if (src.material[i] != from)
+                {
+                    continue;
+                }
+                int root = Root(parent, triPiece[i / 3]);
+                int piece;
+                if (!pieceOf.TryGetValue(root, out piece))
+                {
+                    piece = pieceOf.Count;
+                    pieceOf[root] = piece;
+                }
+                for (int k = i; k < i + 3; k++)
+                {
+                    m.material[k] = to;
+                    m.colors[k] = colors[piece % colors.Count];
+                    m.tinted[k] = false;
+                }
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        private static int Root(List<int> parent, int x)
+        {
+            while (parent[x] != x)
+            {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+            return x;
+        }
 
         public static Model Load(string path)
         {

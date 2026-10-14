@@ -11,6 +11,7 @@ namespace IsoRim
     // powered (and, for things the game switches on only when wanted, such as the lightball
     // during a party, while it wants to be on) and stands still otherwise, and with the game's
     // speed. The flat mote the game draws for the turning part (spinMote) is left out in 3D.
+    // While it turns, its litMaterial faces (the lightball's lenses) light up (spinLit).
     public static class Spinners
     {
         private static List<ThingDef> defs;
@@ -105,7 +106,8 @@ namespace IsoRim
                 was = now;
             }
             lastTick[t.thingIDNumber] = now;
-            if (now > was && Turning(t))
+            bool on = Turning(t);
+            if (now > was && on)
             {
                 angle = Mathf.Repeat(angle + Mathf.Min(now - was, 60) / 60f * def.spinSpeed, 360f);
                 angles[t.thingIDNumber] = angle;
@@ -117,7 +119,8 @@ namespace IsoRim
             }
             Vector3 at = t.TrueCenter();
             Vector3 offset = Quaternion.AngleAxis(yaw, Vector3.up) * def.offset;
-            DynamicModels.Draw(entry.spin, new Vector3(at.x + offset.x, offset.y, at.z + offset.z), yaw + angle,
+            // Its lit copy (the lightball's lenses) while it is on, also while the game is paused.
+            DynamicModels.Draw(on && entry.spinLit != null ? entry.spinLit : entry.spin, new Vector3(at.x + offset.x, offset.y, at.z + offset.z), yaw + angle,
                 entry.Fit(t.def) * def.scale, R3DTextures.ModelTint(t), R3DTextures.ModelSwatch(t));
         }
 
@@ -133,7 +136,9 @@ namespace IsoRim
         {
             float angle;
             angles.TryGetValue(t.thingIDNumber, out angle);
-            return (Turning(t) ? "turning" : "still") + " angle " + angle.ToString("0.0");
+            ModelEntry entry;
+            bool lit = Turning(t) && ModelLibrary.TryGet(t.def, out entry) && entry.spinLit != null;
+            return (Turning(t) ? "turning" : "still") + " angle " + angle.ToString("0.0") + (lit ? " lit" : " dark");
         }
     }
 }
