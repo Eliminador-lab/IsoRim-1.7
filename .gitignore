@@ -1,3 +1,7 @@
 Source/obj/
 Source/bin/
 *.spv-cache
+
+# RimWorld 1.7 asset pack (built by the in-game uploader)
+Assets.zip
+Assets.zip.*
