@@ -450,8 +450,11 @@ namespace IsoRim
         private static PropertyInfo turretRotation;
 
         // A turret drawing its gun. If the turret has a gun model it is drawn turned to the way the
-        // gun is aiming, on top of the 3D base, and the game's flat gun is not drawn.
-        public static bool DrawTurret_Prefix(object __instance)
+        // gun is aiming, on top of the 3D base, and the game's flat gun is not drawn. As the game's
+        // own: a spraying gun (foam turret) sweeps along its spray (AimAngleOverride), the gun kicks
+        // back by the recoil offset, and a gun whose sprite shows it loaded (rocketswarm launcher,
+        // full) shows its loaded model.
+        public static bool DrawTurret_Prefix(object __instance, Vector3 __1)
         {
             if (!View3D.Ready || !IsoRimMod.Settings.models3D || __instance == null)
             {
@@ -459,16 +462,23 @@ namespace IsoRim
             }
             try
             {
-                Thing turret = turretParent.GetValue(__instance) as Thing;
+                Building_Turret turret = turretParent.GetValue(__instance) as Building_Turret;
                 ModelEntry entry;
                 if (turret == null || !ModelLibrary.TryGet(turret.def, out entry) || entry.top == null)
                 {
                     return true;
                 }
-                float aim = (float)turretRotation.GetValue(__instance, null);
+                Verb verb = turret.CurrentEffectiveVerb;
+                float? over = verb != null ? verb.AimAngleOverride : null;
+                float aim = over ?? (float)turretRotation.GetValue(__instance, null);
+                Model gun = entry.top;
+                if (entry.topLoaded != null && turret.def.building != null && turret.TurretTopMaterial != turret.def.building.turretTopMat)
+                {
+                    gun = entry.topLoaded;
+                }
                 Vector3 at = turret.DrawPos;
                 Vector3 fit = entry.Fit(turret.def) * entry.def.scale;
-                DynamicModels.Draw(entry.top, new Vector3(at.x, entry.def.topHeight * fit.y, at.z), aim - 90f, fit, turret.DrawColor, R3DTextures.StuffSwatch(turret));
+                DynamicModels.Draw(gun, new Vector3(at.x + __1.x, entry.def.topHeight * fit.y, at.z + __1.z), aim - 90f, fit, turret.DrawColor, R3DTextures.StuffSwatch(turret));
                 return false;
             }
             catch (Exception e)

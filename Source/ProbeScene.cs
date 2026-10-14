@@ -52,6 +52,10 @@ namespace IsoRim
     //   tick=N                       N game ticks at once (N <= 900)
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
+    //   power=x,z                    the building in the cell counts as powered from now on
+    //   tickuntil=bursting,N         game ticks until some turret fires a burst (at most N <= 900)
+    //   interact=x,z                 the nearest free colonist is ordered to activate the building (as its float menu option)
+    //   turretcheck=1                logs every turret's verb state, aim override, gun rotation and which gun model it shows
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
     //                                roof, fertility, areas) are drawn in the shots; overlay=home
     //                                shows the home area
@@ -414,6 +418,68 @@ namespace IsoRim
                 case "bookcheck":
                     bookCheckAt = Time.frameCount + 30;   // once the queued rebuilds are done
                     break;
+                case "power":
+                {
+                    Building pw = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (pw == null || pw.TryGetComp<CompPowerTrader>() == null)
+                    {
+                        Log.Warning("[IsoRim probe] no powered building at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    if (!powerPatched)
+                    {
+                        powerPatched = true;
+                        new Harmony("peren.isorim17.probe.power").Patch(AccessTools.PropertyGetter(typeof(CompPowerTrader), nameof(CompPowerTrader.PowerOn)),
+                            postfix: new HarmonyMethod(typeof(Probe), nameof(PoweredPostfix)));
+                    }
+                    powered.Add(pw);
+                    break;
+                }
+                case "tickuntil":
+                {
+                    // tickuntil=bursting,N: game ticks one at a time until some turret is firing a burst (at most N).
+                    int limit = Mathf.Clamp(I(a[1]), 1, 900), done = 0;
+                    while (done < limit && !map.listerThings.AllThings.OfType<Building_Turret>().Any(t => t.CurrentEffectiveVerb != null && t.CurrentEffectiveVerb.state == VerbState.Bursting))
+                    {
+                        Find.TickManager.DoSingleTick();
+                        done++;
+                    }
+                    Log.Message("[IsoRim probe] tickuntil " + a[0] + ": " + done + " ticks");
+                    break;
+                }
+                case "interact":
+                {
+                    Building ib = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompInteractable ic = ib != null ? ib.TryGetComp<CompInteractable>() : null;
+                    Pawn ip = map.mapPawns.FreeColonistsSpawned.Where(p => !p.Downed).OrderBy(p => p.Position.DistanceToSquared(ib != null ? ib.Position : IntVec3.Zero)).FirstOrDefault();
+                    if (ic == null || ip == null)
+                    {
+                        Log.Warning("[IsoRim probe] interact: nothing to interact with at " + a[0] + "," + a[1] + " or no colonist");
+                        return;
+                    }
+                    if (ip.drafter != null)
+                    {
+                        ip.drafter.Drafted = false;
+                    }
+                    ic.OrderForceTarget(ip);   // as the float menu option does: the colonist walks over and activates it
+                    Log.Message("[IsoRim probe] interact: " + ip.LabelShort + " at " + ip.Position + " activates " + ib.def.defName + " (" + (ip.CurJob != null ? ip.CurJob.def.defName : "no job") + ")");
+                    break;
+                }
+                case "turretcheck":
+                    foreach (Building_Turret tt in map.listerThings.AllThings.OfType<Building_Turret>())
+                    {
+                        Verb v = tt.CurrentEffectiveVerb;
+                        ModelEntry te;
+                        bool hasEntry = ModelLibrary.TryGet(tt.def, out te);
+                        bool loaded = tt.def.building != null && tt.TurretTopMaterial != tt.def.building.turretTopMat;
+                        TurretTop top = tt is Building_TurretGun g ? Traverse.Create(g).Field("top").GetValue<TurretTop>() : null;
+                        Log.Message("[IsoRim probe] turretcheck " + tt.def.defName + " " + tt.Position + " verb " + (v != null ? v.state.ToString() : "-")
+                            + " override " + (v != null && v.AimAngleOverride.HasValue ? v.AimAngleOverride.Value.ToString("0.0") : "-")
+                            + " rot " + (top != null ? top.CurRotation.ToString("0.0") : "-") + " loaded " + loaded
+                            + " gun " + (!hasEntry || te.top == null ? "none" : loaded && te.topLoaded != null ? "topModelLoaded" : "topModel")
+                            + " fuel " + (tt.TryGetComp<CompRefuelable>()?.Fuel.ToString("0.0") ?? "-") + " power " + (tt.TryGetComp<CompPowerTrader>()?.PowerOn.ToString() ?? "-"));
+                    }
+                    break;
                 case "paint":
                 {
                     Building pb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
@@ -558,6 +624,17 @@ namespace IsoRim
         }
 
         private static bool uiPatched;
+        private static bool powerPatched;
+        private static readonly HashSet<Thing> powered = new HashSet<Thing>();
+
+        // power=x,z: the building counts as powered (the harness scenes have no power grid).
+        public static void PoweredPostfix(CompPowerTrader __instance, ref bool __result)
+        {
+            if (!__result && powered.Contains(__instance.parent))
+            {
+                __result = true;
+            }
+        }
 
         private static int perfLeft;
         private static string perfLabel;

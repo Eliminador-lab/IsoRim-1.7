@@ -4263,4 +4263,25 @@
     <builtFor>(2, 2)</builtFor>
   </IsoRim.ModelDef>
 
+  <!-- The gun sweeps along its spray (Patches.DrawTurret_Prefix uses the game's AimAngleOverride). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Turret_FoamTurret</defName>
+    <thingDef>Turret_FoamTurret</thingDef>
+    <model>Models/foam_base.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <topModel>Models/foam_top.obj</topModel>
+    <topHeight>0.29</topHeight>
+  </IsoRim.ModelDef>
+
+  <!-- Twelve rockets in the launcher while it is full, as the game's loaded gun sprite; empty racks otherwise. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Turret_RocketswarmLauncher</defName>
+    <thingDef>Turret_RocketswarmLauncher</thingDef>
+    <model>Models/rocketswarm_base.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <topModel>Models/rocketswarm_top_empty.obj</topModel>
+    <topModelLoaded>Models/rocketswarm_top_full.obj</topModelLoaded>
+    <topHeight>0.4</topHeight>
+  </IsoRim.ModelDef>
+
 </Defs>

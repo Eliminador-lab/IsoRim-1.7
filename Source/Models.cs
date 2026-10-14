@@ -56,6 +56,7 @@ namespace IsoRim
         public Vector2 builtFor = Vector2.zero; // the footprint (x, z) in cells the model was built for; it is stretched to the thing's real size
         public string topModel;             // turrets: the gun that turns, drawn every frame
         public float topHeight = 0.5f;      // height of the turret's pivot, in cells
+        public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -274,6 +275,7 @@ namespace IsoRim
         public Model[] variants;
         public Model leg;   // animals only
         public Model top;   // turrets only
+        public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
 
         public bool HasModel
         {
@@ -444,6 +446,10 @@ namespace IsoRim
             if (!md.topModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.top = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModel));
+            }
+            if (!md.topModelLoaded.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.topLoaded = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModelLoaded));
             }
             return entry;
         }
