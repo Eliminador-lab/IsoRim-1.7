@@ -56,6 +56,9 @@ namespace IsoRim
     //                                mine, stood beside it on the south, ordered to mine it (a real job: run film= after it)
     //   sway=0                       plant wind sway held still (every plant material's _SwayHead 0, each frame),
     //                                so plants and cards come out the same in every run
+    //   burst=N[,k,tag,x,z,size]     a screenshot every k-th frame for N frames (renders\<harness tag>\burst_<tag>_<frame>.png),
+    //                                camera held at (x,z,size); with "#startoff" as the probe file's first line the 3D view
+    //                                starts off, so "active=1 burst=..." films the first switch-on (layout_firston)
     //   film=x,z,N[,tag]             films the mining of the rock in the cell: game ticks run fast until it is
     //                                one pick hit from breaking, then one tick and one screenshot per frame, the camera on the cells north of it
     //                                (renders\<harness tag>\film_<tag>_<frame>.png, with the rock's hit points,
