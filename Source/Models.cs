@@ -61,6 +61,8 @@ namespace IsoRim
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
         public List<float> bookSlots;       // x of each book's middle along a shelf, from the left as seen from the front
         public float bookRow = 0f;          // z of the books' middle (the model faces north, +z)
+        public List<int> bookShelfSlots;    // optional: how many of bookSlots each shelf has, lowest first (bookSlots then
+                                            // lists every shelf's places in turn); left out, every shelf has all of bookSlots
 
         // Animals. thingDef is the animal's race; model is its body, facing north.
         public bool animal = false;

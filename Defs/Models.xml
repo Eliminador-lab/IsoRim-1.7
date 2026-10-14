@@ -4222,4 +4222,45 @@
     <builtFor>(3, 2)</builtFor>
   </IsoRim.ModelDef>
 
+  <IsoRim.ModelDef>
+    <defName>R3D_Drape</defName>
+    <thingDef>Drape</thingDef>
+    <model>Models/drape.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Books stand on its two shelves: three below, two above (Bookcases.cs). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_BookcaseSmall</defName>
+    <thingDef>BookcaseSmall</thingDef>
+    <model>Models/bookcase_small.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <bookShelves>
+      <li>0.16</li>
+      <li>0.56</li>
+    </bookShelves>
+    <bookShelfSlots>
+      <li>3</li>
+      <li>2</li>
+    </bookShelfSlots>
+    <bookSlots>
+      <li>0.2</li>
+      <li>0</li>
+      <li>-0.2</li>
+      <li>0.11</li>
+      <li>-0.11</li>
+    </bookSlots>
+    <bookRow>0.12</bookRow>
+  </IsoRim.ModelDef>
+
+  <!-- The game picks one of six large stele sprites at random; one model stands for all six for now.
+       With more models, list them under <models> in the order of the game's sprites (A, B, ...)
+       instead of <model>, and each stele shows the model of its own sprite. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_SteleLarge</defName>
+    <thingDef>SteleLarge</thingDef>
+    <model>Models/stele_large.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
 </Defs>

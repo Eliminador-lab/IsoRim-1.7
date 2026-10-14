@@ -40,7 +40,36 @@ namespace IsoRim
         // How many books fit on the model's shelves.
         public static int Room(ModelEntry entry)
         {
-            return Shows(entry) ? entry.def.bookShelves.Count * entry.def.bookSlots.Count : 0;
+            if (!Shows(entry))
+            {
+                return 0;
+            }
+            int room = 0;
+            for (int shelf = 0; shelf < entry.def.bookShelves.Count; shelf++)
+            {
+                int first;
+                room += SlotsOn(entry.def, shelf, out first);
+            }
+            return room;
+        }
+
+        // How many places a shelf has, and where in bookSlots the first of them is.
+        private static int SlotsOn(ModelDef def, int shelf, out int first)
+        {
+            first = 0;
+            if (def.bookShelfSlots == null || def.bookShelfSlots.Count == 0)
+            {
+                return def.bookSlots.Count;
+            }
+            if (shelf >= def.bookShelfSlots.Count)
+            {
+                return 0;
+            }
+            for (int k = 0; k < shelf; k++)
+            {
+                first += Mathf.Max(0, def.bookShelfSlots[k]);
+            }
+            return Mathf.Clamp(def.bookSlots.Count - first, 0, Mathf.Max(0, def.bookShelfSlots[shelf]));
         }
 
         public static void Print(SectionLayer layer, Building_Bookcase bookcase, ModelEntry entry)
@@ -59,17 +88,25 @@ namespace IsoRim
             Quaternion turn = Quaternion.AngleAxis(yaw, Vector3.up);
             Vector3 center = bookcase.DrawPos;
             Vector3 fit = entry.Fit(bookcase.def) * def.scale;
-            int perShelf = def.bookSlots.Count;
             int printed = 0;
+            int shelf = 0;
+            int onShelf = 0;
+            int first;
+            int perShelf = SlotsOn(def, 0, out first);
             for (int i = 0; i < count; i++)
             {
+                while (onShelf >= perShelf && shelf < def.bookShelves.Count - 1)
+                {
+                    shelf++;
+                    onShelf = 0;
+                    perShelf = SlotsOn(def, shelf, out first);
+                }
+                int slot = first + onShelf++;
                 Book book = books[i];
                 if (book == null)
                 {
                     continue;
                 }
-                int shelf = i / perShelf;
-                int slot = i % perShelf;
                 Model box = Box(Mathf.Min(Heights - 1, (int)(Hashing.Unit(book.thingIDNumber, 5, 61) * Heights)));
                 Vector3 at = new Vector3(def.bookSlots[slot] * fit.x, 0f, def.bookRow * fit.z) + def.offset;
                 float baseHeight = def.bookShelves[shelf] * fit.y - Sink;
