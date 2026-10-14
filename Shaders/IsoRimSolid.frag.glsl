@@ -2,7 +2,8 @@
 
 // IsoRim 3D view: one fragment program for every IsoRim ShaderDef (Solid, SolidTex, Outline, Ghost,
 // Blend, Overlay). Render state (blend, depth, cull, bias, queue) comes from the defs in
-// Defs\ShaderDefs\IsoRim_Shaders.xml; the vertex stage is vanilla SceneDefault.vert.glsl.
+// Defs\ShaderDefs\IsoRim_Shaders.xml; the vertex stage is vanilla SceneDefault.vert.glsl, or
+// IsoRim.vert.glsl (the same plus wall end lines and moving outlines) for Solid, LitMark and Outline.
 // USE_TEXTURE is defined by the engine for defs with useTexture = true (IsoRimSolidTex).
 //
 // colour = vertex colour * _Color [* texture, cut out below alpha 0.5] * shade
@@ -14,8 +15,10 @@
 // Night, lamp and indoor light (_GlowMode): 0 none (the game's pulled lighting overlay darkens it);
 // 1 the light of the face's OWN cell, from IsoRim's glow texture (the corner colours of the game's
 // lighting overlay, one texel per cell corner) and the sky colour, by the game's LightOverlay
-// formula; 2 sky colour only (roofs). Faces lit this way are stencil-marked by a second pass
-// (defs IsoRimLitMark*, colour writes off) so the pulled overlay skips them.
+// formula, applied by a second "light" pass (_MarkPass 1, defs IsoRimLitMark*, queue 3099) that
+// multiplies the colour already there like the game's overlay and sets stencil bit 32 so the
+// pulled overlay skips the pixel; 2 sky colour only (roofs), in this pass; 3 own cell, in this
+// pass (ghosts, drawn after the overlay).
 
 #define QUANTIZE 1   // 1: snap normals to IsoRim's 26 direction groups (original look); 0: exact face normals
 
@@ -35,7 +38,8 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     vec4 _IsoSky;     // global, no default: rgb = the game's sky light colour (the LightOverlay _Color)
     vec4 _IsoGlowMap; // global, no default: (origin x, origin z, 1/(W+1), 1/(H+1)) of the glow texture
     float _GlowMode;  // @default = 0.0
-    float _MarkPass;  // @default = 0.0     1 on the stencil-mark materials (colour writes off)
+    float _MarkPass;  // @default = 0.0     1 on the light-pass materials (IsoRimLitMark*)
+    float _OutlinePush; // @default = 0.0   vertex stage only (IsoRim.vert.glsl): moving outlines
 } uMaterial;
 
 layout(set = 2, binding = 1) uniform sampler2D _MainTex;
@@ -115,11 +119,37 @@ void main()
     if (color.a < 0.5)
         discard;
 #endif
-    // Mark pass: where an upright face meets the ground, face and ground have the same depth on
-    // the foot line and the ground can win there, so the bottom row of pixels is left unmarked
-    // (else that ground pixel would miss the overlay and show as a bright seam). Ground at height 0.
-    if (uMaterial._MarkPass > 0.5 && squash > 0.0 && abs(faceNormal.y) < 0.92 && p.y < 0.002)
+    // Light pass: where an upright face meets the ground, face and ground have the same depth on
+    // the foot line and the ground can win there, so the bottom row of pixels is left to the
+    // overlay (else that ground pixel would take the face's light instead). Ground at height 0.
+    bool lightPass = uMaterial._MarkPass > 0.5;
+    if (lightPass && squash > 0.0 && abs(faceNormal.y) < 0.92 && p.y < 0.002)
         discard;
+
+    float glowMode = uMaterial._GlowMode;
+    vec3 glowLight = vec3(1.0);
+    if (lightPass || glowMode > 1.5)
+    {
+        vec4 g = vec4(0.0);                      // mode 2 (roofs): sky only
+        if (lightPass || glowMode > 2.5)
+        {
+            // Upright faces read a little outward along their own normal, so a wall face takes the
+            // corners on its own side of the wall (the game leaves walls out of those averages).
+            vec2 xz = vWorldPos.xz;
+            if (squash > 0.0 && abs(faceNormal.y) < 0.92)
+                xz += faceNormal.xz * 0.1;
+            vec4 gm = uMaterial._IsoGlowMap;
+            vec2 uv = vec2((xz.x - gm.x + 0.5) * gm.z, 1.0 - (xz.y - gm.y + 0.5) * gm.w);
+            g = textureLod(_IsoGlowTex, uv, 0.0);
+        }
+        glowLight = GlowLight(g);
+        if (lightPass)
+        {
+            // Blend DstColor/SrcColor: the colour already there times 2 * this, as the game's overlay.
+            outColor = vec4(glowLight * 0.5, 1.0);
+            return;
+        }
+    }
 
     float mode = uMaterial._LightMode;
     float shade = 1.0;
@@ -138,23 +168,10 @@ void main()
     }
     color.rgb *= shade;
 
-    float glowMode = uMaterial._GlowMode;
-    if (glowMode > 0.5)
+    if (glowMode > 1.5)
     {
-        color.rgb = min(color.rgb, vec3(1.0));   // the 8-bit colour the overlay used to multiply
-        vec4 g = vec4(0.0);                      // mode 2 (roofs): sky only
-        if (glowMode < 1.5)
-        {
-            // Upright faces read a little outward along their own normal, so a wall face takes the
-            // corners on its own side of the wall (the game leaves walls out of those averages).
-            vec2 xz = vWorldPos.xz;
-            if (squash > 0.0 && abs(faceNormal.y) < 0.92)
-                xz += faceNormal.xz * 0.1;
-            vec4 gm = uMaterial._IsoGlowMap;
-            vec2 uv = vec2((xz.x - gm.x + 0.5) * gm.z, 1.0 - (xz.y - gm.y + 0.5) * gm.w);
-            g = textureLod(_IsoGlowTex, uv, 0.0);
-        }
-        color.rgb *= GlowLight(g);
+        color.rgb = min(color.rgb, vec3(1.0));   // the 8-bit colour the overlay would multiply
+        color.rgb *= glowLight;
     }
     outColor = color;
 }

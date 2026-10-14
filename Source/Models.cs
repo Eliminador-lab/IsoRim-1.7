@@ -1321,6 +1321,28 @@ namespace IsoRim
             }
         }
 
+        // The outline of moving models (people, animals, doors, tools). Each part (body, head,
+        // hair, hat) has its own shell; where one part tucks into another, the lower rim of its
+        // shell sits just in front of the other part and showed as a dark ring. The vertex shader
+        // pushes the corners of the shell that face the camera straight away from it by
+        // View3D.OutlinePush, which hides those rims behind the surface without moving anything on
+        // screen. Corners facing away (the far rim, which draws the outline against what stands
+        // behind) stay put, so a wall close behind does not hide the outline.
+        private static Material outlineMoving;
+
+        public static Material OutlineMoving
+        {
+            get
+            {
+                if (outlineMoving == null && Outline != null)
+                {
+                    outlineMoving = Make(OutlineDef, "IsoRim_OutlineMoving");
+                    outlineMoving.SetFloat(Shader.PropertyToID("_OutlinePush"), View3D.OutlinePush);
+                }
+                return outlineMoving;
+            }
+        }
+
         // ---- shaders (Defs\ShaderDefs\IsoRim_Shaders.xml). Every IsoRim def runs the same
         // fragment program (vertex colour * _Color [* texture] * shade); the def sets the render
         // state. _LightMode picks the shade: 0 unlit, 1 model curve, 2 wall curve, 3 roof slates.
@@ -1330,6 +1352,7 @@ namespace IsoRim
         public const string GhostDef = "IsoRimGhost";       // alpha, depth write, cull back, 3100
         public const string BlendDef = "IsoRimBlend";       // alpha, depth test, no depth write, 3050
         public const string OverlayDef = "IsoRimOverlay";   // alpha, no depth test or write, 3650
+        public const string WaveDef = "IsoRimWave";         // the game's Transparent with a repeating texture
 
         public const int LightUnlit = 0;
         private static readonly int lightModeId = Shader.PropertyToID("_LightMode");
@@ -1397,7 +1420,10 @@ namespace IsoRim
             {
                 if (ghost == null && Solid != null)
                 {
-                    ghost = Make(GhostDef, "IsoRim_Ghost", 3100);
+                    // After the game's lighting overlay (3100), lit by its own cell: drawn before
+                    // it, a ghost over a face that carries its own light was never darkened.
+                    ghost = Make(GhostDef, "IsoRim_Ghost", 3101);
+                    IsoGlow.Use(ghost, IsoGlow.OwnCellUnmarked);
                 }
                 return ghost;
             }

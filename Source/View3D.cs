@@ -34,10 +34,9 @@ namespace IsoRim
         public static Matrix4x4 LightingMatrix = Matrix4x4.identity;
         public static Matrix4x4 FogMatrix = Matrix4x4.identity;
 
-        // Outline shells of moving models are drawn this far (in cells) straight away from the
-        // camera. See ApplyCamera.
+        // Outline shells of moving models: how far (in cells) the parts of a shell facing the camera
+        // are pushed straight away from it (R3DMaterials.OutlineMoving, IsoRim.vert.glsl).
         public const float OutlinePush = 0.20f;
-        public static Matrix4x4 OutlinePushMatrix = Matrix4x4.identity;
 
         private static bool haveFrame;
         private static Vector3 eye;
@@ -361,13 +360,6 @@ namespace IsoRim
             // it only puts it in front. That is how the lighting overlay gets to darken upright things.
             LightingMatrix = Matrix4x4.Translate(new Vector3(-fwd.x * OverlayPull, -fwd.y * OverlayPull / s, -fwd.z * OverlayPull));
             FogMatrix = Matrix4x4.Translate(new Vector3(0f, WallHeight / s, 0f));
-
-            // Each part of a figure (body, head, hair) has its own outline shell. Where one part
-            // tucks into another, the lower rim of its shell sits in front of the other part and
-            // shows as a dark ring. Pushing the shells straight back hides those rims behind the
-            // surface without moving the outline on screen.
-            float push = OutlinePush;
-            OutlinePushMatrix = Matrix4x4.Translate(new Vector3(fwd.x * push, fwd.y * push / s, fwd.z * push));
         }
 
         private static void ResetCamera()

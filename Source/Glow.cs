@@ -15,11 +15,16 @@ namespace IsoRim
     // screen, and a lit room behind a wall lit its outer face too.
     //
     // Now each map keeps a texture with one texel per cell corner holding exactly the game's corner
-    // colours (copied from its overlay mesh whenever a block of it is rebuilt), and the IsoRim
-    // shader lights every face from its own cell (_GlowMode 1) with the game's formula; roofs take
-    // the sky colour only (_GlowMode 2). Those faces are stencil-marked by a second, depth-only
-    // pass, and the pulled overlay skips marked pixels, so nothing is lit twice. Everything else
-    // (the ground, the game's upright sprites) keeps the overlay as before.
+    // colours (copied from its overlay mesh whenever a block of it is rebuilt), and every face is
+    // lit from its own cell with the game's formula (_GlowMode 1) by a second "light" pass just
+    // before the overlay (queue 3099): the same meshes again, depth-tested against themselves,
+    // multiplying the colour already there (as the game's overlay does) and setting stencil bit
+    // 32, once per pixel. The pulled overlay skips those pixels, so nothing is lit twice, and
+    // anything see-through drawn over a face before then (smoke and other motes) is darkened with
+    // it, as the overlay darkens it over the ground. Roofs take the sky colour only (_GlowMode 2,
+    // in their own pass); ghosts are drawn after the overlay and light themselves from their own
+    // cell (_GlowMode 3). Everything else (the ground, the game's upright sprites) keeps the
+    // overlay as before.
     public sealed class IsoGlowMap
     {
         private static readonly Dictionary<Map, IsoGlowMap> maps = new Dictionary<Map, IsoGlowMap>();
@@ -172,8 +177,9 @@ namespace IsoRim
         private static readonly int markPassId = Shader.PropertyToID("_MarkPass");
 
         public const int None = 0;      // _GlowMode: lit by the game's pulled overlay
-        public const int OwnCell = 1;   // the face's own cell from the glow texture, stencil-marked
-        public const int SkyOnly = 2;   // sky colour only (roofs), not marked
+        public const int OwnCell = 1;   // the face's own cell from the glow texture, applied by the light pass (marked)
+        public const int SkyOnly = 2;   // sky colour only (roofs), in the material's own pass, not marked
+        public const int OwnCellUnmarked = 3;   // own cell, in the material's own pass, not marked (ghosts, drawn after the overlay)
 
         public const string MarkDef = "IsoRimLitMark";
         public const string MarkTexDef = "IsoRimLitMarkTex";

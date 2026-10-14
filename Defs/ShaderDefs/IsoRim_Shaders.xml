@@ -2,9 +2,10 @@
 <Defs>
 
   <!--
-    IsoRim 3D view shaders. All use vanilla SceneDefault.vert.glsl and Shaders\IsoRimSolid.frag.glsl
-    (vertex colour * _Color [* texture]); only the render state differs. Depth is reverse-Z
-    (compare GreaterOrEqual), front face clockwise. Materials may override renderQueue.
+    IsoRim 3D view shaders. All use Shaders\IsoRimSolid.frag.glsl (vertex colour * _Color [* texture])
+    and vanilla SceneDefault.vert.glsl, or Shaders\IsoRim.vert.glsl (the same plus wall end lines and
+    moving outlines) where noted; only the render state differs. Depth is reverse-Z (compare
+    GreaterOrEqual), front face clockwise. Materials may override renderQueue.
   -->
 
   <!-- Opaque vertex-coloured geometry: wall/rock lines and lids, model faces, pawns, animals, doors,
@@ -12,6 +13,7 @@
   <ShaderDef>
     <defName>IsoRimSolid</defName>
     <shaderProgram>
+      <vertexShaderFileName>IsoRim.vert.glsl</vertexShaderFileName>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
       <useTexture>false</useTexture>
       <blendMode>Opaque</blendMode>
@@ -34,10 +36,12 @@
   </ShaderDef>
 
   <!-- Inside-out hull shells drawn behind models: only back faces show. Pushed away from the camera
-       (negative = away under reverse-Z) so the shell never shows through the model's own faces. -->
+       (negative = away under reverse-Z) so the shell never shows through the model's own faces.
+       Moving models' shells are also pushed back in the vertex stage where they face the camera. -->
   <ShaderDef>
     <defName>IsoRimOutline</defName>
     <shaderProgram>
+      <vertexShaderFileName>IsoRim.vert.glsl</vertexShaderFileName>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
       <useTexture>false</useTexture>
       <blendMode>Opaque</blendMode>
@@ -48,7 +52,8 @@
     </shaderProgram>
   </ShaderDef>
 
-  <!-- Blueprints and frames: see-through, but they write depth so a ghost hides its own back faces. -->
+  <!-- Blueprints and frames: see-through, but they write depth so a ghost hides its own back faces.
+       Queue 3101: after the game's lighting overlay; they take the light of their own cell. -->
   <ShaderDef>
     <defName>IsoRimGhost</defName>
     <shaderProgram>
@@ -57,7 +62,7 @@
       <blendMode>Alpha</blendMode>
       <depthWrite>true</depthWrite>
       <cullMode>Back</cullMode>
-      <renderQueue>3100</renderQueue>
+      <renderQueue>3101</renderQueue>
     </shaderProgram>
   </ShaderDef>
 
@@ -75,42 +80,49 @@
     </shaderProgram>
   </ShaderDef>
 
-  <!-- Step 2b, night and indoor light on 3D faces. Faces lit from IsoRim's own glow texture
-       (_GlowMode 1) are drawn a second time with these, depth-tested but writing neither colour nor
-       depth, to set stencil bit 32 wherever such a face is still the front surface (sprites drawn in
-       front of it keep the game's overlay). The game never uses bit 32. Queue 3099: after
-       everything that writes depth, just before the lighting overlay. -->
+  <!-- Night and indoor light on 3D faces (the light pass). Faces lit from IsoRim's own glow texture
+       (_GlowMode 1) are drawn a second time with these, depth-tested against themselves and writing
+       no depth: the colour already there (the face, and anything see-through drawn over it since,
+       such as smoke) is multiplied by the light of the face's own cell, as the game's overlay does
+       (DstColor/SrcColor), and stencil bit 32 is set, once per pixel. Sprites drawn in front of a
+       face hide it from this pass and keep the game's overlay, which skips bit 32. The game never
+       uses bit 32. Queue 3099: after everything that writes depth, just before the overlay. -->
   <ShaderDef>
     <defName>IsoRimLitMark</defName>
     <shaderProgram>
+      <vertexShaderFileName>IsoRim.vert.glsl</vertexShaderFileName>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
       <useTexture>false</useTexture>
-      <blendMode>Opaque</blendMode>
+      <blendMode>Custom</blendMode>
+      <blendSrcFactor>DstColor</blendSrcFactor>
+      <blendDstFactor>SrcColor</blendDstFactor>
       <depthWrite>false</depthWrite>
-      <colorWrite>false</colorWrite>
       <cullMode>None</cullMode>
       <stencilEnabled>true</stencilEnabled>
-      <stencilCompare>Always</stencilCompare>
+      <stencilCompare>NotEqual</stencilCompare>
       <stencilPassOp>Replace</stencilPassOp>
       <stencilRef>32</stencilRef>
+      <stencilReadMask>32</stencilReadMask>
       <stencilWriteMask>32</stencilWriteMask>
       <renderQueue>3099</renderQueue>
     </shaderProgram>
   </ShaderDef>
 
-  <!-- The same for textured faces, so cut-out holes (alpha below 0.5) stay unmarked. -->
+  <!-- The same for textured faces, so cut-out holes (alpha below 0.5) are left to the overlay. -->
   <ShaderDef>
     <defName>IsoRimLitMarkTex</defName>
     <shaderProgram>
       <fragmentShaderFileName>IsoRimSolid.frag.glsl</fragmentShaderFileName>
-      <blendMode>Opaque</blendMode>
+      <blendMode>Custom</blendMode>
+      <blendSrcFactor>DstColor</blendSrcFactor>
+      <blendDstFactor>SrcColor</blendDstFactor>
       <depthWrite>false</depthWrite>
-      <colorWrite>false</colorWrite>
       <cullMode>None</cullMode>
       <stencilEnabled>true</stencilEnabled>
-      <stencilCompare>Always</stencilCompare>
+      <stencilCompare>NotEqual</stencilCompare>
       <stencilPassOp>Replace</stencilPassOp>
       <stencilRef>32</stencilRef>
+      <stencilReadMask>32</stencilReadMask>
       <stencilWriteMask>32</stencilWriteMask>
       <renderQueue>3099</renderQueue>
     </shaderProgram>
@@ -148,6 +160,26 @@
       <depthWrite>false</depthWrite>
       <cullMode>None</cullMode>
       <renderQueue>3650</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- Water ripples and flow streaks: the game's own Transparent shader with the texture repeating
+       instead of clamped (the game's Transparent def clamps it). Their texture slides on without end
+       (the material's texture offset), so with a clamped texture they were invisible. -->
+  <ShaderDef>
+    <defName>IsoRimWave</defName>
+    <shaderProgram>
+      <vertexShaderFileName>Transparent.vert.glsl</vertexShaderFileName>
+      <fragmentShaderFileName>Transparent.frag.glsl</fragmentShaderFileName>
+      <transparent>true</transparent>
+      <depthWrite>false</depthWrite>
+      <renderQueue>3053</renderQueue>
+      <textureWrapOverrides>
+        <li>
+          <key>_MainTex</key>
+          <value>Repeat</value>
+        </li>
+      </textureWrapOverrides>
     </shaderProgram>
   </ShaderDef>
 

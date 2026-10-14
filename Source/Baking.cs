@@ -421,7 +421,7 @@ namespace IsoRim
             AddQuadTris(sm, start);
         }
 
-        private static void AddQuadTris(LayerSubMesh sm, int start)
+        public static void AddQuadTris(LayerSubMesh sm, int start)
         {
             sm.tris.Add(start);
             sm.tris.Add(start + 1);
@@ -870,23 +870,50 @@ namespace IsoRim
         }
 
         // The line up each end of a run of wall. An end is always an outside corner, where the
-        // next face round draws its own end line, so each draws half the width and runs on past
-        // the corner by Gap: together they make one line with no seam.
+        // next face round (the block's end face) draws its own end line. Each line runs on past
+        // the corner by Gap, so the two meet in one line with no seam, and the shader
+        // (IsoRim.vert.glsl) shares the line's width between them by how much each face is turned
+        // toward the camera: half each when both show equally, the full width on the one face
+        // that shows when the other is turned away (a silhouette corner).
         private static void EndLines(LayerSubMesh solid, Map map, IntVec3 c, int f, Vector3 q0, Vector3 right, float topY, float height, Color32 lineColor)
         {
-            float half = OutlineWidth * 0.5f;
             if (Exposed(map, c - FaceRight[f], height))
             {
                 Vector3 s = q0 - right * Gap;
-                Vector3 e = q0 + right * half;
-                MeshWriter.Quad(solid, s, Raised(s, topY), Raised(e, topY), e, lineColor);
+                EndLine(solid, f, s, q0, right, topY, lineColor, false);
             }
             if (Exposed(map, c + FaceRight[f], height))
             {
-                Vector3 s = q0 + right * (1f - half);
-                Vector3 e = q0 + right * (1f + Gap);
-                MeshWriter.Quad(solid, s, Raised(s, topY), Raised(e, topY), e, lineColor);
+                Vector3 k = q0 + right;
+                Vector3 e = k + right * Gap;
+                EndLine(solid, f, e, k, -right, topY, lineColor, true);
             }
+        }
+
+        // One end line on face f: from outer (past the corner) to the corner, whose inner edge the
+        // vertex shader moves "along" (into the face) by its share of OutlineWidth. uv carries
+        // the direction and width (xy) and which face it lies on (z = 2 + f).
+        private static void EndLine(LayerSubMesh sm, int f, Vector3 outer, Vector3 corner, Vector3 along, float topY, Color32 color, bool rightEnd)
+        {
+            Vector3 inner = new Vector3(along.x * OutlineWidth, along.z * OutlineWidth, 2f + f);
+            Vector3 a = rightEnd ? corner : outer;
+            Vector3 d = rightEnd ? outer : corner;
+            Vector3 ua = rightEnd ? inner : Vector3.zero;
+            Vector3 ud = rightEnd ? Vector3.zero : inner;
+            int start = sm.verts.Count;
+            sm.verts.Add(a);
+            sm.verts.Add(Raised(a, topY));
+            sm.verts.Add(Raised(d, topY));
+            sm.verts.Add(d);
+            sm.uvs.Add(ua);
+            sm.uvs.Add(ua);
+            sm.uvs.Add(ud);
+            sm.uvs.Add(ud);
+            for (int i = 0; i < 4; i++)
+            {
+                sm.colors.Add(color);
+            }
+            MeshWriter.AddQuadTris(sm, start);
         }
 
         private static Vector3 Raised(Vector3 v, float y)

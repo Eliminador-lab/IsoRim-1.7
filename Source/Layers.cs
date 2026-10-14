@@ -169,7 +169,14 @@ namespace IsoRim
             {
                 return null;
             }
-            Material m = new Material(ShaderDatabase.Transparent);
+            // The game's Transparent shader with a repeating texture (IsoRimWave): the texture
+            // offset slides on without end, which a clamped texture would leave blank.
+            Shader s = R3DMaterials.ShaderOf(R3DMaterials.WaveDef);
+            if (s == null)
+            {
+                return null;
+            }
+            Material m = new Material(s);
             m.name = "IsoRim_" + path.Substring(path.LastIndexOf('/') + 1);
             m.mainTexture = tex;
             m.renderQueue = queue;

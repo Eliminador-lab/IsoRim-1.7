@@ -52,7 +52,7 @@ namespace IsoRim
                 }
                 if (form.form == Form3D.Block)
                 {
-                    return Box(layer, t.Position, form.height, col);
+                    return Box(layer, t.Map, t.Position, form.height, col);
                 }
             }
             catch (Exception e)
@@ -63,7 +63,11 @@ namespace IsoRim
         }
 
         // A see-through block one cell across and height cells high, for walls still to be built.
-        private static bool Box(SectionLayer layer, IntVec3 c, float height, Color col)
+        // Toward another such block at least as tall the side is left out and the block runs on
+        // to the cell edge, so a run of them reads as one block: seen through the near block,
+        // the sides between them showed as inner edges or not, depending on which block happened
+        // to be drawn first.
+        private static bool Box(SectionLayer layer, Map map, IntVec3 c, float height, Color col)
         {
             Material mat = R3DMaterials.Ghost;
             LayerSubMesh sm = mat != null ? MeshWriter.Sub(layer, mat) : null;
@@ -71,19 +75,62 @@ namespace IsoRim
             {
                 return false;
             }
+            bool south = BoxAt(map, c + IntVec3.South, height);
+            bool north = BoxAt(map, c + IntVec3.North, height);
+            bool west = BoxAt(map, c + IntVec3.West, height);
+            bool east = BoxAt(map, c + IntVec3.East, height);
             float y = height / View3D.Squash;
-            float x0 = c.x + 0.02f;
-            float z0 = c.z + 0.02f;
-            float x1 = c.x + 0.98f;
-            float z1 = c.z + 0.98f;
+            float x0 = c.x + (west ? 0f : 0.02f);
+            float z0 = c.z + (south ? 0f : 0.02f);
+            float x1 = c.x + (east ? 1f : 0.98f);
+            float z1 = c.z + (north ? 1f : 0.98f);
             Color32 top = col;
             Color32 side = new Color(col.r * 0.78f, col.g * 0.78f, col.b * 0.78f, col.a);
             MeshWriter.Quad(sm, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), top);
-            MeshWriter.Quad(sm, new Vector3(x0, 0f, z0), new Vector3(x0, y, z0), new Vector3(x1, y, z0), new Vector3(x1, 0f, z0), side);
-            MeshWriter.Quad(sm, new Vector3(x1, 0f, z1), new Vector3(x1, y, z1), new Vector3(x0, y, z1), new Vector3(x0, 0f, z1), side);
-            MeshWriter.Quad(sm, new Vector3(x0, 0f, z1), new Vector3(x0, y, z1), new Vector3(x0, y, z0), new Vector3(x0, 0f, z0), side);
-            MeshWriter.Quad(sm, new Vector3(x1, 0f, z0), new Vector3(x1, y, z0), new Vector3(x1, y, z1), new Vector3(x1, 0f, z1), side);
+            if (!south)
+            {
+                MeshWriter.Quad(sm, new Vector3(x0, 0f, z0), new Vector3(x0, y, z0), new Vector3(x1, y, z0), new Vector3(x1, 0f, z0), side);
+            }
+            if (!north)
+            {
+                MeshWriter.Quad(sm, new Vector3(x1, 0f, z1), new Vector3(x1, y, z1), new Vector3(x0, y, z1), new Vector3(x0, 0f, z1), side);
+            }
+            if (!west)
+            {
+                MeshWriter.Quad(sm, new Vector3(x0, 0f, z1), new Vector3(x0, y, z1), new Vector3(x0, y, z0), new Vector3(x0, 0f, z0), side);
+            }
+            if (!east)
+            {
+                MeshWriter.Quad(sm, new Vector3(x1, 0f, z0), new Vector3(x1, y, z0), new Vector3(x1, y, z1), new Vector3(x1, 0f, z1), side);
+            }
             return true;
+        }
+
+        // True if a ghost box at least this tall is drawn in the cell: a blueprint or frame (one
+        // the game prints into the map mesh) of a block. Placing or removing one redraws the
+        // cells next to it too (blocks link to their neighbours).
+        private static bool BoxAt(Map map, IntVec3 c, float height)
+        {
+            if (map == null || !c.InBounds(map))
+            {
+                return false;
+            }
+            List<Thing> things = map.thingGrid.ThingsListAtFast(c);
+            for (int i = 0; i < things.Count; i++)
+            {
+                Thing t = things[i];
+                ThingDef target = Target(t);
+                if (target == null || t.def.drawerType == DrawerType.RealtimeOnly)
+                {
+                    continue;
+                }
+                ThingForm form = Forms.For(target);
+                if (form.form == Form3D.Block && form.height >= height - 0.01f)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // ---- the preview under the pointer, drawn every frame
