@@ -1,0 +1,8 @@
+newmtl cloth_blue
+Kd 0.30 0.38 0.46
+map_Kd IsoRim/Swatches/Fabric
+newmtl straw
+Kd 0.58 0.46 0.24
+map_Kd IsoRim/Swatches/Fabric
+newmtl lamp_lens
+Kd 0.91 0.86 0.68

@@ -1,0 +1,13 @@
+newmtl instrument_wood
+Kd 0.31 0.22 0.15
+map_Kd IsoRim/Swatches/Wood
+newmtl instrument_dark
+Kd 0.15 0.14 0.13
+map_Kd IsoRim/Swatches/Wood
+newmtl instrument_white
+Kd 0.84 0.85 0.82
+newmtl instrument_soundboard
+Kd 0.48 0.36 0.2
+map_Kd IsoRim/Swatches/Wood
+newmtl instrument_string
+Kd 0.63 0.61 0.51

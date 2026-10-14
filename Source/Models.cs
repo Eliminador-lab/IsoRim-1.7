@@ -801,7 +801,10 @@ namespace IsoRim
                 max = Vector3.Max(max, pos[i]);
             }
             Vector3 size = max - min;
-            if (volume >= -0.1f * size.x * size.y * size.z)
+            // A thin or airy closed model (a drape, a lattice mast) encloses little of its box, so a
+            // negative volume alone is not enough to tell it from an open shape; a closed one (every
+            // edge shared by a face running the other way) is turned round whenever its volume is negative.
+            if (volume >= 0f || (volume >= -0.1f * size.x * size.y * size.z && !IsClosed(pos)))
             {
                 return;
             }
@@ -817,6 +820,28 @@ namespace IsoRim
                     normal[k] = -normal[k];
                 }
             }
+        }
+
+        // True when every triangle edge (corners matched by position) is also an edge of a triangle
+        // that runs along it the other way, i.e. the faces close round a solid.
+        private static bool IsClosed(List<Vector3> pos)
+        {
+            HashSet<(Vector3Int, Vector3Int)> edges = new HashSet<(Vector3Int, Vector3Int)>();
+            for (int i = 0; i + 2 < pos.Count; i += 3)
+            {
+                for (int k = 0; k < 3; k++)
+                {
+                    edges.Add((HullKey(pos[i + k]), HullKey(pos[i + (k + 1) % 3])));
+                }
+            }
+            foreach ((Vector3Int a, Vector3Int b) in edges)
+            {
+                if (!edges.Contains((b, a)))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static void Swap<T>(List<T> list, int a, int b)

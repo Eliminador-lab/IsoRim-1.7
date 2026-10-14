@@ -1,0 +1,17 @@
+newmtl child_red
+Kd 0.66 0.30 0.29
+newmtl child_blue
+Kd 0.34 0.47 0.61
+newmtl child_yellow
+Kd 0.78 0.65 0.35
+newmtl child_green
+Kd 0.42 0.59 0.37
+newmtl child_cream
+Kd 0.87 0.84 0.73
+newmtl child_chalkboard
+Kd 0.18 0.22 0.21
+newmtl child_chalk
+Kd 0.80 0.81 0.74
+newmtl child_blanket
+Kd 0.57 0.66 0.69
+map_Kd IsoRim/Swatches/Fabric

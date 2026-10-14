@@ -1,0 +1,20 @@
+newmtl machine_shell
+Kd 0.55 0.56 0.43
+map_Kd IsoRim/Swatches/Metal
+newmtl machine_dark
+Kd 0.29 0.31 0.25
+map_Kd IsoRim/Swatches/Metal
+newmtl machine_green
+Kd 0.49 0.69 0.43
+newmtl machine_core
+Kd 0.72 0.76 0.48
+newmtl machine_cell
+Kd 0.32 0.4 0.23
+newmtl machine_frame
+Kd 0.43 0.28 0.27
+map_Kd IsoRim/Swatches/Metal
+newmtl machine_copper
+Kd 0.51 0.36 0.22
+map_Kd IsoRim/Swatches/Metal
+newmtl machine_display
+Kd 0.12 0.51 0.63

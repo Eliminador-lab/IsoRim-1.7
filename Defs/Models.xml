@@ -3954,4 +3954,272 @@
     <flat>true</flat>
   </IsoRim.ModelDef>
 
+  <!-- Coop model batch 1 (D:ClaudeGPTCoopHeremodels_incoming, deliveries 2026-10-13 20:54 to 2026-10-14 00:19),
+       bind-only buildings. Shuttle, ShuttleCrashed and AncientCryptosleepPod are RealtimeOnly (body layer).
+       BabyDecoration: the five models in the order of the game's sprites A-E (both pick by thing ID). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Shuttle</defName>
+    <thingDef>Shuttle</thingDef>
+    <model>Models/shuttle_imperial.obj</model>
+    <builtFor>(5, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ShuttleCrashed</defName>
+    <thingDef>ShuttleCrashed</thingDef>
+    <model>Models/shuttle_crashed.obj</model>
+    <builtFor>(5, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientCryptosleepPod</defName>
+    <thingDef>AncientCryptosleepPod</thingDef>
+    <model>Models/ancient_cryptosleep_pod.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <rotation>180</rotation>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Throne</defName>
+    <thingDef>Throne</thingDef>
+    <model>Models/throne.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.43</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GrandThrone</defName>
+    <thingDef>GrandThrone</thingDef>
+    <model>Models/grand_throne.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.54</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Harp</defName>
+    <thingDef>Harp</thingDef>
+    <model>Models/harp.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Harpsichord</defName>
+    <thingDef>Harpsichord</thingDef>
+    <model>Models/harpsichord.obj</model>
+    <builtFor>(2, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Piano</defName>
+    <thingDef>Piano</thingDef>
+    <model>Models/piano.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Couch</defName>
+    <thingDef>Couch</thingDef>
+    <model>Models/couch.obj</model>
+    <builtFor>(2, 1)</builtFor>
+    <surfaceHeight>0.44</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_FloodLight</defName>
+    <thingDef>FloodLight</thingDef>
+    <model>Models/flood_light.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_PenMarker</defName>
+    <thingDef>PenMarker</thingDef>
+    <model>Models/pen_marker.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_RoyalBed</defName>
+    <thingDef>RoyalBed</thingDef>
+    <model>Models/royal_bed.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.55</surfaceHeight>
+    <rotation>180</rotation>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GameOfUrBoard</defName>
+    <thingDef>GameOfUrBoard</thingDef>
+    <model>Models/game_of_ur.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SteleGrand</defName>
+    <thingDef>SteleGrand</thingDef>
+    <model>Models/stele_grand.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AnimusStone</defName>
+    <thingDef>AnimusStone</thingDef>
+    <model>Models/animus_stone.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ActivatorCountdown</defName>
+    <thingDef>ActivatorCountdown</thingDef>
+    <model>Models/countdown.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_MechDropBeacon</defName>
+    <thingDef>MechDropBeacon</thingDef>
+    <model>Models/drop_beacon.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ShipLandingBeacon</defName>
+    <thingDef>ShipLandingBeacon</thingDef>
+    <model>Models/landing_beacon.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_UnstablePowerCell</defName>
+    <thingDef>UnstablePowerCell</thingDef>
+    <model>Models/power_cell.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ActivatorProximity</defName>
+    <thingDef>ActivatorProximity</thingDef>
+    <model>Models/proximity.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ClimateAdjuster</defName>
+    <thingDef>ClimateAdjuster</thingDef>
+    <model>Models/climate_adjuster.obj</model>
+    <builtFor>(6, 6)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Defoliator</defName>
+    <thingDef>Defoliator</thingDef>
+    <model>Models/defoliator.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_EMIDynamo</defName>
+    <thingDef>EMIDynamo</thingDef>
+    <model>Models/emi_dynamo.obj</model>
+    <builtFor>(6, 4)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SunBlocker</defName>
+    <thingDef>SunBlocker</thingDef>
+    <model>Models/sun_blocker.obj</model>
+    <builtFor>(6, 4)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_WeatherController</defName>
+    <thingDef>WeatherController</thingDef>
+    <model>Models/weather_controller.obj</model>
+    <builtFor>(6, 6)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_PsychicDroner</defName>
+    <thingDef>PsychicDroner</thingDef>
+    <model>Models/psychic_droner.obj</model>
+    <builtFor>(6, 6)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_PsychicSuppressor</defName>
+    <thingDef>PsychicSuppressor</thingDef>
+    <model>Models/psychic_suppressor.obj</model>
+    <builtFor>(6, 6)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_MechAssembler</defName>
+    <thingDef>MechAssembler</thingDef>
+    <model>Models/mech_assembler.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Crib</defName>
+    <thingDef>Crib</thingDef>
+    <model>Models/crib.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.34</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ToyBox</defName>
+    <thingDef>ToyBox</thingDef>
+    <model>Models/toy_box.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SchoolDesk</defName>
+    <thingDef>SchoolDesk</thingDef>
+    <model>Models/school_desk.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Blackboard</defName>
+    <thingDef>Blackboard</thingDef>
+    <model>Models/blackboard.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_BabyDecoration</defName>
+    <thingDef>BabyDecoration</thingDef>
+    <models>
+      <li>Models/baby_horse.obj</li>
+      <li>Models/baby_car.obj</li>
+      <li>Models/baby_piano.obj</li>
+      <li>Models/baby_rings.obj</li>
+      <li>Models/baby_phone.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GeneBank</defName>
+    <thingDef>GeneBank</thingDef>
+    <model>Models/gene_bank.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GeneProcessor</defName>
+    <thingDef>GeneProcessor</thingDef>
+    <model>Models/gene_processor.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GeneAssembler</defName>
+    <thingDef>GeneAssembler</thingDef>
+    <model>Models/gene_assembler.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+
 </Defs>

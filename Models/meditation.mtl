@@ -1,0 +1,14 @@
+newmtl meditation_foliage
+Kd 0.38 0.43 0.20
+map_Kd IsoRim/Swatches/Leaf
+newmtl meditation_foliage_light
+Kd 0.45 0.48 0.25
+map_Kd IsoRim/Swatches/Leaf
+newmtl meditation_jade
+Kd 0.333333 0.462745 0.270588
+map_Kd IsoRim/Swatches/Stone
+newmtl meditation_carving
+Kd 0.21 0.31 0.17
+newmtl meditation_bark
+Kd 0.40 0.32 0.20
+map_Kd IsoRim/Swatches/Bark
