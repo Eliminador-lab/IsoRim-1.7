@@ -511,7 +511,7 @@ namespace IsoRim
     // textures: a lighter cap on top, the material's pattern on each exposed side, and dark
     // outlines round the cap, along the ground and up the ends of each run. The textures are
     // light grey and are tinted with the colour of what the wall is built from.
-    public static class WallBoxes
+    public static partial class WallBoxes
     {
         private static readonly Dictionary<ThingDef, float> fillCache = new Dictionary<ThingDef, float>();
         private static readonly Dictionary<long, Material> materials = new Dictionary<long, Material>();
@@ -682,7 +682,7 @@ namespace IsoRim
             Vector3 centre = new Vector3(x0 + 0.5f, 0f, z0 + 0.5f);
             for (int f = 0; f < 4; f++)
             {
-                if (!Exposed(map, c + FaceOut[f], height))
+                if (!ExposedFrom(map, c, c + FaceOut[f], height))
                 {
                     continue;
                 }
@@ -734,8 +734,8 @@ namespace IsoRim
                 {
                     for (int az = -1; az <= 1; az += 2)
                     {
-                        if (Exposed(map, c + new IntVec3(ax, 0, 0), height) || Exposed(map, c + new IntVec3(0, 0, az), height)
-                            || !Exposed(map, c + new IntVec3(ax, 0, az), height))
+                        if (ExposedFrom(map, c, c + new IntVec3(ax, 0, 0), height) || ExposedFrom(map, c, c + new IntVec3(0, 0, az), height)
+                            || !ExposedFrom(map, c, c + new IntVec3(ax, 0, az), height))
                         {
                             continue;
                         }
@@ -939,12 +939,12 @@ namespace IsoRim
         // that shows when the other is turned away (a silhouette corner).
         private static void EndLines(LayerSubMesh solid, Map map, IntVec3 c, int f, Vector3 q0, Vector3 right, float topY, float height, Color32 lineColor)
         {
-            if (Exposed(map, c - FaceRight[f], height))
+            if (ExposedFrom(map, c, c - FaceRight[f], height))
             {
                 Vector3 s = q0 - right * Gap;
                 EndLine(solid, f, s, q0, right, topY, lineColor, false);
             }
-            if (Exposed(map, c + FaceRight[f], height))
+            if (ExposedFrom(map, c, c + FaceRight[f], height))
             {
                 Vector3 k = q0 + right;
                 Vector3 e = k + right * Gap;
@@ -991,6 +991,13 @@ namespace IsoRim
                 return false;
             }
             return BlockHeightAt(map, neighbour) < height - 0.01f;
+        }
+
+        // The same for the side of the block in cell from that looks onto neighbour: also hidden where
+        // a gravship hull corner piece stands against it at least as tall (HullCorners).
+        private static bool ExposedFrom(Map map, IntVec3 from, IntVec3 neighbour, float height)
+        {
+            return Exposed(map, neighbour, height) && !HullCorners.Covers(map, neighbour, from, height);
         }
 
         // ------------------------------------------------------------ walls cut down to show the room behind
@@ -2442,10 +2449,10 @@ namespace IsoRim
             Color32 inner = Dark(0.32f);
             Vector3 centre = new Vector3(c.x + 0.5f, y, c.z + 0.5f);
 
-            bool south = Open(map, c + IntVec3.South);
-            bool north = Open(map, c + IntVec3.North);
-            bool west = Open(map, c + IntVec3.West);
-            bool east = Open(map, c + IntVec3.East);
+            bool south = Open(map, c, c + IntVec3.South);
+            bool north = Open(map, c, c + IntVec3.North);
+            bool west = Open(map, c, c + IntVec3.West);
+            bool east = Open(map, c, c + IntVec3.East);
 
             for (int f = 0; f < 4; f++)
             {
@@ -2475,14 +2482,16 @@ namespace IsoRim
             }
         }
 
-        private static bool Open(Map map, IntVec3 c)
+        // Whether the ground in cell c, beside the block in cell from, is open (a gravship hull corner
+        // piece standing against that block covers it, see HullCorners).
+        private static bool Open(Map map, IntVec3 from, IntVec3 c)
         {
             if (!c.InBounds(map))
             {
                 return false;
             }
             Building b = c.GetEdifice(map);
-            return b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block);
+            return (b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block)) && !HullCorners.Covers(map, c, from, 0f);
         }
 
         // Under something that moves (an animal): a soft oval, drawn afresh every frame.

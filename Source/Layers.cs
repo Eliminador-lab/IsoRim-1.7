@@ -453,6 +453,7 @@ namespace IsoRim
         public SectionLayer_IsoRimWalls(Section section) : base(section)
         {
             MapSections.SetChangeFlags(this, "Things", "Buildings");
+            HullCorners.AddChangeFlags(this, section);   // + the game's hull layer flags (gravship corner pieces, Gravship.cs)
         }
 
         public override bool Visible
@@ -498,6 +499,7 @@ namespace IsoRim
                     GroundShadows.AroundBlock(this, b);
                     WallBoxes.PrintBlock(this, b, height);
                 }
+                HullCorners.Print(this, map, section.CellRect);   // gravship hull corner pieces (Gravship.cs)
             }
             catch (Exception e)
             {
@@ -758,7 +760,7 @@ namespace IsoRim
 
         public SectionLayer_IsoRimRoofs(Section section) : base(section)
         {
-            MapSections.SetChangeFlags(this, "Roofs", "Buildings");
+            MapSections.SetChangeFlags(this, "Roofs", "Buildings", "Terrain");   // Terrain: ship roofs follow Substructure
         }
 
         public override bool Visible
@@ -791,6 +793,7 @@ namespace IsoRim
         // parts are coloured per corner. The game's own DrawLayer draws them.
 
         // 0: no lid here. 1: a built roof (or a wall under the edge of one). 2: a natural rock roof over open ground.
+        // 3 (ShipRoofs.Kind): a built roof over a gravship, or a wall standing on Substructure under its edge (Gravship.cs).
         private static int LidKind(Map map, IntVec3 c)
         {
             if (!c.InBounds(map) || Cutaway.RoofOpen(map, c))
@@ -805,7 +808,7 @@ namespace IsoRim
             {
                 if (!roof.isNatural)
                 {
-                    return 1;
+                    return ShipRoofs.IsShip(map, c) ? ShipRoofs.Kind : 1;
                 }
                 return solidBlock ? 0 : 2;
             }
@@ -814,7 +817,10 @@ namespace IsoRim
                 return 0;
             }
             // A wall, door or anything set into a wall (coolers, vents) with a built roof beside it
-            // carries the edge of that roof.
+            // carries the edge of that roof. One standing on Substructure carries a ship roof beside it
+            // as a ship roof; one that does not carries only house roofs.
+            bool shipWall = ShipRoofs.IsShip(map, c);
+            int found = 0;
             for (int i = 0; i < 8; i++)
             {
                 IntVec3 n = c + GenAdj.AdjacentCells[i];
@@ -823,11 +829,19 @@ namespace IsoRim
                     RoofDef r = map.roofGrid.RoofAt(n);
                     if (r != null && !r.isNatural)
                     {
-                        return 1;
+                        bool shipRoof = ShipRoofs.IsShip(map, n);
+                        if (shipWall && shipRoof)
+                        {
+                            return ShipRoofs.Kind;
+                        }
+                        if (!shipRoof)
+                        {
+                            found = 1;
+                        }
                     }
                 }
             }
-            return 0;
+            return found;
         }
 
         // Roof colours to pick from in the options: slate, terracotta, thatch, tin.
@@ -964,9 +978,9 @@ namespace IsoRim
             foreach (IntVec3 c in section.CellRect)
             {
                 int kind = KindAt(c.x, c.z);
-                if (kind == 0)
+                if (kind == 0 || kind == ShipRoofs.Kind)
                 {
-                    continue;
+                    continue;   // ship roofs: ShipRoofs.Build below
                 }
                 if (sm.verts.Count + 64 > MeshWriter.MaxVerts)
                 {
@@ -1045,6 +1059,7 @@ namespace IsoRim
                         new Vector3(bo.x + inner.x, eave + lift, bo.z + inner.z), new Vector3(bo.x, eave + lift, bo.z), line);
                 }
             }
+            ShipRoofs.Build(this, map, section.CellRect, KindAt);   // flat decks over gravships (Gravship.cs)
         }
 
         // One sloping facet of a built roof, given in cells, lit by the sun: a plain copy that hides

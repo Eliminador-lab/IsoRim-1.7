@@ -8,7 +8,8 @@
 //    outside corner both faces draw a line up the corner, meeting in one seamless line; the inner
 //    edge of each (stored on the corner) moves into its face by its share of the full width, given
 //    in uv.xy: half each when both faces are turned equally toward the camera, all of it on the one
-//    face that shows when the other is turned away (the block's silhouette).
+//    face that shows when the other is turned away (the block's silhouette). z = 10..73: the same for
+//    faces at any of the eight compass directions (gravship hull corner pieces).
 // 2. Outline shells of moving models (_OutlinePush > 0): pushed straight away from the camera by
 //    _OutlinePush (true cells), which hides the rims where one part's shell tucks into another
 //    (hat crown, hair line, waist) without moving anything on screen. Trade-off: a part close in
@@ -67,6 +68,27 @@ void main()
             vec2 v = toCamera.xz / lv;
             float mine = max(0.0, dot(n, v));
             float other = max(0.0, dot(-along / la, v));   // the block's end face round the corner
+            share = mine + other > 1e-4 ? mine / (mine + other) : 0.5;
+        }
+        world.xz += along * share;
+    }
+    else if (code > 9.5 && code < 73.5)
+    {
+        // The same for a corner line between faces at any of the eight compass directions (gravship hull
+        // corner pieces, Gravship.cs: a diagonal face meeting a straight one): z = 10 + 8 * this face + the
+        // face round the corner, each 0..7 = east, north-east, north, ... counter-clockwise seen from above.
+        int k = int(code - 9.5);
+        int ka = k / 8;
+        vec2 n = vec2(cos(float(ka) * 0.78539816), sin(float(ka) * 0.78539816));
+        vec2 o = vec2(cos(float(k - ka * 8) * 0.78539816), sin(float(k - ka * 8) * 0.78539816));
+        vec2 along = inUv0.xy;
+        float share = 0.5;
+        float lv = length(toCamera.xz);
+        if (lv > 1e-4)
+        {
+            vec2 v = toCamera.xz / lv;
+            float mine = max(0.0, dot(n, v));
+            float other = max(0.0, dot(o, v));
             share = mine + other > 1e-4 ? mine / (mine + other) : 0.5;
         }
         world.xz += along * share;
