@@ -31,6 +31,12 @@ namespace IsoRim
         // Called by ModelBaker.Bake for the real thing (not a ghost): which model to use, and noted.
         public static Model Choose(Thing t, ModelEntry entry, Model normal)
         {
+            // A map portal with an open model (ancient stockpile hatch): open while it can be entered, as the
+            // game's Print picks its open sprite. The game redraws the map mesh when that changes (hacked).
+            if (entry.open != null && t is MapPortal portal)
+            {
+                return portal.IsEnterable(out string _) ? entry.open : normal;
+            }
             CompEmptyStateGraphic c = CompOf(t);
             if (c == null)
             {

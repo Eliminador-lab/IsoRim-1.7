@@ -305,6 +305,15 @@ namespace IsoRim
                 prefix: nameof(AtomizerDrawAt_Prefix));
             Patch("3D glass", AccessTools.DeclaredMethod(typeof(CompBiosculpterPod), "PostDraw"),
                 prefix: nameof(BiosculpterPostDraw_Prefix));
+            // Holding platform with its model: the restraint chains in 3D from its eye rings (HoldingChains.cs).
+            Patch("3D holding platform chains", AccessTools.DeclaredMethod(typeof(Building_HoldingPlatform), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(HoldingPlatformDrawAt_Prefix));
+            // Outfit stands with their model: head model, the apparel and weapon stood upright over it (Stands.cs).
+            Patch("3D outfit stands", AccessTools.DeclaredMethod(typeof(Building_OutfitStand), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(OutfitStandDrawAt_Prefix));
+            // Extra per-frame sprites the model already has as parts (the ancient stockpile exit's ladder).
+            Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(CompDrawAdditionalGraphics), "PostDraw"),
+                prefix: nameof(DrawAdditionalGraphicsPostDraw_Prefix));
             // Harvester cables run up to the model's connectors (WorkParts.cs).
             Patch("3D cables", AccessTools.DeclaredMethod(typeof(CompCableConnection), "PostDraw"),
                 prefix: nameof(CableConnectionPostDraw_Prefix));
@@ -2014,6 +2023,73 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a growth vat failed: " + e, 93611263);
+                return true;
+            }
+        }
+
+        // An occupied holding platform drawn as its model: the body (held back) and comps as the game's
+        // base.DrawAt, then the chains in 3D. An empty one keeps the game's drawing (loose chains on the deck).
+        public static bool HoldingPlatformDrawAt_Prefix(Building_HoldingPlatform __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                if (__instance.HeldPawn == null || !SectionLayer_IsoRimBodies.StandsIn(__instance))
+                {
+                    return true;
+                }
+                ModelEntry entry = Forms.For(__instance.def).model;
+                Action<Thing, Vector3, bool> baseDraw = entry != null && entry.def.chainAnchors != null ? BookcaseBaseDraw() : null;
+                if (baseDraw == null)
+                {
+                    return true;
+                }
+                baseDraw(__instance, drawLoc, flip);
+                HoldingChains.Draw(__instance, entry);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a holding platform's chains failed: " + e, 93611291);
+                return true;
+            }
+        }
+
+        // An outfit stand drawn as its model (stand and body baked, SectionLayer_IsoRimBodies): its head model
+        // and what it shows (Stands.Draw) in place of the game's flat base, body, head and apparel.
+        public static bool OutfitStandDrawAt_Prefix(Building_OutfitStand __instance, Vector3 drawLoc, bool flip)
+        {
+            try
+            {
+                if (!SectionLayer_IsoRimBodies.StandsIn(__instance))
+                {
+                    return true;
+                }
+                ModelEntry entry = Forms.For(__instance.def).model;
+                return entry == null || !Stands.Draw(__instance, entry, drawLoc);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing an outfit stand failed: " + e, 93611292);
+                return true;
+            }
+        }
+
+        // CompDrawAdditionalGraphics.PostDraw: left out while the thing is drawn as a model with hideExtraGraphics.
+        public static bool DrawAdditionalGraphicsPostDraw_Prefix(ThingComp __instance)
+        {
+            try
+            {
+                Thing t = __instance.parent;
+                if (!ModelStandsIn(t))
+                {
+                    return true;
+                }
+                ModelEntry entry = Forms.For(t.def).model;
+                return entry == null || !entry.def.hideExtraGraphics;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Checking a building's extra sprites failed: " + e, 93611293);
                 return true;
             }
         }

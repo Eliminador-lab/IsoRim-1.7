@@ -75,6 +75,10 @@ namespace IsoRim
     //   embryo=x,z[,<done 0-1>]      a new embryo started in the powered growth vat, optionally that far along
     //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
     //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
+    //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
+    //   sealflag=x,z                 the portal in the cell marked sealed (CompSealable) and its map mesh redrawn
+    //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
+    //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
     //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
@@ -728,6 +732,44 @@ namespace IsoRim
                     Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied);
                     break;
                 }
+                case "chaincheck":
+                    foreach (Building_HoldingPlatform hp2 in map.listerThings.AllThings.OfType<Building_HoldingPlatform>().ToList())
+                    {
+                        Log.Message("[IsoRim probe] chaincheck " + hp2.Position + ": " + HoldingChains.Report(hp2) + ", floor " + Forms.HeightOf(hp2));
+                    }
+                    break;
+                case "sealflag":
+                {
+                    // sealflag=x,z: the portal's CompSealable marked sealed and the map mesh redrawn, as Seal() does
+                    // when the portal is kept (harness shortcut: Seal() itself needs a generated pocket map)
+                    Thing sp2 = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompSealable cs2 = sp2 != null ? sp2.TryGetComp<CompSealable>() : null;
+                    if (cs2 == null)
+                    {
+                        Log.Warning("[IsoRim probe] sealflag: nothing sealable at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    Traverse.Create(cs2).Field("isSealed").SetValue(true);
+                    sp2.DirtyMapMesh(map);
+                    Log.Message("[IsoRim probe] sealflag " + sp2.def.defName + " " + sp2.Position);
+                    break;
+                }
+                case "portalcheck":
+                    foreach (MapPortal mp in map.listerThings.AllThings.OfType<MapPortal>().ToList())
+                    {
+                        string why;
+                        bool enter = mp.IsEnterable(out why);
+                        CompHackable mh = mp.TryGetComp<CompHackable>();
+                        Log.Message("[IsoRim probe] portalcheck " + mp.def.defName + " " + mp.Position + ": enterable " + enter + " (" + why + ")"
+                            + (mh != null ? ", hacked " + mh.IsHacked : "") + ", form " + Forms.For(mp.def).form);
+                    }
+                    break;
+                case "standcheck":
+                    foreach (Building_OutfitStand os in map.listerThings.AllThings.OfType<Building_OutfitStand>().ToList())
+                    {
+                        Log.Message("[IsoRim probe] standcheck " + os.def.defName + " " + os.Position + " rot " + os.Rotation + ": " + Stands.Report(os));
+                    }
+                    break;
                 case "workcheck":
                     foreach (Thing wt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && x.TryGetComp<CompCableConnection>() != null).ToList())
                     {

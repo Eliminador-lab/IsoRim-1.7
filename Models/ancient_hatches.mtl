@@ -1,0 +1,38 @@
+newmtl ship_plate
+Kd 0.65 0.68 0.67
+newmtl ship_rib
+Kd 0.43 0.47 0.48
+newmtl ship_gap
+Kd 0.21 0.25 0.27
+newmtl ship_roof
+Kd 0.53 0.58 0.60
+newmtl stuff_orbital_dark
+Kd 0.8 0.8 0.8
+newmtl anomaly_shell
+Kd 0.48 0.49 0.46
+newmtl anomaly_trim
+Kd 0.64 0.64 0.59
+newmtl anomaly_dark
+Kd 0.23 0.25 0.23
+newmtl anomaly_copper
+Kd 0.40 0.27 0.22
+newmtl anomaly_panel
+Kd 0.38 0.35 0.32
+newmtl flight_red
+Kd 0.37 0.15 0.15
+newmtl flight_seam
+Kd 0.28 0.11 0.11
+newmtl flight_gold
+Kd 0.43 0.34 0.16
+newmtl anomaly_olive
+Kd 0.40 0.44 0.31
+newmtl anomaly_cyan
+Kd 0.60 0.75 0.77
+newmtl anomaly_red
+Kd 0.43 0.23 0.24
+newmtl anomaly_amber
+Kd 0.61 0.41 0.13
+newmtl anomaly_serum
+Kd 0.39 0.54 0.46
+newmtl anomaly_green
+Kd 0.34 0.41 0.23

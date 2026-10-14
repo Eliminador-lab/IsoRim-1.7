@@ -104,6 +104,28 @@ namespace IsoRim
         public List<Vector3> workPanel;
         public Color workPanelColor = new Color(1f, 0.5f, 0.2f);
         public float workPanelWidth = 0.08f;
+        // Holding platform (HoldingChains.cs): the eye rings (x, height, z; model space, facing north) the game's
+        // restraint chains are fixed to. Each chain runs from the ring nearest the game's own end point on
+        // the platform up to the held entity (or across it, ring to ring, for an entity with no points of its own).
+        public List<Vector3> chainAnchors;
+        // Outfit stands (Stands.cs): headModel is the stand's head, drawn only while no worn headgear hides
+        // the head (as the game). The apparel and weapon the stand shows are the game's own sprites, stood
+        // upright facing the camera: the body's at apparelHeight, the headgear's at apparelHeadHeight (cells),
+        // both apparelScale times the game's size.
+        public string headModel;
+        public float apparelHeight = 0.85f;
+        public float apparelHeadHeight = 1.4f;
+        public float apparelScale = 1f;
+        // Things made of several OBJ files that stay together: parts are merged into model when loaded (an
+        // ancient stockpile hatch's frame, cover and readout; the stockpile exit's frame and ladder).
+        public List<string> parts;
+        // A map portal (MapPortal: the ancient stockpile hatch) drawn with openModel (plus openParts merged into
+        // it) while it can be entered, as the game draws its open sprite; rebuilt when the game redraws it.
+        public string openModel;
+        public List<string> openParts;
+        // The game's extra per-frame sprites (CompDrawAdditionalGraphics: the stockpile exit's ladder) are left
+        // out while the model stands in, because the model has them as parts.
+        public bool hideExtraGraphics = false;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -346,6 +368,8 @@ namespace IsoRim
         public Model spinLit;     // spinModel with its litMaterial lit, or null
         public Model glass;       // glassModel, or null
         public Model hackTerminal; // hackTerminalModel, or null
+        public Model head;        // headModel, or null
+        public Model open;        // openModel (with openParts), or null
 
         public bool HasModel
         {
@@ -521,6 +545,21 @@ namespace IsoRim
             return model;
         }
 
+        // The model with the given part files merged into it (missing parts are left out).
+        private static Model WithParts(Model main, List<string> parts, string root)
+        {
+            List<Model> all = new List<Model> { main };
+            for (int i = 0; i < parts.Count; i++)
+            {
+                Model p = parts[i].NullOrEmpty() ? null : LoadFile(Path.Combine(root, parts[i]));
+                if (p != null)
+                {
+                    all.Add(p);
+                }
+            }
+            return all.Count > 1 ? ObjLoader.Merge(all) : main;
+        }
+
         private static ModelEntry MakeEntry(ModelDef md)
         {
             List<string> files = new List<string>();
@@ -546,6 +585,10 @@ namespace IsoRim
                 }
             }
 
+            if (md.parts != null && md.parts.Count > 0 && loaded.Count > 0 && md.modContentPack != null)
+            {
+                loaded[0] = WithParts(loaded[0], md.parts, md.modContentPack.RootDir);
+            }
             ModelEntry entry = new ModelEntry();
             entry.def = md;
             entry.variants = loaded.ToArray();
@@ -618,6 +661,18 @@ namespace IsoRim
             if (!md.hackTerminalModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.hackTerminal = LoadFile(Path.Combine(md.modContentPack.RootDir, md.hackTerminalModel));
+            }
+            if (!md.openModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.open = LoadFile(Path.Combine(md.modContentPack.RootDir, md.openModel));
+                if (entry.open != null && md.openParts != null && md.openParts.Count > 0)
+                {
+                    entry.open = WithParts(entry.open, md.openParts, md.modContentPack.RootDir);
+                }
+            }
+            if (!md.headModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.head = LoadFile(Path.Combine(md.modContentPack.RootDir, md.headModel));
             }
             if (!md.glassModel.NullOrEmpty() && md.modContentPack != null)
             {
@@ -863,6 +918,56 @@ namespace IsoRim
                     m.colors[k] = colors[piece % colors.Count];
                     m.tinted[k] = false;
                 }
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        // Several models in one: their triangles one after another, each keeping its own materials.
+        public static Model Merge(List<Model> models)
+        {
+            List<Vector3> pos = new List<Vector3>(), nor = new List<Vector3>(), hull = new List<Vector3>();
+            List<Color> col = new List<Color>();
+            List<bool> tint = new List<bool>();
+            List<Vector2> uv = new List<Vector2>();
+            List<int> mat = new List<int>();
+            List<ModelMaterial> mats = new List<ModelMaterial>();
+            foreach (Model src in models)
+            {
+                int offset = mats.Count;
+                mats.AddRange(src.materials);
+                pos.AddRange(src.positions);
+                nor.AddRange(src.normals);
+                col.AddRange(src.colors);
+                tint.AddRange(src.tinted);
+                uv.AddRange(src.uvs);
+                hull.AddRange(src.hull);
+                for (int i = 0; i < src.material.Length; i++)
+                {
+                    mat.Add(src.material[i] + offset);
+                }
+            }
+            Model m = new Model();
+            m.positions = pos.ToArray();
+            m.normals = nor.ToArray();
+            m.colors = col.ToArray();
+            m.tinted = tint.ToArray();
+            m.uvs = uv.ToArray();
+            m.hull = hull.ToArray();
+            m.material = mat.ToArray();
+            m.materials = mats.ToArray();
+            m.minX = float.MaxValue;
+            m.minZ = float.MaxValue;
+            m.maxX = float.MinValue;
+            m.maxZ = float.MinValue;
+            foreach (Model src in models)
+            {
+                m.maxY = Mathf.Max(m.maxY, src.maxY);
+                m.halfDepth = Mathf.Max(m.halfDepth, src.halfDepth);
+                m.minX = Mathf.Min(m.minX, src.minX);
+                m.maxX = Mathf.Max(m.maxX, src.maxX);
+                m.minZ = Mathf.Min(m.minZ, src.minZ);
+                m.maxZ = Mathf.Max(m.maxZ, src.maxZ);
             }
             m.id = nextId++;
             return m;
