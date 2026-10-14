@@ -53,6 +53,7 @@ namespace IsoRim
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   power=x,z                    the building in the cell counts as powered from now on
+    //   blueprint=<Def>,x,z[,<Stuff>|-[,rot]]  the player's blueprint to build it there
     //   tickuntil=bursting,N         game ticks until some turret fires a burst (at most N <= 900)
     //   interact=x,z                 the nearest free colonist is ordered to activate the building (as its float menu option)
     //   turretcheck=1                logs every turret's verb state, aim override, gun rotation and which gun model it shows
@@ -433,6 +434,13 @@ namespace IsoRim
                             postfix: new HarmonyMethod(typeof(Probe), nameof(PoweredPostfix)));
                     }
                     powered.Add(pw);
+                    break;
+                }
+                case "blueprint":
+                {
+                    ThingDef bd = DefDatabase<ThingDef>.GetNamed(a[0]);
+                    ThingDef bs = a.Length > 3 && a[3] != "-" ? DefDatabase<ThingDef>.GetNamed(a[3]) : (bd.MadeFromStuff ? GenStuff.DefaultStuffFor(bd) : null);
+                    GenConstruct.PlaceBlueprintForBuild(bd, new IntVec3(I(a[1]), 0, I(a[2])), map, a.Length > 4 ? new Rot4(I(a[4])) : Rot4.North, Faction.OfPlayer, bs);
                     break;
                 }
                 case "tickuntil":

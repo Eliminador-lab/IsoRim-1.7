@@ -32,6 +32,8 @@ namespace IsoRim
         public bool flat = false;           // true keeps the thing as a flat sprite
 
         public List<string> models;         // several models: each thing picks one and keeps it
+        public List<AppearanceModel> byAppearance;  // a different model for things made of stuff of this look (the
+                                            // game's Graphic_Appearances: Planks, Bricks, Smooth ...); others use model
         public string thingCategory;        // apply to every thing in this category instead of one thingDef
         public bool randomRotation = false; // give each thing its own turn
         public float scaleJitter = 0f;      // vary each thing's size by up to this fraction
@@ -269,10 +271,18 @@ namespace IsoRim
         public bool fire;        // a flame or embers: left out while the thing's fire is out
     }
 
+    // One entry of ModelDef.byAppearance: <li><appearance>Planks</appearance><model>Models/x.obj</model></li>
+    public class AppearanceModel
+    {
+        public string appearance;   // a StuffAppearanceDef defName
+        public string model;
+    }
+
     public class ModelEntry
     {
         public ModelDef def;
         public Model[] variants;
+        public Dictionary<string, Model> byAppearance;   // StuffAppearanceDef defName -> model; null if none
         public Model leg;   // animals only
         public Model top;   // turrets only
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
@@ -319,12 +329,30 @@ namespace IsoRim
             {
                 return null;
             }
+            if (byAppearance != null && t != null)
+            {
+                // As Graphic_Appearances: a blueprint or frame by the stuff it will be built of.
+                IConstructible building = t as IConstructible;
+                Model own = ForStuff(building != null ? building.EntityToBuildStuff() : t.Stuff);
+                if (own != null)
+                {
+                    return own;
+                }
+            }
             int n = t != null ? t.thingIDNumber : 0;
             if (n < 0)
             {
                 n = -n;
             }
             return variants[n % variants.Length];
+        }
+
+        // The model of byAppearance for things of this stuff; null if there is none.
+        public Model ForStuff(ThingDef stuff)
+        {
+            StuffAppearanceDef look = stuff != null && stuff.stuffProps != null ? stuff.stuffProps.appearance : null;
+            Model own;
+            return byAppearance != null && look != null && byAppearance.TryGetValue(look.defName, out own) ? own : null;
         }
 
         public float SurfaceHeight
@@ -439,6 +467,23 @@ namespace IsoRim
             ModelEntry entry = new ModelEntry();
             entry.def = md;
             entry.variants = loaded.ToArray();
+            if (md.byAppearance != null && md.modContentPack != null)
+            {
+                for (int i = 0; i < md.byAppearance.Count; i++)
+                {
+                    AppearanceModel am = md.byAppearance[i];
+                    Model m = am != null && !am.appearance.NullOrEmpty() && !am.model.NullOrEmpty()
+                        ? LoadFile(Path.Combine(md.modContentPack.RootDir, am.model)) : null;
+                    if (m != null)
+                    {
+                        if (entry.byAppearance == null)
+                        {
+                            entry.byAppearance = new Dictionary<string, Model>();
+                        }
+                        entry.byAppearance[am.appearance] = m;
+                    }
+                }
+            }
             if (!md.legModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.leg = LoadFile(Path.Combine(md.modContentPack.RootDir, md.legModel));

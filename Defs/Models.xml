@@ -4284,4 +4284,32 @@
     <topHeight>0.4</topHeight>
   </IsoRim.ModelDef>
 
+  <!-- Nature shrines: as the game's Graphic_Appearances, wood (Planks) gets the tree-stump shrine,
+       everything else (stone, metal: Smooth) the stacked-stone one. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_NatureShrine_Small</defName>
+    <thingDef>NatureShrine_Small</thingDef>
+    <model>Models/nature_shrine_small_smooth.obj</model>
+    <byAppearance>
+      <li>
+        <appearance>Planks</appearance>
+        <model>Models/nature_shrine_small_wood.obj</model>
+      </li>
+    </byAppearance>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_NatureShrine_Large</defName>
+    <thingDef>NatureShrine_Large</thingDef>
+    <model>Models/nature_shrine_large_smooth.obj</model>
+    <byAppearance>
+      <li>
+        <appearance>Planks</appearance>
+        <model>Models/nature_shrine_large_wood.obj</model>
+      </li>
+    </byAppearance>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+
 </Defs>

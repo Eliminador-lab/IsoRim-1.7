@@ -309,7 +309,7 @@ namespace IsoRim
             {
                 if (cells[i] != mouse)
                 {
-                    Ghosts.DrawPreview(def, cells[i], rot, col);
+                    Ghosts.DrawPreview(def, cells[i], rot, col, place.StuffDef);
                 }
             }
         }

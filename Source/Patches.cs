@@ -125,7 +125,8 @@ namespace IsoRim
             // The preview of what is being placed, under the pointer.
             Type ghostDrawer = AccessTools.TypeByName("Verse.GhostDrawer");
             MethodInfo ghostThing = ghostDrawer != null ? FindMethod(ghostDrawer, "DrawGhostThing") : null;
-            if (ghostThing != null && !StartsWith(ghostThing, typeof(IntVec3), typeof(Rot4), typeof(ThingDef), typeof(Graphic), typeof(Color)))
+            if (ghostThing != null && (!StartsWith(ghostThing, typeof(IntVec3), typeof(Rot4), typeof(ThingDef), typeof(Graphic), typeof(Color))
+                || ghostThing.GetParameters().Length < 9 || ghostThing.GetParameters()[8].ParameterType != typeof(ThingDef)))
             {
                 ghostThing = null;
             }
@@ -1203,7 +1204,7 @@ namespace IsoRim
             }
         }
 
-        public static void DrawGhostThing_Postfix(IntVec3 __0, Rot4 __1, ThingDef __2, Color __4)
+        public static void DrawGhostThing_Postfix(IntVec3 __0, Rot4 __1, ThingDef __2, Color __4, ThingDef __8)
         {
             if (!View3D.Ready)
             {
@@ -1211,7 +1212,7 @@ namespace IsoRim
             }
             try
             {
-                Ghosts.DrawPreview(__2, __0, __1, __4);
+                Ghosts.DrawPreview(__2, __0, __1, __4, __8);
             }
             catch (Exception e)
             {
