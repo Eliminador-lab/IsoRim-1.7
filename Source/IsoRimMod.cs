@@ -692,7 +692,8 @@ namespace IsoRim
 
             // 1.7 port testing: "-isorim3d" on the command line starts with the 3D view on
             // (used by the screenshot harness). The normal default (off) is unchanged.
-            if (GenCommandLine.CommandLineArgPassed("isorim3d"))
+            // A probe file whose first line is "#startoff" keeps it off (to film the first switch-on).
+            if (GenCommandLine.CommandLineArgPassed("isorim3d") && !Probe.StartOff)
             {
                 View3D.Active = true;
                 Log.Message("[IsoRim] -isorim3d: 3D view starts on.");

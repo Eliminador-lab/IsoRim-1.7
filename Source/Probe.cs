@@ -27,6 +27,9 @@ namespace IsoRim
 
         public static readonly bool On = Prefs.DevMode && GenCommandLine.CommandLineArgPassed("isorim3d") && File.Exists(FilePath);
 
+        // First line "#startoff": the 3D view starts off (a pass turns it on with active=1).
+        public static readonly bool StartOff = On && File.ReadAllLines(FilePath).Length > 0 && File.ReadAllLines(FilePath)[0].Trim() == "#startoff";
+
         private static List<string> passes;
         private static int pass = -1;
         private static int lastTicks = -1;

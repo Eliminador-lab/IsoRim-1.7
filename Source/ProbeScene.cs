@@ -442,6 +442,14 @@ namespace IsoRim
                 case "sway":
                     swayStill = a[0] == "0";
                     break;
+                case "burst":
+                    burstLeft = I(a[0]);
+                    burstEvery = a.Length > 1 ? Math.Max(1, I(a[1])) : 1;
+                    burstTag = a.Length > 2 ? a[2] : "b";
+                    burstCam = a.Length > 5 ? new Vector3(F(a[3]), F(a[4]), F(a[5])) : Vector3.zero;   // x, z, size
+                    burstFrame = 0;
+                    burstStart = Time.realtimeSinceStartup;
+                    break;
                 case "film":
                     filmCell = new IntVec3(I(a[0]), 0, I(a[1]));
                     filmAfter = I(a[2]);
@@ -1054,6 +1062,7 @@ namespace IsoRim
                 }
             }
             FilmTick(map);
+            BurstTick();
             if (swayStill)
             {
                 List<Material> plantMats = (List<Material>)plantMaterialsField.GetValue(null);
@@ -1171,6 +1180,41 @@ namespace IsoRim
                 }
             }
             return false;
+        }
+
+        // ---- a screenshot every k-th frame for N frames (e.g. right after the first switch-on)
+        private static int burstLeft;
+        private static int burstEvery = 1;
+        private static int burstFrame;
+        private static string burstTag;
+        private static Vector3 burstCam;
+        private static float burstStart;
+
+        private static void BurstTick()
+        {
+            if (burstLeft <= 0)
+            {
+                return;
+            }
+            if (burstCam.z > 0f)
+            {
+                Find.CameraDriver.SetRootPosAndSize(new Vector3(burstCam.x, 0f, burstCam.y), burstCam.z);
+            }
+            foreach (Window w in Find.WindowStack.Windows.ToList())
+            {
+                Find.WindowStack.TryRemove(w, doCloseSound: false);
+            }
+            if (burstFrame % burstEvery == 0)
+            {
+                string dir = System.IO.Path.Combine(GenFilePaths.SaveDataFolderPath, "renders", HarnessTag());
+                System.IO.Directory.CreateDirectory(dir);
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "burst_" + burstTag + "_" + burstFrame.ToString("000") + ".png"));
+            }
+            Log.Message("[IsoRim probe] burst " + burstTag + " frame " + burstFrame + " (Unity frame " + Time.frameCount + "): "
+                + ((Time.realtimeSinceStartup - burstStart) * 1000f).ToString("0") + " ms since start, dt "
+                + (Time.unscaledDeltaTime * 1000f).ToString("0.0") + " ms, 3D " + View3D.Active);
+            burstFrame++;
+            burstLeft--;
         }
 
         private static string HarnessTag()
