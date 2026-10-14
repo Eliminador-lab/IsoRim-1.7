@@ -5444,4 +5444,432 @@
       <li><model>Models/apocriton_weapon.obj</model><motion>weapon</motion><pivot>(0.285, 0.745, 0.19)</pivot><weapon>Gun_ToxicNeedle</weapon></li>
     </mechParts>
   </IsoRim.ModelDef>
+  <!-- Coop batch 6 class B: mechanoids on the mech path (Mechs.cs): Centurion, Scyther (1124), Lancer, Pikeman, Termite, three centipedes (1150, one body, head and gun by kind) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Centurion</defName>
+    <thingDef>Mech_Centurion</thingDef>
+    <model>Models/centurion.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/centurion_generator.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centurion_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.325, -0.03)</pivot><radius>0.32</radius></li>
+      <li><model>Models/centurion_head.obj</model><motion>head</motion><pivot>(0, 1.17, 0.02)</pivot><maxTurn>15</maxTurn></li>
+      <li><model>Models/centurion_turret_weapon.obj</model><motion>turret</motion><pivot>(0, 0.83, 0.37)</pivot></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Scyther</defName>
+    <thingDef>Mech_Scyther</thingDef>
+    <model>Models/scyther.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/scyther_arm_left.obj</model><motion>fixed</motion></li>
+      <li><model>Models/scyther_blade_left.obj</model><motion>fixed</motion></li>
+      <li><model>Models/scyther_arm_right.obj</model><motion>fixed</motion></li>
+      <li><model>Models/scyther_blade_right.obj</model><motion>fixed</motion></li>
+      <li><model>Models/scyther_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.475, -0.12)</pivot><radius>0.47</radius></li>
+      <li><model>Models/scyther_head.obj</model><motion>head</motion><pivot>(0, 1.29, 0.14)</pivot><maxTurn>30</maxTurn></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Lancer</defName>
+    <thingDef>Mech_Lancer</thingDef>
+    <model>Models/lancer.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/lancer_wheel_left.obj</model><motion>wheel</motion><pivot>(-0.25, 0.245, -0.08)</pivot><radius>0.24</radius></li>
+      <li><model>Models/lancer_wheel_right.obj</model><motion>wheel</motion><pivot>(0.25, 0.245, -0.08)</pivot><radius>0.24</radius></li>
+      <li><model>Models/lancer_head.obj</model><motion>head</motion><pivot>(0, 1.29, 0.025)</pivot><maxTurn>40</maxTurn></li>
+      <li><model>Models/lancer_arm_left.obj</model><motion>upper</motion><pivot>(0, 1.12, 0.025)</pivot></li>
+      <li><model>Models/lancer_arm_right.obj</model><motion>upper</motion><pivot>(0, 1.12, 0.025)</pivot></li>
+      <li><model>Models/lancer_weapon.obj</model><motion>weapon</motion><pivot>(0.245, 1.005, 0.27)</pivot><weapon>Gun_ChargeLance</weapon><parent>lancer_arm_right</parent></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Pikeman</defName>
+    <thingDef>Mech_Pikeman</thingDef>
+    <model>Models/pikeman.obj</model>
+    <mech>true</mech>
+    <stride>0.9</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/pikeman_leg_left_front.obj</model><motion>leg</motion><pivot>(-0.29, 0.42, 0.264)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/pikeman_leg_right_rear.obj</model><motion>leg</motion><pivot>(0.29, 0.42, -0.264)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/pikeman_leg_right_front.obj</model><motion>leg</motion><pivot>(0.29, 0.42, 0.264)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/pikeman_leg_left_rear.obj</model><motion>leg</motion><pivot>(-0.29, 0.42, -0.264)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/pikeman_head.obj</model><motion>head</motion><pivot>(0, 0.6, 0.34)</pivot><maxTurn>20</maxTurn></li>
+      <li><model>Models/pikeman_weapon.obj</model><motion>weapon</motion><pivot>(0.17, 0.83, -0.01)</pivot><weapon>Gun_Needle</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Termite</defName>
+    <thingDef>Mech_Termite</thingDef>
+    <model>Models/termite.obj</model>
+    <mech>true</mech>
+    <stride>0.8</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/termite_leg_left_1.obj</model><motion>leg</motion><pivot>(-0.28, 0.39, 0.34)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/termite_leg_right_2.obj</model><motion>leg</motion><pivot>(0.28, 0.39, -0.08)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/termite_leg_left_3.obj</model><motion>leg</motion><pivot>(-0.28, 0.39, -0.49)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/termite_leg_right_1.obj</model><motion>leg</motion><pivot>(0.28, 0.39, 0.34)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/termite_leg_left_2.obj</model><motion>leg</motion><pivot>(-0.28, 0.39, -0.08)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/termite_leg_right_3.obj</model><motion>leg</motion><pivot>(0.28, 0.39, -0.49)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/termite_head.obj</model><motion>head</motion><pivot>(0, 0.54, 0.54)</pivot><maxTurn>25</maxTurn></li>
+      <li><model>Models/termite_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.36, 0.6)</pivot><weapon>Gun_ThumpCannon</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_CentipedeGunner</defName>
+    <thingDef>Mech_CentipedeGunner</thingDef>
+    <model>Models/centipede.obj</model>
+    <mech>true</mech>
+    <stride>0.7</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/centipede_segment_2.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_3.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_4.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_5.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_6.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_legs_left_1.obj</model><motion>leg</motion><pivot>(-0.481, 0.35, 0.4)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_1.obj</model><motion>leg</motion><pivot>(0.481, 0.35, 0.4)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_2.obj</model><motion>leg</motion><pivot>(-0.455, 0.35, 0.06)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_2.obj</model><motion>leg</motion><pivot>(0.455, 0.35, 0.06)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_3.obj</model><motion>leg</motion><pivot>(-0.429, 0.35, -0.28)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_3.obj</model><motion>leg</motion><pivot>(0.429, 0.35, -0.28)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_4.obj</model><motion>leg</motion><pivot>(-0.403, 0.35, -0.62)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_4.obj</model><motion>leg</motion><pivot>(0.403, 0.35, -0.62)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_5.obj</model><motion>leg</motion><pivot>(-0.377, 0.35, -0.94)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_5.obj</model><motion>leg</motion><pivot>(0.377, 0.35, -0.94)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_6.obj</model><motion>leg</motion><pivot>(-0.351, 0.35, -1.23)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_6.obj</model><motion>leg</motion><pivot>(0.351, 0.35, -1.23)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_gunner_head.obj</model><motion>head</motion><pivot>(0, 0.75, 0.52)</pivot><maxTurn>30</maxTurn></li>
+      <li><model>Models/centipede_gunner_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.48, 0.53)</pivot><weapon>Gun_Minigun</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_CentipedeBlaster</defName>
+    <thingDef>Mech_CentipedeBlaster</thingDef>
+    <model>Models/centipede.obj</model>
+    <mech>true</mech>
+    <stride>0.7</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/centipede_segment_2.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_3.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_4.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_5.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_6.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_legs_left_1.obj</model><motion>leg</motion><pivot>(-0.481, 0.35, 0.4)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_1.obj</model><motion>leg</motion><pivot>(0.481, 0.35, 0.4)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_2.obj</model><motion>leg</motion><pivot>(-0.455, 0.35, 0.06)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_2.obj</model><motion>leg</motion><pivot>(0.455, 0.35, 0.06)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_3.obj</model><motion>leg</motion><pivot>(-0.429, 0.35, -0.28)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_3.obj</model><motion>leg</motion><pivot>(0.429, 0.35, -0.28)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_4.obj</model><motion>leg</motion><pivot>(-0.403, 0.35, -0.62)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_4.obj</model><motion>leg</motion><pivot>(0.403, 0.35, -0.62)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_5.obj</model><motion>leg</motion><pivot>(-0.377, 0.35, -0.94)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_5.obj</model><motion>leg</motion><pivot>(0.377, 0.35, -0.94)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_6.obj</model><motion>leg</motion><pivot>(-0.351, 0.35, -1.23)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_6.obj</model><motion>leg</motion><pivot>(0.351, 0.35, -1.23)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_blaster_head.obj</model><motion>head</motion><pivot>(0, 0.75, 0.52)</pivot><maxTurn>30</maxTurn></li>
+      <li><model>Models/centipede_blaster_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.48, 0.53)</pivot><weapon>Gun_ChargeBlasterHeavy</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_CentipedeBurner</defName>
+    <thingDef>Mech_CentipedeBurner</thingDef>
+    <model>Models/centipede.obj</model>
+    <mech>true</mech>
+    <stride>0.7</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/centipede_segment_2.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_3.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_4.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_5.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_segment_6.obj</model><motion>fixed</motion></li>
+      <li><model>Models/centipede_legs_left_1.obj</model><motion>leg</motion><pivot>(-0.481, 0.35, 0.4)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_1.obj</model><motion>leg</motion><pivot>(0.481, 0.35, 0.4)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_2.obj</model><motion>leg</motion><pivot>(-0.455, 0.35, 0.06)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_2.obj</model><motion>leg</motion><pivot>(0.455, 0.35, 0.06)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_3.obj</model><motion>leg</motion><pivot>(-0.429, 0.35, -0.28)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_3.obj</model><motion>leg</motion><pivot>(0.429, 0.35, -0.28)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_4.obj</model><motion>leg</motion><pivot>(-0.403, 0.35, -0.62)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_4.obj</model><motion>leg</motion><pivot>(0.403, 0.35, -0.62)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_5.obj</model><motion>leg</motion><pivot>(-0.377, 0.35, -0.94)</pivot><beat>0.667</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_5.obj</model><motion>leg</motion><pivot>(0.377, 0.35, -0.94)</pivot><beat>0.167</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_left_6.obj</model><motion>leg</motion><pivot>(-0.351, 0.35, -1.23)</pivot><beat>0.833</beat><swing>14</swing></li>
+      <li><model>Models/centipede_legs_right_6.obj</model><motion>leg</motion><pivot>(0.351, 0.35, -1.23)</pivot><beat>0.333</beat><swing>14</swing></li>
+      <li><model>Models/centipede_burner_head.obj</model><motion>head</motion><pivot>(0, 0.75, 0.52)</pivot><maxTurn>30</maxTurn></li>
+      <li><model>Models/centipede_burner_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.48, 0.53)</pivot><weapon>Gun_InfernoCannon</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <!-- Coop batch 6 class B: Anomaly entities on the mechs' path (Mechs.cs, entity = true): nociosphere shells open by CompNociosphere.segScale, devourer mouth by digesting, chimera / sightstealer / gorehulk by the alternate graphic the game picked, fleshmass nucleus by activity stage -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Nociosphere</defName>
+    <thingDef>Nociosphere</thingDef>
+    <model>Models/nociosphere_core.obj</model>
+    <entity>true</entity>
+    <glowMaterials>
+      <li>entity_red</li>
+    </glowMaterials>
+    <mechParts>
+      <li><model>Models/nociosphere_closed_lining.obj</model><motion>fixed</motion><show>closed</show><pivot>(0, 1.02, 0)</pivot><fadeFrom>0.15</fadeFrom><fadeTo>0.3</fadeTo><fadeScale>0.9</fadeScale></li>
+      <li><model>Models/nociosphere_shell_A.obj</model><motion>open</motion><openOffset>(0.092, 0.225, 0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_B.obj</model><motion>open</motion><openOffset>(-0.092, 0.225, 0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_C.obj</model><motion>open</motion><openOffset>(-0.092, 0.225, -0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_D.obj</model><motion>open</motion><openOffset>(0.092, 0.225, -0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_E.obj</model><motion>open</motion><openOffset>(0.225, 0, 0.13)</openOffset></li>
+      <li><model>Models/nociosphere_shell_F.obj</model><motion>open</motion><openOffset>(0, 0, 0.26)</openOffset></li>
+      <li><model>Models/nociosphere_shell_G.obj</model><motion>open</motion><openOffset>(-0.225, 0, 0.13)</openOffset></li>
+      <li><model>Models/nociosphere_shell_H.obj</model><motion>open</motion><openOffset>(-0.225, 0, -0.13)</openOffset></li>
+      <li><model>Models/nociosphere_shell_I.obj</model><motion>open</motion><openOffset>(0, 0, -0.26)</openOffset></li>
+      <li><model>Models/nociosphere_shell_J.obj</model><motion>open</motion><openOffset>(0.225, 0, -0.13)</openOffset></li>
+      <li><model>Models/nociosphere_shell_K.obj</model><motion>open</motion><openOffset>(0.092, -0.225, 0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_L.obj</model><motion>open</motion><openOffset>(-0.092, -0.225, 0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_M.obj</model><motion>open</motion><openOffset>(-0.092, -0.225, -0.092)</openOffset></li>
+      <li><model>Models/nociosphere_shell_N.obj</model><motion>open</motion><openOffset>(0.092, -0.225, -0.092)</openOffset></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Devourer</defName>
+    <thingDef>Devourer</thingDef>
+    <model>Models/devourer_body.obj</model>
+    <entity>true</entity>
+    <lookBy>digesting</lookBy>
+    <mechParts>
+      <li><model>Models/devourer_head.obj</model><motion>fixed</motion></li>
+      <li><model>Models/devourer_fin_-1.obj</model><motion>fixed</motion></li>
+      <li><model>Models/devourer_fin_1.obj</model><motion>fixed</motion></li>
+      <li><model>Models/devourer_mouth_open.obj</model><motion>fixed</motion></li>
+    </mechParts>
+    <looks>
+      <li>
+        <key>Closed</key>
+        <model>Models/devourer_body.obj</model>
+        <mechParts>
+          <li><model>Models/devourer_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/devourer_fin_-1.obj</model><motion>fixed</motion></li>
+          <li><model>Models/devourer_fin_1.obj</model><motion>fixed</motion></li>
+          <li><model>Models/devourer_mouth_closed.obj</model><motion>fixed</motion></li>
+        </mechParts>
+      </li>
+    </looks>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Chimera</defName>
+    <thingDef>Chimera</thingDef>
+    <model>Models/chimera_a_body.obj</model>
+    <entity>true</entity>
+    <lookBy>alternate</lookBy>
+    <stride>1.3</stride>
+    <mechParts>
+      <li><model>Models/chimera_a_head.obj</model><motion>fixed</motion></li>
+      <li><model>Models/chimera_a_tail.obj</model><motion>fixed</motion></li>
+      <li><model>Models/chimera_a.obj</model><motion>fixed</motion></li>
+      <li><model>Models/chimera_a_leg_-1_0.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, 0.27)</pivot><beat>0</beat><swing>22</swing></li>
+      <li><model>Models/chimera_a_leg_1_1.obj</model><motion>leg</motion><pivot>(0.25, 0.62, -0.54)</pivot><beat>0</beat><swing>22</swing></li>
+      <li><model>Models/chimera_a_leg_1_0.obj</model><motion>leg</motion><pivot>(0.25, 0.62, 0.27)</pivot><beat>0.5</beat><swing>22</swing></li>
+      <li><model>Models/chimera_a_leg_-1_1.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, -0.54)</pivot><beat>0.5</beat><swing>22</swing></li>
+    </mechParts>
+    <looks>
+      <li>
+        <key>Chimera_B</key>
+        <model>Models/chimera_b_body.obj</model>
+        <mechParts>
+          <li><model>Models/chimera_b_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_b_tail.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_b.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_b_leg_-1_0.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, 0.27)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_b_leg_1_1.obj</model><motion>leg</motion><pivot>(0.25, 0.62, -0.54)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_b_leg_1_0.obj</model><motion>leg</motion><pivot>(0.25, 0.62, 0.27)</pivot><beat>0.5</beat><swing>22</swing></li>
+          <li><model>Models/chimera_b_leg_-1_1.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, -0.54)</pivot><beat>0.5</beat><swing>22</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Chimera_C</key>
+        <model>Models/chimera_c_body.obj</model>
+        <mechParts>
+          <li><model>Models/chimera_c_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_c_tail.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_c.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_c_leg_-1_0.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, 0.27)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_c_leg_1_1.obj</model><motion>leg</motion><pivot>(0.25, 0.62, -0.54)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_c_leg_1_0.obj</model><motion>leg</motion><pivot>(0.25, 0.62, 0.27)</pivot><beat>0.5</beat><swing>22</swing></li>
+          <li><model>Models/chimera_c_leg_-1_1.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, -0.54)</pivot><beat>0.5</beat><swing>22</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Chimera_D</key>
+        <model>Models/chimera_d_body.obj</model>
+        <mechParts>
+          <li><model>Models/chimera_d_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_d_tail.obj</model><motion>fixed</motion></li>
+          <li><model>Models/chimera_d_leg_-1_0.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, 0.27)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_d_leg_1_1.obj</model><motion>leg</motion><pivot>(0.25, 0.62, -0.54)</pivot><beat>0</beat><swing>22</swing></li>
+          <li><model>Models/chimera_d_leg_1_0.obj</model><motion>leg</motion><pivot>(0.25, 0.62, 0.27)</pivot><beat>0.5</beat><swing>22</swing></li>
+          <li><model>Models/chimera_d_leg_-1_1.obj</model><motion>leg</motion><pivot>(-0.25, 0.62, -0.54)</pivot><beat>0.5</beat><swing>22</swing></li>
+        </mechParts>
+      </li>
+    </looks>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Sightstealer</defName>
+    <thingDef>Sightstealer</thingDef>
+    <model>Models/sightstealer_a_body.obj</model>
+    <entity>true</entity>
+    <lookBy>alternate</lookBy>
+    <stride>0.9</stride>
+    <mechParts>
+      <li><model>Models/sightstealer_a_head.obj</model><motion>fixed</motion></li>
+      <li><model>Models/sightstealer_a_leg_-1.obj</model><motion>leg</motion><pivot>(-0.122, 0.486, 0)</pivot><beat>0</beat><swing>24</swing></li>
+      <li><model>Models/sightstealer_a_leg_1.obj</model><motion>leg</motion><pivot>(0.122, 0.486, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+      <li><model>Models/sightstealer_a_arm_-1.obj</model><motion>leg</motion><pivot>(-0.23, 0.972, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/sightstealer_a_arm_1.obj</model><motion>leg</motion><pivot>(0.23, 0.972, 0)</pivot><beat>0</beat><swing>14</swing></li>
+    </mechParts>
+    <looks>
+      <li>
+        <key>Sightstealer_B</key>
+        <model>Models/sightstealer_b_body.obj</model>
+        <mechParts>
+          <li><model>Models/sightstealer_b_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/sightstealer_b_leg_-1.obj</model><motion>leg</motion><pivot>(-0.122, 0.486, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_b_leg_1.obj</model><motion>leg</motion><pivot>(0.122, 0.486, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_b_arm_-1.obj</model><motion>leg</motion><pivot>(-0.23, 0.972, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/sightstealer_b_arm_1.obj</model><motion>leg</motion><pivot>(0.23, 0.972, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Sightstealer_C</key>
+        <model>Models/sightstealer_c_body.obj</model>
+        <mechParts>
+          <li><model>Models/sightstealer_c_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/sightstealer_c_leg_-1.obj</model><motion>leg</motion><pivot>(-0.122, 0.486, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_c_leg_1.obj</model><motion>leg</motion><pivot>(0.122, 0.486, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_c_arm_-1.obj</model><motion>leg</motion><pivot>(-0.23, 0.972, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/sightstealer_c_arm_1.obj</model><motion>leg</motion><pivot>(0.23, 0.972, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Sightstealer_D</key>
+        <model>Models/sightstealer_d_body.obj</model>
+        <mechParts>
+          <li><model>Models/sightstealer_d_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/sightstealer_d_leg_-1.obj</model><motion>leg</motion><pivot>(-0.122, 0.486, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_d_leg_1.obj</model><motion>leg</motion><pivot>(0.122, 0.486, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/sightstealer_d_arm_-1.obj</model><motion>leg</motion><pivot>(-0.23, 0.972, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/sightstealer_d_arm_1.obj</model><motion>leg</motion><pivot>(0.23, 0.972, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+    </looks>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Gorehulk</defName>
+    <thingDef>Gorehulk</thingDef>
+    <model>Models/gorehulk_a_body.obj</model>
+    <entity>true</entity>
+    <lookBy>alternate</lookBy>
+    <stride>1.1</stride>
+    <mechParts>
+      <li><model>Models/gorehulk_a_head.obj</model><motion>fixed</motion></li>
+      <li><model>Models/gorehulk_a_leg_-1.obj</model><motion>leg</motion><pivot>(-0.191, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+      <li><model>Models/gorehulk_a_leg_1.obj</model><motion>leg</motion><pivot>(0.191, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+      <li><model>Models/gorehulk_a_arm_-1.obj</model><motion>leg</motion><pivot>(-0.36, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/gorehulk_a_arm_1.obj</model><motion>leg</motion><pivot>(0.36, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+    </mechParts>
+    <looks>
+      <li>
+        <key>Gorehulk_B</key>
+        <model>Models/gorehulk_b_body.obj</model>
+        <mechParts>
+          <li><model>Models/gorehulk_b_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/gorehulk_b_leg_-1.obj</model><motion>leg</motion><pivot>(-0.174, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_b_leg_1.obj</model><motion>leg</motion><pivot>(0.174, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_b_arm_-1.obj</model><motion>leg</motion><pivot>(-0.328, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/gorehulk_b_arm_1.obj</model><motion>leg</motion><pivot>(0.328, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Gorehulk_C</key>
+        <model>Models/gorehulk_c_body.obj</model>
+        <mechParts>
+          <li><model>Models/gorehulk_c_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/gorehulk_c_leg_-1.obj</model><motion>leg</motion><pivot>(-0.191, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_c_leg_1.obj</model><motion>leg</motion><pivot>(0.191, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_c_arm_-1.obj</model><motion>leg</motion><pivot>(-0.36, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/gorehulk_c_arm_1.obj</model><motion>leg</motion><pivot>(0.36, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Gorehulk_D</key>
+        <model>Models/gorehulk_d_body.obj</model>
+        <mechParts>
+          <li><model>Models/gorehulk_d_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/gorehulk_d_leg_-1.obj</model><motion>leg</motion><pivot>(-0.208, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_d_leg_1.obj</model><motion>leg</motion><pivot>(0.208, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_d_arm_-1.obj</model><motion>leg</motion><pivot>(-0.392, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/gorehulk_d_arm_1.obj</model><motion>leg</motion><pivot>(0.392, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Gorehulk_E</key>
+        <model>Models/gorehulk_e_body.obj</model>
+        <mechParts>
+          <li><model>Models/gorehulk_e_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/gorehulk_e_leg_-1.obj</model><motion>leg</motion><pivot>(-0.174, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_e_leg_1.obj</model><motion>leg</motion><pivot>(0.174, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_e_arm_-1.obj</model><motion>leg</motion><pivot>(-0.328, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/gorehulk_e_arm_1.obj</model><motion>leg</motion><pivot>(0.328, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+      <li>
+        <key>Gorehulk_F</key>
+        <model>Models/gorehulk_f_body.obj</model>
+        <mechParts>
+          <li><model>Models/gorehulk_f_head.obj</model><motion>fixed</motion></li>
+          <li><model>Models/gorehulk_f_leg_-1.obj</model><motion>leg</motion><pivot>(-0.208, 0.533, 0)</pivot><beat>0</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_f_leg_1.obj</model><motion>leg</motion><pivot>(0.208, 0.533, 0)</pivot><beat>0.5</beat><swing>24</swing></li>
+          <li><model>Models/gorehulk_f_arm_-1.obj</model><motion>leg</motion><pivot>(-0.392, 1.066, 0)</pivot><beat>0.5</beat><swing>14</swing></li>
+          <li><model>Models/gorehulk_f_arm_1.obj</model><motion>leg</motion><pivot>(0.392, 1.066, 0)</pivot><beat>0</beat><swing>14</swing></li>
+        </mechParts>
+      </li>
+    </looks>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_FleshmassNucleus</defName>
+    <thingDef>FleshmassNucleus</thingDef>
+    <model>Models/nucleus_a_assembled.obj</model>
+    <entity>true</entity>
+    <lookBy>activity</lookBy>
+    <fixedFacing>true</fixedFacing>
+    <looks>
+      <li><key>FleshmassNucleusA</key><model>Models/nucleus_a_assembled.obj</model></li>
+      <li><key>FleshmassNucleusB</key><model>Models/nucleus_b_assembled.obj</model></li>
+      <li><key>FleshmassNucleusC</key><model>Models/nucleus_c_assembled.obj</model></li>
+      <li><key>FleshmassNucleusD</key><model>Models/nucleus_d_assembled.obj</model></li>
+      <li><key>FleshmassNucleusE</key><model>Models/nucleus_e_assembled.obj</model></li>
+      <li><key>FleshmassNucleusF</key><model>Models/nucleus_f_assembled.obj</model></li>
+    </looks>
+  </IsoRim.ModelDef>
 </Defs>
