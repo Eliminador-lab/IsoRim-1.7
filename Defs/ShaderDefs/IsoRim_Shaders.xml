@@ -5,7 +5,8 @@
     IsoRim 3D view shaders. All use Shaders\IsoRimSolid.frag.glsl (vertex colour * _Color [* texture])
     and vanilla SceneDefault.vert.glsl, or Shaders\IsoRim.vert.glsl (the same plus wall end lines and
     moving outlines) where noted; only the render state differs. Depth is reverse-Z (compare
-    GreaterOrEqual), front face clockwise. Materials may override renderQueue.
+    GreaterOrEqual), front face clockwise. Materials may override renderQueue. The card and fog-lid defs
+    at the end use copies of the game's own fragment stages with IsoRim's vertex stages.
   -->
 
   <!-- Opaque vertex-coloured geometry: wall/rock lines and lids, model faces, pawns, animals, doors,
@@ -182,6 +183,57 @@
         <name>IsoRimGrade</name>
         <queue>4900</queue>
       </sceneGrab>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- Plants without a 3D model, stood up as cards facing the camera (IsoRimCard.vert.glsl turns
+       them from the camera's angle, so a tilt or a turn rebuilds nothing). Render state and fragment
+       stage as the game's CutoutPlant (plants) and TransparentPlant (their snow), whose materials
+       these replace for cards. -->
+  <ShaderDef>
+    <defName>IsoRimCardPlant</defName>
+    <shaderProgram>
+      <vertexShaderFileName>IsoRimCard.vert.glsl</vertexShaderFileName>
+      <fragmentShaderFileName>IsoRimCardPlant.frag.glsl</fragmentShaderFileName>
+      <transparent>true</transparent>
+      <depthWrite>true</depthWrite>
+      <renderQueue>2900</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <ShaderDef>
+    <defName>IsoRimCardSnow</defName>
+    <shaderProgram>
+      <vertexShaderFileName>IsoRimCard.vert.glsl</vertexShaderFileName>
+      <fragmentShaderFileName>IsoRimCardSnow.frag.glsl</fragmentShaderFileName>
+      <transparent>true</transparent>
+      <depthWrite>false</depthWrite>
+      <renderQueue>2900</renderQueue>
+    </shaderProgram>
+  </ShaderDef>
+
+  <!-- The fog of unexplored areas as a lid on the tops of the rock and walls under it: the game's
+       FogOfWar state and fragment stage; IsoRimFog.vert.glsl lifts each corner from the map's cell
+       texture (IsoCellMap). -->
+  <ShaderDef>
+    <defName>IsoRimFog</defName>
+    <shaderProgram>
+      <vertexShaderFileName>IsoRimFog.vert.glsl</vertexShaderFileName>
+      <fragmentShaderFileName>IsoRimFog.frag.glsl</fragmentShaderFileName>
+      <flipTextureST>false</flipTextureST>
+      <transparent>true</transparent>
+      <depthWrite>false</depthWrite>
+      <renderQueue>3175</renderQueue>
+      <textureWrapOverrides>
+        <li>
+          <key>_MainTex</key>
+          <value>Repeat</value>
+        </li>
+        <li>
+          <key>_DetailTex</key>
+          <value>Repeat</value>
+        </li>
+      </textureWrapOverrides>
     </shaderProgram>
   </ShaderDef>
 

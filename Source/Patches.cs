@@ -240,10 +240,6 @@ namespace IsoRim
             Patch("cut-down walls keeping up with roofs", AccessTools.Method(typeof(RoofGrid), "SetRoof"),
                 postfix: nameof(SetRoof_Postfix));
 
-            // The fog sheet is rebuilt flat by the game; it is lifted again on its next draw.
-            Type fogLayer = AccessTools.TypeByName("Verse.SectionLayer_FogOfWar");
-            Patch("fog lid", fogLayer == null ? null : AccessTools.DeclaredMethod(fogLayer, "Regenerate"),
-                postfix: nameof(FogRegenerate_Postfix));
 
             // The water's colour bands reach a few cells from the shore, into the next blocks of the
             // map, which the game does not redraw for a change of terrain.
@@ -360,6 +356,14 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Handing the map's light to the shaders failed: " + e, 93611202);
+            }
+            try
+            {
+                IsoCellMap.BeginFrame(Find.CurrentMap);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Handing the map's cell data to the shaders failed: " + e, 93611203);
             }
         }
 
@@ -885,6 +889,7 @@ namespace IsoRim
                         }
                         // A wall hiding a room from the camera is drawn part height.
                         float blockHeight = WallBoxes.HeightFor(__0, form.height);
+                        IsoCellMap.Dirty(__0.Map, __0.OccupiedRect());   // the fog lid lies on its top
                         GroundShadows.AroundBlock(__instance, __0);
                         if (IsoRimMod.Settings.texturedWalls && WallBoxes.PrintBlock(__instance, __0, blockHeight))
                         {
@@ -957,8 +962,8 @@ namespace IsoRim
         }
 
         // The lighting overlay and the fog of war are flat sheets. The lighting is pulled in front
-        // of everything so it also darkens upright things; the fog is raised to wall height so
-        // unexplored areas read as solid.
+        // of everything so it also darkens upright things; the fog is drawn as a lid on the tops of
+        // what is under it (lifted in its shader, IsoCellMap) so unexplored areas read as solid.
         public static bool DrawLayer_Prefix(MapDrawLayer __instance)
         {
             return DrawLayer_Section(__instance as SectionLayer);
@@ -980,14 +985,11 @@ namespace IsoRim
             }
             IsoRimSettings st = IsoRimMod.Settings;
 
-            // The fog is laid over the tops of the rock and walls under it; put back flat
-            // whenever the 3D view (or the setting) is off.
+            // The fog lies on the tops of the rock and walls under it: the game's mesh drawn with
+            // the lid material, whose shader lifts it. Flat (the game's own drawing) with the 3D
+            // view or the setting off.
             if (kind == 2 && (!View3D.Ready || !st.fogLid))
             {
-                if (Interaction.FogLifted(__instance))
-                {
-                    Interaction.LowerFog(__instance);
-                }
                 return true;
             }
             if (!View3D.Ready)
@@ -1010,15 +1012,21 @@ namespace IsoRim
             }
             if (kind == 2)
             {
-                try
+                if (!__instance.Visible)
                 {
-                    Interaction.LiftFog(__instance, Find.CurrentMap);
+                    return false;
                 }
-                catch (Exception e)
+                List<LayerSubMesh> fogSubs = __instance.subMeshes;
+                for (int i = 0; i < fogSubs.Count; i++)
                 {
-                    Log.ErrorOnce("[IsoRim] Laying the fog over the map failed: " + e, 93611160);
+                    LayerSubMesh sm = fogSubs[i];
+                    if (sm.finalized && !sm.disabled)
+                    {
+                        Material lid = sm.material == MatBases.FogOfWar ? IsoCellMap.FogFor(sm.material) : null;
+                        Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, lid ?? sm.material, sm.renderLayer);
+                    }
                 }
-                return true;
+                return false;
             }
             if (!st.lightingFix)
             {
@@ -1185,6 +1193,7 @@ namespace IsoRim
             {
                 if (t.def.category == ThingCategory.Building)
                 {
+                    IsoCellMap.Dirty(map, t.OccupiedRect());   // the fog lid lies on what stands there
                     if (t is Building_Door && IsoRimMod.Settings.cutRooms)
                     {
                         // A door makes (or unmakes) a room: the walls and rock in front of it may change.
@@ -1493,10 +1502,6 @@ namespace IsoRim
 
         private static readonly AccessTools.FieldRef<TerrainGrid, Map> terrainMap = AccessTools.FieldRefAccess<TerrainGrid, Map>("map");
 
-        public static void FogRegenerate_Postfix(SectionLayer __instance)
-        {
-            Interaction.FogRebuilt(__instance);
-        }
 
         // The terrain at __0 changed from __1 to __2.
         public static void TerrainChanged_Postfix(TerrainGrid __instance, IntVec3 __0, TerrainDef __1, TerrainDef __2)

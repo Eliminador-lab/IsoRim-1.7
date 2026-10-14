@@ -7,6 +7,7 @@ using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace IsoRim
 {
@@ -50,6 +51,14 @@ namespace IsoRim
     //   haulbook=<Def>,bx,bz,cx,cz   a new book at (bx,bz) and the first free colonist told to haul it
     //                                into the bookcase at (cx,cz) (a real job: run tick= after it)
     //   tick=N                       N game ticks at once (N <= 900)
+    //   minejob=x,z                  the rock in the cell designated for mining and the nearest colonist able to
+    //                                mine, stood beside it on the south, ordered to mine it (a real job: run film= after it)
+    //   sway=0                       plant wind sway held still (every plant material's _SwayHead 0, each frame),
+    //                                so plants and cards come out the same in every run
+    //   film=x,z,N[,tag]             films the mining of the rock in the cell: game ticks run fast until it is
+    //                                one pick hit from breaking, then one tick and one screenshot per frame, the camera on the cells north of it
+    //                                (renders\<harness tag>\film_<tag>_<frame>.png, with the rock's hit points,
+    //                                fog of the cell north of it and tick logged) until N frames after it broke
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   power=x,z                    the building in the cell counts as powered from now on
@@ -422,6 +431,20 @@ namespace IsoRim
                     break;
                 case "haulbook":
                     HaulBook(map, a);
+                    break;
+                case "minejob":
+                    MineJob(map, new IntVec3(I(a[0]), 0, I(a[1])));
+                    break;
+                case "sway":
+                    swayStill = a[0] == "0";
+                    break;
+                case "film":
+                    filmCell = new IntVec3(I(a[0]), 0, I(a[1]));
+                    filmAfter = I(a[2]);
+                    filmTag = a.Length > 3 ? a[3] : "m";
+                    filmFrame = 0;
+                    filmGone = -1;
+                    filming = true;
                     break;
                 case "tick":
                 {
@@ -1026,6 +1049,130 @@ namespace IsoRim
                     Find.Selector.Select(t, false, false);
                 }
             }
+            FilmTick(map);
+            if (swayStill)
+            {
+                List<Material> plantMats = (List<Material>)plantMaterialsField.GetValue(null);
+                for (int i = 0; i < plantMats.Count; i++)
+                {
+                    plantMats[i].SetFloat(ShaderPropertyIDs.SwayHead, 0f);
+                }
+            }
+        }
+
+        private static bool swayStill;
+        private static readonly FieldInfo plantMaterialsField = AccessTools.Field(typeof(WindManager), "plantMaterials");
+
+        // ---- filming a mined rock frame by frame (the fog lid must never show a flat frame)
+
+        private static bool filming;
+        private static IntVec3 filmCell;
+        private static int filmAfter;
+        private static string filmTag;
+        private static int filmFrame;
+        private static int filmGone;
+
+        private static void MineJob(Map map, IntVec3 c)
+        {
+            Thing rock = c.GetEdifice(map);
+            if (rock == null)
+            {
+                Log.Warning("[IsoRim probe] minejob: nothing to mine at " + c);
+                return;
+            }
+            map.designationManager.AddDesignation(new Designation(c, DesignationDefOf.Mine));
+            IntVec3 stand = c + IntVec3.South;
+            Pawn p = map.mapPawns.FreeColonistsSpawned.Where(x => !x.Downed && !x.WorkTypeIsDisabled(WorkTypeDefOf.Mining))
+                .OrderBy(x => x.Position.DistanceToSquared(stand)).FirstOrDefault();
+            if (p == null)
+            {
+                Log.Warning("[IsoRim probe] minejob: no colonist can mine");
+                return;
+            }
+            if (p.Position != stand)
+            {
+                p.DeSpawn();
+                GenSpawn.Spawn(p, stand, map, Rot4.North);
+            }
+            if (p.drafter != null)
+            {
+                p.drafter.Drafted = false;
+            }
+            bool ok = p.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.Mine, rock), JobTag.Misc);
+            Log.Message("[IsoRim probe] minejob: " + p.LabelShort + " mining " + rock.def.defName + " at " + c + " (" + rock.HitPoints + " hp): " + ok);
+        }
+
+        private static void FilmTick(Map map)
+        {
+            if (!filming)
+            {
+                return;
+            }
+            Building rock = filmCell.GetEdifice(map);
+            bool there = rock != null && rock.def.mineable;
+            // The camera on the pocket north of the rock, 12 cells tall (the harness only moves it later).
+            Find.CameraDriver.SetRootPosAndSize(new Vector3(filmCell.x + 0.5f, 0f, filmCell.z + 3.5f), 6f);
+            foreach (Window w in Find.WindowStack.Windows.ToList())
+            {
+                Find.WindowStack.TryRemove(w, doCloseSound: false);   // prompts the game opens while the clock runs
+            }
+            if (there && filmFrame == 0 && !NearBreaking(map, rock))
+            {
+                // Not near breaking yet: skip ahead without pictures.
+                for (int i = 0; i < 60 && filmCell.GetEdifice(map) is Building b && !NearBreaking(map, b); i++)
+                {
+                    Find.TickManager.DoSingleTick();
+                }
+                return;
+            }
+            Find.TickManager.DoSingleTick();
+            rock = filmCell.GetEdifice(map);
+            there = rock != null && rock.def.mineable;
+            if (!there && filmGone < 0)
+            {
+                filmGone = filmFrame;
+            }
+            string dir = System.IO.Path.Combine(GenFilePaths.SaveDataFolderPath, "renders", HarnessTag());
+            System.IO.Directory.CreateDirectory(dir);
+            ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, "film_" + filmTag + "_" + filmFrame.ToString("000") + ".png"));
+            IntVec3 north = filmCell + IntVec3.North;
+            Log.Message("[IsoRim probe] film " + filmTag + " frame " + filmFrame + " (Unity frame " + Time.frameCount + "): tick " + Find.TickManager.TicksGame
+                + ", rock " + (there ? rock.HitPoints + " hp" : "gone") + ", north cell fogged " + north.Fogged(map));
+            filmFrame++;
+            if (filmGone >= 0 && filmFrame - filmGone > filmAfter)
+            {
+                filming = false;
+            }
+            if (filmFrame > 400)
+            {
+                filming = false;
+                Log.Warning("[IsoRim probe] film " + filmTag + ": the rock did not break");
+            }
+        }
+
+        private static readonly FieldInfo pickHitField = AccessTools.Field(typeof(JobDriver_Mine), "ticksToPickHit");
+
+        // The rock breaks with the next pick hit, which lands within a few ticks.
+        private static bool NearBreaking(Map map, Building rock)
+        {
+            if (rock.HitPoints > 80)
+            {
+                return false;
+            }
+            foreach (Pawn p in map.mapPawns.FreeColonistsSpawned)
+            {
+                if (p.jobs != null && p.jobs.curDriver is JobDriver_Mine d && p.CurJob.targetA.Thing == rock)
+                {
+                    return (int)pickHitField.GetValue(d) <= 4;
+                }
+            }
+            return false;
+        }
+
+        private static string HarnessTag()
+        {
+            string tag;
+            return GenCommandLine.TryGetCommandLineArg("cap17tag", out tag) && !tag.NullOrEmpty() ? tag : "probe";
         }
     }
 }

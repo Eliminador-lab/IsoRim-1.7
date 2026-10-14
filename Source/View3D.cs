@@ -32,7 +32,6 @@ namespace IsoRim
         public static int Stamp;
 
         public static Matrix4x4 LightingMatrix = Matrix4x4.identity;
-        public static Matrix4x4 FogMatrix = Matrix4x4.identity;
 
         // Outline shells of moving models: how far (in cells) they are pushed straight away from the
         // camera (R3DMaterials.OutlineMoving, IsoRim.vert.glsl).
@@ -367,7 +366,7 @@ namespace IsoRim
             // Moving something straight toward an orthographic camera does not move it on screen,
             // it only puts it in front. That is how the lighting overlay gets to darken upright things.
             LightingMatrix = Matrix4x4.Translate(new Vector3(-fwd.x * OverlayPull, -fwd.y * OverlayPull / s, -fwd.z * OverlayPull));
-            FogMatrix = Matrix4x4.Translate(new Vector3(0f, WallHeight / s, 0f));
+            UprightCards.SetCamera(pitchDeg, Yaw);
         }
 
         private static void ResetCamera()
@@ -474,13 +473,11 @@ namespace IsoRim
         // from the sun direction set here each frame (see R3DMaterials.SetSunHour), so nothing is
         // redrawn or rebuilt as it moves.
         //
-        // A tilt or a turn redraws only what was built for the camera's angle:
-        // - sprites stood up to face the camera (plants without a model; see UprightCards), for
-        //   both pitch and turn;
-        // - the edge of the map, which is built only on the sides facing the camera, for a turn;
+        // A tilt redraws nothing: plants stood up as cards turn in their shader (UprightCards).
+        // A turn redraws only what was built for the camera's direction, once the swing has ended:
+        // - the edge of the map, which is built only on the sides facing the camera;
         // - with "cut walls in front of rooms" on, the walls (which are cut depends on the turn).
-        // Both wait until the camera is at rest: a tilt 0.35 s after the key is let go, a turn once
-        // the swing has ended. The blocks are redrawn a few per frame, those in view first.
+        // The blocks are redrawn a few per frame, those in view first.
         private static void Relight()
         {
             if (!Active)
@@ -488,23 +485,6 @@ namespace IsoRim
                 return;
             }
             R3DMaterials.SetLight(LightNow());
-
-            int pitch = Mathf.RoundToInt(Pitch * 2f);
-            bool tilted = false;
-            if (pitch == cardPitch)
-            {
-                pendingPitch = pitch;
-            }
-            else if (pitch != pendingPitch)
-            {
-                pendingPitch = pitch;
-                pendingPitchSince = Time.realtimeSinceStartup;
-            }
-            else if (Time.realtimeSinceStartup - pendingPitchSince >= 0.35f)
-            {
-                cardPitch = pitch;
-                tilted = true;
-            }
 
             // A turn counts once the swing ends, also one that came back to where it started
             // (anything redrawn during the swing was built at an angle in between).
@@ -522,41 +502,31 @@ namespace IsoRim
             }
             wasTurning = turning;
 
-            if (!tilted && !turned)
+            if (!turned)
             {
                 return;
             }
             IsoRimSettings st = IsoRimMod.Settings;
-            bool allThings = turned && st.cutRooms && !st.texturedWalls;   // untextured walls are in the game's things layer
-            if (turned)
+            foreach (Map map in Find.Maps)
             {
-                foreach (Map map in Find.Maps)
+                bool here = Shown(map);
+                if (st.mapEdge3D)
                 {
-                    bool here = Shown(map);
-                    if (st.mapEdge3D)
+                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimEdge), here, true);
+                }
+                if (st.cutRooms)
+                {
+                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimWalls), here);
+                    MapSections.QueueAll(map, typeof(SectionLayer_IsoRimDamage), here);
+                    if (!st.texturedWalls)
                     {
-                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimEdge), here, true);
-                    }
-                    if (st.cutRooms)
-                    {
-                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimWalls), here);
-                        MapSections.QueueAll(map, typeof(SectionLayer_IsoRimDamage), here);
-                        if (allThings)
-                        {
-                            MapSections.QueueAll(map, MapSections.ThingsLayer, here);
-                        }
+                        // Untextured walls are in the game's things layer.
+                        MapSections.QueueAll(map, MapSections.ThingsLayer, here);
                     }
                 }
             }
-            if (!allThings)
-            {
-                UprightCards.QueueAll();
-            }
         }
 
-        private static int cardPitch = int.MinValue;   // the pitch (x2, rounded) the cards were last built at
-        private static int pendingPitch = int.MinValue;
-        private static float pendingPitchSince;
         private static bool wasTurning;
         private static int litFacing = -1;
 
@@ -607,8 +577,6 @@ namespace IsoRim
         private static void RegenerateAllMaps()
         {
             stale.Clear();
-            cardPitch = Mathf.RoundToInt(Pitch * 2f);
-            pendingPitch = cardPitch;
             foreach (Map map in Find.Maps)
             {
                 if (Shown(map))
@@ -663,7 +631,7 @@ namespace IsoRim
             }
             try
             {
-                UprightCards.Forget(map);
+                IsoCellMap.Rebuilt(map);
                 regenMethod.Invoke(map.mapDrawer, null);
             }
             catch (Exception e)
@@ -739,25 +707,6 @@ namespace IsoRim
                 * Matrix4x4.Scale(new Vector3(1f, 1f / Squash, 1f))
                 * Matrix4x4.Rotate(Quaternion.Euler(Pitch - 90f, Yaw, 0f))
                 * Matrix4x4.Translate(-pivot);
-        }
-
-        // Same as UprightMatrix, for a single point.
-        public static Vector3 UprightPoint(Vector3 v, Vector3 pivot)
-        {
-            float a = (Pitch - 90f) * Mathf.Deg2Rad;
-            float cos = Mathf.Cos(a);
-            float sin = Mathf.Sin(a);
-            float dx = v.x - pivot.x;
-            float dy = v.y - pivot.y;
-            float dz = v.z - pivot.z;
-            float y2 = dy * cos - dz * sin;
-            float z2 = dy * sin + dz * cos;
-
-            // Tilted up, then turned about the vertical to face the camera.
-            float yaw = Yaw * Mathf.Deg2Rad;
-            float cy = Mathf.Cos(yaw);
-            float sy = Mathf.Sin(yaw);
-            return new Vector3(pivot.x + dx * cy + z2 * sy, pivot.y + y2 / Squash, pivot.z - dx * sy + z2 * cy);
         }
 
         // Turns a movement given in screen terms (x to the right, y up the screen) into one along

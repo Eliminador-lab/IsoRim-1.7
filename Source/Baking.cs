@@ -258,48 +258,97 @@ namespace IsoRim
         }
     }
 
-    // The blocks of the map that hold sprites stood up to face the camera (plants without a
-    // model). Only these depend on the camera's pitch and turn, so a tilt or a turn redraws just
-    // them (see View3D.Relight) instead of the whole map.
+    // Plants without a 3D model are stood up as cards facing the camera. A card is baked once,
+    // flat: its four corners sit on its hinge (the middle of the sprite's bottom edge) with where
+    // each corner lay in the flat sprite, relative to the hinge, in texture coordinate 1, drawn with
+    // a copy of the plant's material on the IsoRimCardPlant (or, for snow, IsoRimCardSnow) def,
+    // whose vertex stage stands it up from the camera's angle (Shaders\IsoRimCard.vert.glsl). So a
+    // tilt or a turn rebuilds nothing.
     public static class UprightCards
     {
-        private static readonly HashSet<SectionLayer> layers = new HashSet<SectionLayer>();
-        private static readonly List<SectionLayer> batch = new List<SectionLayer>();
+        public const string PlantDef = "IsoRimCardPlant";
+        public const string SnowDef = "IsoRimCardSnow";
 
-        public static void Note(SectionLayer layer)
+        private static readonly Dictionary<Material, Material> cards = new Dictionary<Material, Material>();
+        private static readonly int isoCardId = Shader.PropertyToID("_IsoCard");
+
+        // The card material for a plant's material: a copy (texture, colour, autumn colours) on the
+        // card shader, swaying with the game's wind like the plant's own. Null if the def is missing.
+        public static Material For(Material mat)
         {
-            if (layer != null)
+            Material card;
+            if (mat == null)
             {
-                layers.Add(layer);
+                return null;
             }
+            if (cards.TryGetValue(mat, out card))
+            {
+                return card;
+            }
+            card = null;
+            // The game draws snow on plants with TransparentPlant (no depth write); plants with
+            // CutoutPlant, the card default.
+            bool snow = mat.shader != null && mat.shader == ShaderDatabase.TransparentPlant;
+            Shader s = R3DMaterials.ShaderOf(snow ? SnowDef : PlantDef);
+            if (s != null)
+            {
+                card = new Material(s);
+                card.CopyPropertiesFromMaterial(mat);
+                card.renderQueue = mat.renderQueue;
+                card.name = mat.name + "_Card";
+                WindManager.Notify_PlantMaterialCreated(card);
+            }
+            cards[mat] = card;
+            return card;
         }
 
-        // Before a map is rebuilt in full: its blocks note themselves again as they are drawn.
-        public static void Forget(Map map)
+        // The camera's angle for the card shader (global _IsoCard), every frame while the 3D view is on.
+        public static void SetCamera(float pitch, float yaw)
         {
-            layers.RemoveWhere(l => MapSections.MapOf(l) == map);
+            float a = (pitch - 90f) * Mathf.Deg2Rad;
+            float y = yaw * Mathf.Deg2Rad;
+            Shader.SetGlobalVector(isoCardId, new Vector4(Mathf.Sin(a), Mathf.Cos(a), Mathf.Sin(y), Mathf.Cos(y)));
         }
 
-        // Redraws every block that holds cards, a few per frame, those in view first. They note
-        // themselves again as they are redrawn, if they still hold any.
-        public static void QueueAll()
+        // Moves the sprite quad just added to sm (its last four corners) into the layer's card piece
+        // for the same material, hinged at pivot and raised by lift (cells).
+        public static bool Move(SectionLayer layer, LayerSubMesh sm, Material mat, Vector3 pivot, float lift)
         {
-            batch.Clear();
-            foreach (SectionLayer l in layers)
+            Material card = For(mat);
+            if (card == null)
             {
-                if (MapSections.MapOf(l) != null && Find.Maps.Contains(MapSections.MapOf(l)))
-                {
-                    batch.Add(l);
-                }
+                return false;
             }
-            layers.Clear();
-            if (batch.Count > 0)
+            LayerSubMesh cs = MeshWriter.Sub(layer, card);
+            if (cs == null || cs == sm)
             {
-                MapSections.QueueLayers(batch);
+                return false;
             }
+            int n = sm.verts.Count;
+            Vector3 hinge = new Vector3(pivot.x, pivot.y + lift / View3D.Squash, pivot.z);
+            int start = cs.verts.Count;
+            for (int i = n - 4; i < n; i++)
+            {
+                Vector3 v = sm.verts[i];
+                cs.verts.Add(hinge);
+                cs.uvsChannelTwo.Add(new Vector3(v.x - pivot.x, v.y - pivot.y, v.z - pivot.z));
+                cs.uvs.Add(sm.uvs[i]);
+                cs.colors.Add(sm.colors[i]);
+            }
+            // The game's plane is two triangles, (0 1 2) and (0 2 3).
+            cs.tris.Add(start);
+            cs.tris.Add(start + 1);
+            cs.tris.Add(start + 2);
+            cs.tris.Add(start);
+            cs.tris.Add(start + 2);
+            cs.tris.Add(start + 3);
+            sm.verts.RemoveRange(n - 4, 4);
+            sm.uvs.RemoveRange(n - 4, 4);
+            sm.colors.RemoveRange(n - 4, 4);
+            sm.tris.RemoveRange(sm.tris.Count - 6, 6);
+            return true;
         }
     }
-
     public static class PlaneHandler
     {
         // Called right after the game adds one flat sprite quad (the last four vertices of the
@@ -322,13 +371,12 @@ namespace IsoRim
                 case PrintMode.Upright:
                     if (rot == 0f)
                     {
-                        // Hinge along the bottom edge of the sprite.
+                        // Hinge along the bottom edge of the sprite; stood up by the card shader.
                         Vector3 pivot = new Vector3(center.x, center.y, center.z - size.y * 0.5f);
-                        for (int i = n - 4; i < n; i++)
+                        if (UprightCards.Move(layer, sm, mat, pivot, PrintContext.baseHeight))
                         {
-                            sm.verts[i] = View3D.UprightPoint(sm.verts[i], pivot);
+                            break;
                         }
-                        UprightCards.Note(layer);
                     }
                     if (PrintContext.baseHeight > 0f)
                     {

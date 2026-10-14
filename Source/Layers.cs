@@ -478,6 +478,7 @@ namespace IsoRim
         public override void Regenerate()
         {
             ClearSubMeshes(MeshParts.All);
+            IsoCellMap.Dirty(Map, section.CellRect);   // heights may have changed (cut-away, settings): the fog lid follows
             if (!View3D.Active)
             {
                 return;
