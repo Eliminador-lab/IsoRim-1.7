@@ -38,6 +38,7 @@ namespace IsoRim
     //                                (SpriteSweep; writes IsoRimSpriteSweep.tsv/.txt, IsoRimSpriteColours.tsv)
     //   spritestats=1                logs the sprite sampling counters (time, reads, cache size)
     //   itemsheet=k,x0,z0,cols,rows  lays batch k of the extruded items out in a grid (contact sheets)
+    //   coloursweep=1               model face colours vs the sprite for every vanilla/DLC def drawn as a model
     //   modelsweep=1                 lists the 3D form, model entry and drawing of every vanilla/DLC def
     //                                (ModelSweep; writes IsoRimModelSweep.tsv/.txt)
     //   perf=N[,label]               logs frame times (median, mean, p95) and IsoRim's tick over the next N frames,
@@ -339,6 +340,9 @@ namespace IsoRim
                     break;
                 case "uncap":
                     Application.targetFrameRate = a[0] == "1" ? 1000 : Mathf.RoundToInt((float)Screen.currentResolution.refreshRateRatio.value);
+                    break;
+                case "coloursweep":
+                    ColourSweep.Run();
                     break;
                 case "modelsweep":
                     ModelSweep.Run();

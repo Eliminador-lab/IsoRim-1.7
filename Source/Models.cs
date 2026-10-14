@@ -1192,10 +1192,75 @@ namespace IsoRim
             }
         }
 
+        // The colour and swatch the "stuff" parts of a model take. A thing with a build material
+        // takes its colour (Thing.DrawColor). A thing made of no stuff and drawn in plain white
+        // (a fueled stove, a television: steel in the cost list) takes the stuff its cost list
+        // needs most of, as if it were built of that, instead of coming out white.
+        public static Color ModelTint(Thing t)
+        {
+            ThingDef cost = t.Stuff == null ? CostStuffIfWhite(t.def, t.DrawColor) : null;
+            return cost != null ? t.def.GetColorForStuff(cost) : t.DrawColor;
+        }
+
+        public static string ModelSwatch(Thing t)
+        {
+            return SwatchOf(t.Stuff ?? CostStuffIfWhite(t.def, t.DrawColor));
+        }
+
+        // Harness colour sweep: the same for a def made of stuff (null = none), unspawned.
+        public static Color TintFor(ThingDef def, ThingDef stuff)
+        {
+            if (stuff != null)
+            {
+                return def.GetColorForStuff(stuff);
+            }
+            Color c = def.graphicData != null ? def.graphicData.color : Color.white;
+            ThingDef cost = CostStuffIfWhite(def, c);
+            return cost != null ? def.GetColorForStuff(cost) : c;
+        }
+
+        public static string SwatchFor(ThingDef def, ThingDef stuff)
+        {
+            return SwatchOf(stuff ?? CostStuffIfWhite(def, def.graphicData != null ? def.graphicData.color : Color.white));
+        }
+
+        private static readonly Dictionary<ThingDef, ThingDef> costStuff = new Dictionary<ThingDef, ThingDef>();
+
+        private static ThingDef CostStuffIfWhite(ThingDef def, Color drawColor)
+        {
+            if (def == null || def.MadeFromStuff || drawColor.r < 0.98f || drawColor.g < 0.98f || drawColor.b < 0.98f)
+            {
+                return null;
+            }
+            ThingDef best;
+            if (!costStuff.TryGetValue(def, out best))
+            {
+                int most = 0;
+                if (def.costList != null)
+                {
+                    for (int i = 0; i < def.costList.Count; i++)
+                    {
+                        ThingDefCountClass c = def.costList[i];
+                        if (c.thingDef != null && c.thingDef.stuffProps != null && c.count > most)
+                        {
+                            best = c.thingDef;
+                            most = c.count;
+                        }
+                    }
+                }
+                costStuff[def] = best;
+            }
+            return best;
+        }
+
         // Which of the mod's surface textures matches what a thing is built from.
         public static string StuffSwatch(Thing t)
         {
-            ThingDef stuff = t.Stuff;
+            return SwatchOf(t.Stuff);
+        }
+
+        public static string SwatchOf(ThingDef stuff)
+        {
             if (stuff == null || stuff.stuffProps == null)
             {
                 return "Wood";

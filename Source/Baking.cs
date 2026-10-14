@@ -1755,7 +1755,7 @@ namespace IsoRim
             Quaternion turn = Quaternion.AngleAxis(yaw, Vector3.up);
             Quaternion lay = def.layFlat ? Quaternion.AngleAxis(90f, Vector3.right) : Quaternion.identity;
             Vector3 layLift = def.layFlat ? new Vector3(0f, m.halfDepth, 0f) : Vector3.zero;
-            Color tint = def.spriteTint ? SpriteColors.MeanFor(thing) : thing.DrawColor;
+            Color tint = def.spriteTint ? SpriteColors.MeanFor(thing) : R3DTextures.ModelTint(thing);
             if (def.scatter > 0f)
             {
                 center.x += (Hashing.Unit(id, 13, 3) - 0.5f) * def.scatter;
@@ -1970,7 +1970,7 @@ namespace IsoRim
             }
 
             bool textured = st.texturedModels && m.materials != null && m.uvs != null && m.material != null;
-            string swatch = textured ? R3DTextures.StuffSwatch(thing) : null;
+            string swatch = textured ? R3DTextures.ModelSwatch(thing) : null;
             // Reused from one model to the next: thousands of plants are written in a row.
             // The shader lights each face by its own direction, so all plain faces share one piece
             // of mesh (see R3DMaterials.Lit) and textured faces one per material.
