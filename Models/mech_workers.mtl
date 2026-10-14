@@ -1,0 +1,20 @@
+newmtl worker_shell
+Kd 0.83 0.84 0.81
+newmtl worker_edge
+Kd 0.62 0.65 0.63
+newmtl worker_joint
+Kd 0.23 0.26 0.25
+newmtl worker_tire
+Kd 0.16 0.18 0.16
+newmtl worker_lens
+Kd 0.27 0.31 0.30
+newmtl worker_brown
+Kd 0.42 0.34 0.23
+newmtl worker_red
+Kd 0.40 0.22 0.21
+newmtl worker_olive
+Kd 0.58 0.59 0.32
+newmtl worker_olive_dark
+Kd 0.38 0.40 0.20
+newmtl worker_steel
+Kd 0.48 0.52 0.50

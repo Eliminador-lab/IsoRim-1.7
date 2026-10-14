@@ -36,7 +36,10 @@
        Animals (<animal>true</animal>, <thingDef> is the animal's race): <model> is the body,
        facing north; <legModel> one leg, standing with its hip at the top; <legs> where the
        hips are on the body; <legLength>, <legSwing> and <legSplay> (degrees), <stride>
-       (cells walked per swing of the legs), <bodyCentre> and <bodyHalfWidth> for lying down. -->
+       (cells walked per swing of the legs), <bodyCentre> and <bodyHalfWidth> for lying down.
+       Mechanoids (<mech>true</mech>): <model> is the body, <mechParts> the moving pieces (wheel, leg, spin,
+       pitch, arm, upper, head, weapon, turret; see MechPart in Source/Models.cs), <factionMaterials> the faces
+       that take the faction colour, <carryAt> where a hauled thing is held, <stride> for the legs. -->
 
   <IsoRim.ModelDef>
     <defName>R3D_Bed</defName>
@@ -5176,5 +5179,269 @@
     </parts>
     <hideExtraGraphics>true</hideExtraGraphics>
     <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+  <!-- Coop batches 4-5 class B: mechanoids (Mechs.cs). model = the body; mechParts move about their pivots
+       (wheels roll, legs step, guns aim, work parts move while working); Ancient-look mechs keep the sprite. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Lifter</defName>
+    <thingDef>Mech_Lifter</thingDef>
+    <model>Models/lifter.obj</model>
+    <mech>true</mech>
+    <carryAt>(0, 0.27, 0.40)</carryAt>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/lifter_forks.obj</model><motion>fixed</motion></li>
+      <li><model>Models/lifter_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.225, -0.05)</pivot><radius>0.225</radius></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Cleansweeper</defName>
+    <thingDef>Mech_Cleansweeper</thingDef>
+    <model>Models/cleansweeper.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_red</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/cleansweeper_wheel_left.obj</model><motion>wheel</motion><pivot>(-0.22, 0.145, -0.08)</pivot><radius>0.145</radius></li>
+      <li><model>Models/cleansweeper_wheel_right.obj</model><motion>wheel</motion><pivot>(0.22, 0.145, -0.08)</pivot><radius>0.145</radius></li>
+      <li><model>Models/cleansweeper_brush.obj</model><motion>spin</motion><pivot>(0, 0.07, 0.11)</pivot><speed>360</speed></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Constructoid</defName>
+    <thingDef>Mech_Constructoid</thingDef>
+    <model>Models/constructoid.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/constructoid_wheel_left.obj</model><motion>wheel</motion><pivot>(-0.31, 0.225, -0.03)</pivot><radius>0.225</radius></li>
+      <li><model>Models/constructoid_wheel_right.obj</model><motion>wheel</motion><pivot>(0.31, 0.225, -0.03)</pivot><radius>0.225</radius></li>
+      <li><model>Models/constructoid_sensor.obj</model><motion>pitch</motion><pivot>(0, 0.54, 0.13)</pivot><swing>8</swing></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Agrihand</defName>
+    <thingDef>Mech_Agrihand</thingDef>
+    <model>Models/agrihand.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/agrihand_track_left.obj</model><motion>fixed</motion></li>
+      <li><model>Models/agrihand_track_right.obj</model><motion>fixed</motion></li>
+      <li><model>Models/agrihand_cutter.obj</model><motion>spin</motion><pivot>(0.2, 0.1, 0.32)</pivot><speed>480</speed></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Fabricor</defName>
+    <thingDef>Mech_Fabricor</thingDef>
+    <model>Models/fabricor.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/fabricor_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.18, -0.025)</pivot><radius>0.18</radius></li>
+      <li><model>Models/fabricor_head.obj</model><motion>pitch</motion><pivot>(0, 0.65, -0.04)</pivot><swing>6</swing></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Paramedic</defName>
+    <thingDef>Mech_Paramedic</thingDef>
+    <model>Models/paramedic.obj</model>
+    <mech>true</mech>
+    <carryAt>(0, 0.42, 0.26)</carryAt>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/paramedic_pack.obj</model><motion>fixed</motion></li>
+      <li><model>Models/paramedic_head.obj</model><motion>head</motion><pivot>(0, 0.65, -0.015)</pivot></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Militor</defName>
+    <thingDef>Mech_Militor</thingDef>
+    <model>Models/militor.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_edge</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/militor_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.18, -0.055)</pivot><radius>0.18</radius></li>
+      <li><model>Models/militor_upper.obj</model><motion>upper</motion><pivot>(0, 0.49, -0.045)</pivot></li>
+      <li><model>Models/militor_weapon.obj</model><motion>weapon</motion><pivot>(0.2, 0.47, 0.15)</pivot><parent>militor_upper</parent><weapon>Gun_MiniShotgun</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Legionary</defName>
+    <thingDef>Mech_Legionary</thingDef>
+    <model>Models/legionary.obj</model>
+    <mech>true</mech>
+    <stride>0.8</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/legionary_leg_left.obj</model><motion>leg</motion><pivot>(-0.17, 0.38, -0.02)</pivot><beat>0</beat><swing>22</swing></li>
+      <li><model>Models/legionary_leg_right.obj</model><motion>leg</motion><pivot>(0.17, 0.38, -0.02)</pivot><beat>0.5</beat><swing>22</swing></li>
+      <li><model>Models/legionary_upper.obj</model><motion>upper</motion><pivot>(0, 0.74, -0.04)</pivot></li>
+      <li><model>Models/legionary_weapon.obj</model><motion>weapon</motion><pivot>(0.26, 0.7, 0.14)</pivot><parent>legionary_upper</parent><weapon>Gun_NeedleLauncher</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Tesseron</defName>
+    <thingDef>Mech_Tesseron</thingDef>
+    <model>Models/tesseron.obj</model>
+    <mech>true</mech>
+    <stride>0.8</stride>
+    <factionMaterials>
+      <li>worker_edge</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/tesseron_leg_left.obj</model><motion>leg</motion><pivot>(-0.17, 0.38, -0.02)</pivot><beat>0</beat><swing>22</swing></li>
+      <li><model>Models/tesseron_leg_right.obj</model><motion>leg</motion><pivot>(0.17, 0.38, -0.02)</pivot><beat>0.5</beat><swing>22</swing></li>
+      <li><model>Models/tesseron_upper.obj</model><motion>upper</motion><pivot>(0, 0.74, -0.04)</pivot></li>
+      <li><model>Models/tesseron_weapon.obj</model><motion>weapon</motion><pivot>(0.28, 0.71, 0.12)</pivot><parent>tesseron_upper</parent><weapon>Gun_BeamGraser</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Scorcher</defName>
+    <thingDef>Mech_Scorcher</thingDef>
+    <model>Models/scorcher.obj</model>
+    <mech>true</mech>
+    <stride>0.9</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/scorcher_front_left.obj</model><motion>leg</motion><pivot>(-0.25, 0.44, 0.22)</pivot><beat>0</beat><swing>18</swing></li>
+      <li><model>Models/scorcher_rear_right.obj</model><motion>leg</motion><pivot>(0.25, 0.44, -0.22)</pivot><beat>0</beat><swing>18</swing></li>
+      <li><model>Models/scorcher_front_right.obj</model><motion>leg</motion><pivot>(0.25, 0.44, 0.22)</pivot><beat>0.5</beat><swing>18</swing></li>
+      <li><model>Models/scorcher_rear_left.obj</model><motion>leg</motion><pivot>(-0.25, 0.44, -0.22)</pivot><beat>0.5</beat><swing>18</swing></li>
+      <li><model>Models/scorcher_head.obj</model><motion>head</motion><pivot>(0, 0.63, 0.19)</pivot></li>
+      <li><model>Models/scorcher_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.43, 0.38)</pivot><weapon>Gun_MiniFlameblaster</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Tunneler</defName>
+    <thingDef>Mech_Tunneler</thingDef>
+    <model>Models/tunneler.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/tunneler_track_left.obj</model><motion>fixed</motion></li>
+      <li><model>Models/tunneler_track_right.obj</model><motion>fixed</motion></li>
+      <li><model>Models/tunneler_head.obj</model><motion>pitch</motion><pivot>(0, 1.15, 0.06)</pivot><swing>6</swing></li>
+      <li><model>Models/tunneler_arm_left.obj</model><motion>arm</motion><pivot>(-0.54, 1.07, 0.03)</pivot><swing>28</swing></li>
+      <li><model>Models/tunneler_claw_left_outer.obj</model><motion>fixed</motion><parent>tunneler_arm_left</parent></li>
+      <li><model>Models/tunneler_claw_left_inner.obj</model><motion>fixed</motion><parent>tunneler_arm_left</parent></li>
+      <li><model>Models/tunneler_arm_right.obj</model><motion>arm</motion><pivot>(0.54, 1.07, 0.03)</pivot><swing>28</swing></li>
+      <li><model>Models/tunneler_claw_right_outer.obj</model><motion>fixed</motion><parent>tunneler_arm_right</parent></li>
+      <li><model>Models/tunneler_claw_right_inner.obj</model><motion>fixed</motion><parent>tunneler_arm_right</parent></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_WarUrchin</defName>
+    <thingDef>Mech_WarUrchin</thingDef>
+    <model>Models/war_urchin.obj</model>
+    <mech>true</mech>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/war_urchin_wheel.obj</model><motion>wheel</motion><pivot>(0, 0.18, 0)</pivot><radius>0.18</radius></li>
+      <li><model>Models/war_urchin_head.obj</model><motion>head</motion><pivot>(0, 0.44, 0)</pivot></li>
+      <li><model>Models/war_urchin_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.31, 0.16)</pivot><weapon>Gun_Spiner</weapon></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Diabolus</defName>
+    <thingDef>Mech_Diabolus</thingDef>
+    <model>Models/diabolus.obj</model>
+    <mech>true</mech>
+    <stride>1</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/diabolus_segment_2.obj</model><motion>fixed</motion></li>
+      <li><model>Models/diabolus_segment_3.obj</model><motion>fixed</motion></li>
+      <li><model>Models/diabolus_segment_4.obj</model><motion>fixed</motion></li>
+      <li><model>Models/diabolus_segment_5.obj</model><motion>fixed</motion></li>
+      <li><model>Models/diabolus_segment_6.obj</model><motion>fixed</motion></li>
+      <li><model>Models/diabolus_leg_left_1.obj</model><motion>leg</motion><pivot>(-0.3744, 0.48, 0.36)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_1.obj</model><motion>leg</motion><pivot>(0.3744, 0.48, 0.36)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_left_2.obj</model><motion>leg</motion><pivot>(-0.34476, 0.48, 0.09)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_2.obj</model><motion>leg</motion><pivot>(0.34476, 0.48, 0.09)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_left_3.obj</model><motion>leg</motion><pivot>(-0.31512, 0.48, -0.18)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_3.obj</model><motion>leg</motion><pivot>(0.31512, 0.48, -0.18)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_left_4.obj</model><motion>leg</motion><pivot>(-0.28548, 0.48, -0.45)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_4.obj</model><motion>leg</motion><pivot>(0.28548, 0.48, -0.45)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_left_5.obj</model><motion>leg</motion><pivot>(-0.25584, 0.48, -0.72)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_5.obj</model><motion>leg</motion><pivot>(0.25584, 0.48, -0.72)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_left_6.obj</model><motion>leg</motion><pivot>(-0.2262, 0.48, -0.96)</pivot><beat>0.5</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_leg_right_6.obj</model><motion>leg</motion><pivot>(0.2262, 0.48, -0.96)</pivot><beat>0</beat><swing>16</swing></li>
+      <li><model>Models/diabolus_head.obj</model><motion>head</motion><pivot>(0, 0.94, 0.35)</pivot></li>
+      <li><model>Models/diabolus_weapon.obj</model><motion>weapon</motion><pivot>(0, 0.72, 0.45)</pivot><weapon>Gun_HellsphereCannon</weapon></li>
+      <li><model>Models/diabolus_turret_weapon.obj</model><motion>turret</motion><pivot>(0.5, 1.07, 0.02)</pivot></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Warqueen</defName>
+    <thingDef>Mech_Warqueen</thingDef>
+    <model>Models/warqueen.obj</model>
+    <mech>true</mech>
+    <stride>1.2</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/warqueen_segment_2.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_segment_3.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_segment_4.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_segment_5.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_hatch_left.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_hatch_right.obj</model><motion>fixed</motion></li>
+      <li><model>Models/warqueen_leg_left_1.obj</model><motion>leg</motion><pivot>(-0.376, 0.48, 0.43)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_right_1.obj</model><motion>leg</motion><pivot>(0.376, 0.48, 0.43)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_left_2.obj</model><motion>leg</motion><pivot>(-0.424, 0.48, 0.05)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_right_2.obj</model><motion>leg</motion><pivot>(0.424, 0.48, 0.05)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_left_3.obj</model><motion>leg</motion><pivot>(-0.408, 0.48, -0.33)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_right_3.obj</model><motion>leg</motion><pivot>(0.408, 0.48, -0.33)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_left_4.obj</model><motion>leg</motion><pivot>(-0.352, 0.48, -0.69)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_right_4.obj</model><motion>leg</motion><pivot>(0.352, 0.48, -0.69)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_left_5.obj</model><motion>leg</motion><pivot>(-0.272, 0.48, -1)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_leg_right_5.obj</model><motion>leg</motion><pivot>(0.272, 0.48, -1)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/warqueen_head.obj</model><motion>head</motion><pivot>(0, 1.26, 0.44)</pivot></li>
+      <li><model>Models/warqueen_turret_weapon.obj</model><motion>turret</motion><pivot>(0, 0.88, 0.77)</pivot></li>
+    </mechParts>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Mech_Apocriton</defName>
+    <thingDef>Mech_Apocriton</thingDef>
+    <model>Models/apocriton.obj</model>
+    <mech>true</mech>
+    <stride>1.4</stride>
+    <factionMaterials>
+      <li>worker_lens</li>
+    </factionMaterials>
+    <mechParts>
+      <li><model>Models/apocriton_tail.obj</model><motion>fixed</motion></li>
+      <li><model>Models/apocriton_leg_left_1.obj</model><motion>leg</motion><pivot>(-0.26, 1.1, 0.2)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/apocriton_leg_right_2.obj</model><motion>leg</motion><pivot>(0.26, 1.1, -0.35)</pivot><beat>0</beat><swing>14</swing></li>
+      <li><model>Models/apocriton_leg_right_1.obj</model><motion>leg</motion><pivot>(0.26, 1.1, 0.2)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/apocriton_leg_left_2.obj</model><motion>leg</motion><pivot>(-0.26, 1.1, -0.35)</pivot><beat>0.5</beat><swing>14</swing></li>
+      <li><model>Models/apocriton_head.obj</model><motion>head</motion><pivot>(0, 1.23, 0.03)</pivot></li>
+      <li><model>Models/apocriton_weapon.obj</model><motion>weapon</motion><pivot>(0.285, 0.745, 0.19)</pivot><weapon>Gun_ToxicNeedle</weapon></li>
+    </mechParts>
   </IsoRim.ModelDef>
 </Defs>
