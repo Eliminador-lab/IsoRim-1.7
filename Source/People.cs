@@ -133,6 +133,8 @@ namespace IsoRim
         private const float HeadHeight = 0.98f;   // where the middle of the head is on the figure
         private const float GibbetScale = 0.78f;  // a corpse hanging in a gibbet cage, shrunk to stay under its dome
         private const float FigureHeight = 1.12f; // top of the head of a figure of size 1
+        private const float CarryReach = 0.24f;   // a carried thing's middle, in front of the figure
+        private const float CarryHeight = 0.36f;  // and the height of its bottom
 
         private static readonly Dictionary<int, Look> looks = new Dictionary<int, Look>();
         private static readonly Dictionary<string, Model> models = new Dictionary<string, Model>();
@@ -173,6 +175,7 @@ namespace IsoRim
             }
 
             bool dead = pawn.Dead;
+            float lift = Carried.LiftOf(pawn, ref drawLoc);   // in mid-jump, or carried by another 3D pawn
             // A corpse in a gibbet cage shown as its model hangs upright in the cage (lying, an
             // adult would reach out through the bars), feet on the cage floor.
             Building_GibbetCage gibbet = dead ? GibbetOf(pawn) : null;
@@ -280,7 +283,7 @@ namespace IsoRim
                 }
             }
 
-            Vector3 at = new Vector3(drawLoc.x, ground, drawLoc.z);
+            Vector3 at = new Vector3(drawLoc.x, ground + lift, drawLoc.z);
             Matrix4x4 whole = pose * Matrix4x4.Scale(new Vector3(size, size, size));
 
             // The whole figure is two ready-made meshes (body and head), each a single draw, put
@@ -297,11 +300,17 @@ namespace IsoRim
                 DynamicModels.DrawLocal(workTool, at, yaw, whole * workLocal, Color.white, "Wood");
             }
 
-            if (ground <= 0f)
+            if (ground <= 0f && lift <= 0f)
             {
                 GroundShadows.Blob(at, yaw, (lying ? 0.30f : 0.34f) * size, (lying ? 0.70f : 0.30f) * size);
             }
-            handHeight = 0.46f * size;
+            if (standing && pawn.carryTracker != null && pawn.carryTracker.CarriedThing != null)
+            {
+                // Held in front, at the hands (the game draws it a little in front of the pawn the way it faces).
+                Vector3 front = Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.forward;
+                Carried.Draw(pawn, new Vector3(at.x + front.x * CarryReach * size, at.y + CarryHeight * size, at.z + front.z * CarryReach * size), yaw);
+            }
+            handHeight = 0.46f * size + lift;
             facing = yaw;
             return true;
         }

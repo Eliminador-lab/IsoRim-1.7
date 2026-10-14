@@ -22,6 +22,7 @@ namespace IsoRim
             public float heading;   // the way it is turning toward
             public float phase;     // where the legs are in their swing, radians
             public float gait;      // 0 standing still, 1 in full stride
+            public float travel;    // ground covered while walking, in cells (wheels roll by it)
             public Vector3 last;    // where it was drawn last
             public int frame;       // and when
         }
@@ -49,6 +50,7 @@ namespace IsoRim
             bool dead = pawn.Dead;
             bool lying = dead || pawn.GetPosture() != PawnPosture.Standing;
             bool onSide = dead || pawn.Downed;
+            float lift = Carried.LiftOf(pawn, ref drawLoc);   // carried by a 3D pawn
 
             float yaw;
             float phase = 0f;
@@ -75,6 +77,7 @@ namespace IsoRim
                     ground = Forms.HeightOf(bed);
                 }
             }
+            ground += lift;
             Vector3 position = new Vector3(drawLoc.x, ground, drawLoc.z);
             Matrix4x4 sized = Matrix4x4.Scale(new Vector3(size, size, size));
 
@@ -126,6 +129,14 @@ namespace IsoRim
                     DynamicModels.DrawLocal(entry.leg, position, yaw, local, Color.white, null);
                 }
             }
+
+            if (!lying && pawn.carryTracker != null && pawn.carryTracker.CarriedThing != null)
+            {
+                // Held in the mouth, in front of the head: the front of the body, at the top of the legs.
+                Vector3 front = Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.forward;
+                float reach = def.bodyHalfLength * size * 1.1f;
+                Carried.Draw(pawn, new Vector3(position.x + front.x * reach, position.y + def.legLength * size, position.z + front.z * reach), yaw);
+            }
             return true;
         }
 
@@ -139,9 +150,19 @@ namespace IsoRim
             gait = st.gait;
         }
 
+        // The same, also giving the ground covered so far (wheels roll by it).
+        public static void Track(Pawn pawn, Vector3 drawLoc, bool lying, float stride, out float yaw, out float phase, out float gait, out float travel)
+        {
+            State st = Advance(pawn, drawLoc, lying, stride);
+            yaw = st.yaw;
+            phase = st.phase;
+            gait = st.gait;
+            travel = st.travel;
+        }
+
         // Young animals are smaller. The game's own measure of body size shrinks much faster
         // than the animal looks, so it is eased.
-        private static float SizeOf(Pawn pawn)
+        internal static float SizeOf(Pawn pawn)
         {
             float factor = 1f;
             if (pawn.ageTracker != null && pawn.ageTracker.CurLifeStage != null)
@@ -194,6 +215,12 @@ namespace IsoRim
                     st.phase -= 6283.1853f;   // a thousand whole swings
                 }
                 st.gait = Mathf.MoveTowards(st.gait, 1f, dt * 8f);
+                // Capped like the swing, so wheels turn smoothly instead of spinning to random angles.
+                st.travel += Mathf.Min(dist, 0.12f);
+                if (st.travel > 10000f)
+                {
+                    st.travel -= 10000f;
+                }
             }
             else if (lying || pawn.pather == null || !pawn.pather.Moving)
             {
