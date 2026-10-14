@@ -163,6 +163,13 @@ namespace IsoRim
             else if (platform != null)
             {
                 yaw = platform.Rotation.AsAngle;
+                float swayAngle;
+                Vector3 swayShift;
+                if (HoldingChains.Sway(pawn, out swayAngle, out swayShift))
+                {
+                    yaw += swayAngle;   // straining against the chains, as the game moves its sprite
+                    drawLoc += swayShift;
+                }
             }
             else if (def.fixedFacing)
             {

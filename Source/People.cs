@@ -318,6 +318,13 @@ namespace IsoRim
                     // couch, along the body angle the game draws them at, centred where the game draws them.
                     yaw = drawnIn.HeldPawnBodyAngle + 180f;
                     ground = Forms.HeightOf(holder);
+                    float swayAngle;
+                    Vector3 swayShift;
+                    if (holder is Building_HoldingPlatform && HoldingChains.Sway(pawn, out swayAngle, out swayShift))
+                    {
+                        yaw += swayAngle;   // straining against the chains, as the game moves its sprite
+                        drawLoc += swayShift;
+                    }
                     pose = Matrix4x4.Translate(new Vector3(0f, 0.15f * size, HeadHeight * 0.5f * size)) * Matrix4x4.Rotate(onBack);
                 }
                 else
