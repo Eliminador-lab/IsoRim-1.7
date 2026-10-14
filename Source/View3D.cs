@@ -212,7 +212,6 @@ namespace IsoRim
                 Effects.DrawAll();
                 try
                 {
-                    Interaction.DrawDragBox();
                     Interaction.DrawDesignationDrag();
                     Interaction.DrawDragGhosts();
                 }
@@ -643,12 +642,7 @@ namespace IsoRim
         // Screen pixel (origin bottom left) to the point on the ground under it.
         public static Vector3 ScreenToGround(Vector2 px)
         {
-            float nx = px.x / Screen.width * 2f - 1f;
-            float ny = px.y / Screen.height * 2f - 1f;
-            Vector3 origin = eye + right * (nx * orthoSize * aspect) + up * (ny * orthoSize);
-            float t = -origin.y / fwd.y;
-            Vector3 hit = origin + fwd * t;
-            return new Vector3(hit.x, 0f, hit.z);
+            return ScreenToHeight(px, 0f);
         }
 
         // Where the line of sight through a screen point (pixels, from the bottom left) is at a
@@ -661,6 +655,16 @@ namespace IsoRim
             float t = (height - origin.y) / fwd.y;
             Vector3 hit = origin + fwd * t;
             return new Vector3(hit.x, height, hit.z);
+        }
+
+        // The other way round: where a point (map x and z, real height in cells as y) shows on
+        // screen, in pixels from the bottom left.
+        public static Vector2 WorldToScreen(Vector3 p)
+        {
+            Vector3 d = p - eye;
+            float nx = Vector3.Dot(d, right) / (orthoSize * aspect);
+            float ny = Vector3.Dot(d, up) / orthoSize;
+            return new Vector2((nx + 1f) * 0.5f * Screen.width, (ny + 1f) * 0.5f * Screen.height);
         }
 
         // The block of map cells that can be seen, used by the game to decide what to draw.

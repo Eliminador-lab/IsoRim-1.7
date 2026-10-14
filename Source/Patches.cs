@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
@@ -62,6 +63,10 @@ namespace IsoRim
                 postfix: nameof(GetMapRect_Postfix));
             Patch("box selection in the isometric view", selection == null ? null : AccessTools.Method(selection, "MultiSelectableThingsInScreenRectDistinct"),
                 postfix: nameof(DragSelect_Postfix));
+            Patch("box selection in the isometric view", selection == null ? null : AccessTools.Method(selection, "MultiSelectableZonesInScreenRectDistinct"),
+                postfix: nameof(DragSelectZones_Postfix));
+            Patch("box selection in the isometric view", selection == null ? null : AccessTools.Method(selection, "MultiSelectablePlansInScreenRectDistinct"),
+                postfix: nameof(DragSelectPlans_Postfix));
             Patch("name labels in the isometric view", AccessTools.Method(typeof(GenMapUI), "LabelDrawPosFor", new[] { typeof(Thing), typeof(float) }),
                 prefix: nameof(LabelDrawPosFor_Prefix));
 
@@ -132,9 +137,8 @@ namespace IsoRim
             }
             Patch("3D placement preview", ghostThing, postfix: nameof(DrawGhostThing_Postfix));
 
-            // The pointer in 3D: the drag box on the ground, selection brackets on the ground,
-            // and clicking anywhere on a tall thing picks it.
-            Patch("drag box on the ground", FindMethod(typeof(DragBox), "DragBoxOnGUI"), prefix: nameof(DragBoxOnGUI_Prefix));
+            // The pointer in 3D: selection brackets on the ground, and clicking anywhere on a tall
+            // thing picks it. (The selection drag box is the game's own: a plain rectangle on screen.)
             MethodInfo bracket = FindMethod(typeof(SelectionDrawer), "DrawSelectionBracketFor");
             if (bracket != null && !StartsWith(bracket, typeof(object)))
             {
@@ -169,7 +173,7 @@ namespace IsoRim
             }
 
             // The faint screen-aligned box the game draws round a designation drag is replaced by
-            // one on the ground (Interaction.DrawDragBox); its measurement labels are kept.
+            // one on the ground (Interaction.DrawDesignationDrag); its measurement labels are kept.
             Patch("drag area on the ground", FindMethod(typeof(DesignationDragger), "DraggerOnGUI"),
                 prefix: nameof(DraggerOnGUI_Prefix), finalizer: nameof(DraggerOnGUI_Finalizer));
             MethodInfo drawBox = AccessTools.Method(typeof(Widgets), "DrawBox", new[] { typeof(Rect), typeof(int), typeof(Texture2D) });
@@ -706,26 +710,17 @@ namespace IsoRim
         }
 
         // A selection box dragged on screen. The game looks for things in the block of cells
-        // between two of the box's corners, which only covers the box while north is up. With
-        // the camera turned the block has to reach all four corners ...
+        // between two of the box's corners, which only covers the box while north is up and the
+        // camera looks straight down. In 3D the block reaches all four corners on the ground ...
         public static void GetMapRect_Postfix(Rect __0, ref CellRect __result)
         {
-            if (!View3D.Ready || View3D.Yaw == 0f)
+            if (!View3D.Ready)
             {
                 return;
             }
             try
             {
-                float scale = Prefs.UIScale;
-                float h = Verse.UI.screenHeight;
-                Vector3 a = View3D.ScreenToGround(new Vector2(__0.xMin, h - __0.yMin) * scale);
-                Vector3 b = View3D.ScreenToGround(new Vector2(__0.xMax, h - __0.yMin) * scale);
-                Vector3 c = View3D.ScreenToGround(new Vector2(__0.xMin, h - __0.yMax) * scale);
-                Vector3 d = View3D.ScreenToGround(new Vector2(__0.xMax, h - __0.yMax) * scale);
-                __result.minX = Mathf.FloorToInt(Mathf.Min(Mathf.Min(a.x, b.x), Mathf.Min(c.x, d.x)));
-                __result.maxX = Mathf.FloorToInt(Mathf.Max(Mathf.Max(a.x, b.x), Mathf.Max(c.x, d.x)));
-                __result.minZ = Mathf.FloorToInt(Mathf.Min(Mathf.Min(a.z, b.z), Mathf.Min(c.z, d.z)));
-                __result.maxZ = Mathf.FloorToInt(Mathf.Max(Mathf.Max(a.z, b.z), Mathf.Max(c.z, d.z)));
+                __result = BoxGroundRect(__0, 0);
             }
             catch (Exception e)
             {
@@ -733,43 +728,131 @@ namespace IsoRim
             }
         }
 
-        // ... and what is found there is then narrowed down to what is really inside the box.
-        public static IEnumerable<object> DragSelect_Postfix(IEnumerable<object> __result, Rect __0)
+        // The cells under a screen box (interface coordinates), widened by margin cells.
+        private static CellRect BoxGroundRect(Rect box, int margin)
         {
-            if (__result == null || !View3D.Ready || View3D.Yaw == 0f)
+            float scale = Prefs.UIScale;
+            float h = Verse.UI.screenHeight;
+            Vector3 a = View3D.ScreenToGround(new Vector2(box.xMin, h - box.yMin) * scale);
+            Vector3 b = View3D.ScreenToGround(new Vector2(box.xMax, h - box.yMin) * scale);
+            Vector3 c = View3D.ScreenToGround(new Vector2(box.xMin, h - box.yMax) * scale);
+            Vector3 d = View3D.ScreenToGround(new Vector2(box.xMax, h - box.yMax) * scale);
+            CellRect r = new CellRect();
+            r.minX = Mathf.FloorToInt(Mathf.Min(Mathf.Min(a.x, b.x), Mathf.Min(c.x, d.x))) - margin;
+            r.maxX = Mathf.FloorToInt(Mathf.Max(Mathf.Max(a.x, b.x), Mathf.Max(c.x, d.x))) + margin;
+            r.minZ = Mathf.FloorToInt(Mathf.Min(Mathf.Min(a.z, b.z), Mathf.Min(c.z, d.z))) - margin;
+            r.maxZ = Mathf.FloorToInt(Mathf.Max(Mathf.Max(a.z, b.z), Mathf.Max(c.z, d.z))) + margin;
+            return r;
+        }
+
+        // ... and what is found is what shows inside the box on screen: a thing counts when the box
+        // catches any part of it, standing up from its cell (a colonist's head is enough), as the
+        // flat game counts a thing when the box catches any part of its cell.
+        public static IEnumerable<Thing> DragSelect_Postfix(IEnumerable<Thing> __result, Rect __0)
+        {
+            if (__result == null || !View3D.Ready || Find.CurrentMap == null)
             {
                 return __result;
             }
-            return OnlyInsideBox(__result, __0);
+            return ThingsShowingInBox(Find.CurrentMap, __0);
         }
 
-        private static IEnumerable<object> OnlyInsideBox(IEnumerable<object> found, Rect box)
+        private static readonly HashSet<Thing> boxYielded = new HashSet<Thing>();
+
+        private static IEnumerable<Thing> ThingsShowingInBox(Map map, Rect box)
         {
-            Camera cam = Find.Camera;
-            float scale = Prefs.UIScale;
-            float h = Verse.UI.screenHeight;
-
-            // Half a cell of slack, so a thing counts when the box only catches part of its cell.
-            float slack = Screen.height / (2f * Mathf.Max(1f, cam.orthographicSize)) * 0.5f / scale;
-            Rect grown = Rect.MinMaxRect(
-                Mathf.Min(box.xMin, box.xMax) - slack, Mathf.Min(box.yMin, box.yMax) - slack,
-                Mathf.Max(box.xMin, box.xMax) + slack, Mathf.Max(box.yMin, box.yMax) + slack);
-
-            foreach (object o in found)
+            Rect grown = GrownBox(box);
+            // Tall things a few cells nearer the camera than the box can still reach up into it.
+            int margin = Mathf.CeilToInt(2.5f / Mathf.Tan(View3D.Pitch * Mathf.Deg2Rad)) + 1;
+            List<Thing> found = new List<Thing>();
+            boxYielded.Clear();
+            foreach (IntVec3 c in BoxGroundRect(box, margin))
             {
-                Thing t = o as Thing;
-                if (t == null)
+                if (!c.InBounds(map))
                 {
-                    yield return o;
                     continue;
                 }
-                Vector3 onScreen = cam.WorldToScreenPoint(t.DrawPos);
-                Vector2 p = new Vector2(onScreen.x / scale, h - onScreen.y / scale);
-                if (grown.Contains(p))
+                List<Thing> things = map.thingGrid.ThingsListAt(c);
+                for (int i = 0; i < things.Count; i++)
                 {
-                    yield return o;
+                    Thing t = things[i];
+                    if (!boxYielded.Contains(t) && ThingSelectionUtility.SelectableByMapClick(t) && !t.def.neverMultiSelect && ShowsInBox(t, grown))
+                    {
+                        boxYielded.Add(t);
+                        found.Add(t);
+                    }
                 }
             }
+            boxYielded.Clear();
+            return found;
+        }
+
+        // The box (interface coordinates) grown by half a cell, so a thing counts when the box
+        // only catches part of it.
+        private static Rect GrownBox(Rect box)
+        {
+            float slack = Screen.height / (2f * Mathf.Max(1f, Find.Camera.orthographicSize)) * 0.5f / Prefs.UIScale;
+            return Rect.MinMaxRect(
+                Mathf.Min(box.xMin, box.xMax) - slack, Mathf.Min(box.yMin, box.yMax) - slack,
+                Mathf.Max(box.xMin, box.xMax) + slack, Mathf.Max(box.yMin, box.yMax) + slack);
+        }
+
+        // Whether the upright line from a point on the ground to the height top shows inside the
+        // (grown) box. Upright lines stay upright on screen, so it is a span in y at one x.
+        private static bool ShowsInBox(Vector3 ground, float top, Rect grown)
+        {
+            float scale = Prefs.UIScale;
+            float h = Verse.UI.screenHeight;
+            Vector2 g = View3D.WorldToScreen(new Vector3(ground.x, 0f, ground.z));
+            float x = g.x / scale;
+            if (x < grown.xMin || x > grown.xMax)
+            {
+                return false;
+            }
+            float yLow = h - g.y / scale;
+            float yHigh = top > 0f ? h - View3D.WorldToScreen(new Vector3(ground.x, top, ground.z)).y / scale : yLow;
+            return Mathf.Max(yLow, yHigh) >= grown.yMin && Mathf.Min(yLow, yHigh) <= grown.yMax;
+        }
+
+        private static bool ShowsInBox(Thing t, Rect grown)
+        {
+            float top = Interaction.PickHeight(t);
+            if (t is Pawn)
+            {
+                return ShowsInBox(t.DrawPos, top, grown);
+            }
+            foreach (IntVec3 c in t.OccupiedRect())
+            {
+                if (ShowsInBox(c.ToVector3Shifted(), top, grown))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Zones and plans lie on the ground: they count when the middle of one of their cells shows
+        // inside the box (the block of cells round a turned box reaches past it).
+        public static IEnumerable<Zone> DragSelectZones_Postfix(IEnumerable<Zone> __result, Rect __0)
+        {
+            if (__result == null || !View3D.Ready || Find.CurrentMap == null)
+            {
+                return __result;
+            }
+            Rect grown = GrownBox(__0);
+            CellRect r = BoxGroundRect(__0, 0);
+            return __result.Where(z => z.Cells.Any(c => r.Contains(c) && ShowsInBox(c.ToVector3Shifted(), 0f, grown))).ToList();
+        }
+
+        public static IEnumerable<Plan> DragSelectPlans_Postfix(IEnumerable<Plan> __result, Rect __0)
+        {
+            if (__result == null || !View3D.Ready || Find.CurrentMap == null)
+            {
+                return __result;
+            }
+            Rect grown = GrownBox(__0);
+            CellRect r = BoxGroundRect(__0, 0);
+            return __result.Where(p => p.Cells.Any(c => r.Contains(c) && ShowsInBox(c.ToVector3Shifted(), 0f, grown))).ToList();
         }
 
         // Where a thing's name label goes. The game puts it a little to the south of the thing,
@@ -1256,11 +1339,6 @@ namespace IsoRim
         public static bool WidgetsDrawBox_Prefix()
         {
             return !(inDraggerGUI && View3D.Ready);
-        }
-
-        public static bool DragBoxOnGUI_Prefix()
-        {
-            return !View3D.Ready;   // drawn on the ground instead (Interaction.DrawDragBox)
         }
 
         public static bool DrawSelectionBracketFor_Prefix(object __0)

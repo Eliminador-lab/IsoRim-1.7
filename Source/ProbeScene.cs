@@ -718,6 +718,14 @@ namespace IsoRim
                     }
                     break;
                 }
+                case "cam":
+                case "drag":
+                case "dragpx":
+                case "zdrag":
+                case "click":
+                case "labels":
+                    IxKey(key, a);
+                    break;
                 default:
                     Log.Warning("[IsoRim probe] unknown key " + key);
                     return;
@@ -1065,6 +1073,7 @@ namespace IsoRim
                 }
             }
             FilmTick(map);
+            IxTick(map);
             BurstTick();
             if (swayStill)
             {

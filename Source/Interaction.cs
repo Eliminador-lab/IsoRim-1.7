@@ -9,7 +9,9 @@ using Verse;
 namespace IsoRim
 {
     // Making the 3D view work with the pointer the way the flat one does:
-    //   - the selection drag box is drawn on the ground, as the area it really selects;
+    //   - a designation drag (zones, orders, building) is outlined on the ground, cell by cell
+    //     (the selection drag box stays the game's own rectangle on screen; Patches selects what
+    //     shows inside it);
     //   - selected things are marked by brackets on the ground round their footprint;
     //   - clicking anywhere on a tall thing (a wall face, a tree's crown, a colonist's head)
     //     picks that thing, not whatever is on the ground behind it;
@@ -130,33 +132,6 @@ namespace IsoRim
             Rect(ax - w, bz, bx + w, bz + w, line);
             Rect(ax - w, az, ax, bz, line);
             Rect(bx, az, bx + w, bz, line);
-        }
-
-        public static void DrawDragBox()
-        {
-            Selector sel = Find.Selector;
-            DragBox box = sel != null ? sel.dragBox : null;
-            if (box == null || !box.active)
-            {
-                return;
-            }
-            Vector3 a = box.start;
-            Vector3 b = UI.MouseMapPosition();
-            if ((new Vector2(a.x - b.x, a.z - b.z)).magnitude < 0.5f)
-            {
-                return;
-            }
-            float x0 = Mathf.Min(a.x, b.x);
-            float x1 = Mathf.Max(a.x, b.x);
-            float z0 = Mathf.Min(a.z, b.z);
-            float z1 = Mathf.Max(a.z, b.z);
-            float w = LineWidth;
-            Rect(x0, z0, x1, z1, new Color(1f, 1f, 1f, 0.07f));
-            Color line = new Color(1f, 1f, 1f, 0.9f);
-            Rect(x0 - w, z0 - w, x1 + w, z0, line);
-            Rect(x0 - w, z1, x1 + w, z1 + w, line);
-            Rect(x0 - w, z0, x0, z1, line);
-            Rect(x1, z0, x1 + w, z1, line);
         }
 
         // ---- selection brackets
