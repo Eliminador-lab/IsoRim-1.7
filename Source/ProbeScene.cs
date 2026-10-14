@@ -338,6 +338,8 @@ namespace IsoRim
                     perfUpdate.Clear();
                     perfDynamic.Clear();
                     perfMesh.Clear();
+                    Array.Clear(perfLapSum, 0, 8);
+                    Array.Clear(perfLapMax, 0, 8);
                     bodiesDrawn = 0;
                     bodiesHeld = 0;
                     break;
@@ -726,6 +728,16 @@ namespace IsoRim
                 case "labels":
                     IxKey(key, a);
                     break;
+                case "window":
+                case "campath":
+                case "spin":
+                case "tilt":
+                case "walls":
+                case "clear":
+                case "save":
+                case "loadtest":
+                    PerfKey(key, a, map);
+                    break;
                 default:
                     Log.Warning("[IsoRim probe] unknown key " + key);
                     return;
@@ -987,8 +999,19 @@ namespace IsoRim
             }
         }
 
-        private static void PerfFrame(float dt, float tickMs)
+        private static readonly double[] perfLapMax = new double[8];
+        private static readonly double[] perfLapSum = new double[8];
+
+        private static void PerfFrame(float dt, float tickMs, double[] laps)
         {
+            if (perfLeft > 0)
+            {
+                for (int i = 0; i < laps.Length; i++)
+                {
+                    perfLapSum[i] += laps[i];
+                    perfLapMax[i] = Math.Max(perfLapMax[i], laps[i]);
+                }
+            }
             if (perfLeft <= 0)
             {
                 updMs = dynMs = meshMs = 0;
@@ -1015,9 +1038,21 @@ namespace IsoRim
                 mean += d[i];
             }
             mean /= n;
+            float tickMean = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                tickMean += k[i];
+            }
+            tickMean /= n;
+            List<float> u = new List<float>(perfUpdate);
+            u.Sort();
+            System.Diagnostics.Process proc = System.Diagnostics.Process.GetCurrentProcess();
             Log.Message("[IsoRim probe] perf " + perfLabel + ": " + n + " frames, frame median " + d[n / 2].ToString("0.00") + " ms, mean "
-                + mean.ToString("0.00") + ", p95 " + d[Mathf.Min(n - 1, (int)(n * 0.95f))].ToString("0.00") + ", IsoRim tick median "
-                + k[n / 2].ToString("0.000") + " ms; CPU medians: frame update " + Median(perfUpdate).ToString("0.000") + " ms, dynamic things "
+                + mean.ToString("0.00") + ", p95 " + d[Mathf.Min(n - 1, (int)(n * 0.95f))].ToString("0.00") + ", max " + d[n - 1].ToString("0.00") + ", IsoRim tick median "
+                + k[n / 2].ToString("0.000") + " mean " + tickMean.ToString("0.000") + " max " + k[n - 1].ToString("0.000") + " ms; frame update p95 "
+                + u[Mathf.Min(n - 1, (int)(n * 0.95f))].ToString("0.000") + " max " + u[n - 1].ToString("0.000") + " ms; memory managed "
+                + (GC.GetTotalMemory(false) / 1048576.0).ToString("0") + " MB, process working set " + (proc.WorkingSet64 / 1048576.0).ToString("0") + " MB, private "
+                + (proc.PrivateMemorySize64 / 1048576.0).ToString("0") + " MB; IsoRim tick parts mean [" + Breakdown(perfLapSum.Select(s => s / n).ToArray()) + "] max [" + Breakdown(perfLapMax) + "]; CPU medians: frame update " + Median(perfUpdate).ToString("0.000") + " ms, dynamic things "
                 + Median(perfDynamic).ToString("0.000") + " ms, map mesh " + Median(perfMesh).ToString("0.000") + " ms; modelled realtime bodies per frame: game drew " + (bodiesDrawn / (float)n).ToString("0.0")
                 + ", held back " + (bodiesHeld / (float)n).ToString("0.0") + "; " + BodyMeshes() + "; 3D " + View3D.Active + ", targetFrameRate " + Application.targetFrameRate);
         }
@@ -1074,6 +1109,7 @@ namespace IsoRim
             }
             FilmTick(map);
             IxTick(map);
+            MotionTick();
             BurstTick();
             if (swayStill)
             {

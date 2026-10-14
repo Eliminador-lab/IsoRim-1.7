@@ -22,7 +22,7 @@ namespace IsoRim
     public static partial class Probe
     {
         private const int ApplyDelay = 10;     // frames after the clock jump (the harness respawns pawns then)
-        private const float Window = 1.5f;     // seconds measured after a change
+        private static float Window = 1.5f;    // seconds measured after a change (window= sets it)
         private const int Before = 8;          // frames measured before a change, for the usual frame time
 
         public static readonly bool On = Prefs.DevMode && GenCommandLine.CommandLineArgPassed("isorim3d") && File.Exists(FilePath);
@@ -52,6 +52,36 @@ namespace IsoRim
             get { return Path.Combine(GenFilePaths.SaveDataFolderPath, "IsoRimProbe.txt"); }
         }
 
+        // Where View3D.Tick spends its time: the part since the last lap goes to slot i (per frame).
+        public static readonly string[] LapNames = { "sprites", "camera", "regen", "sections", "ground", "cutProcess", "cutPointer", "effects" };
+        private static readonly double[] lapFrame = new double[8];
+        private static long lapLast;
+        private static string maxBreakdown = "";
+
+        public static void Lap(int i)
+        {
+            if (!On)
+            {
+                return;
+            }
+            long now = Stopwatch.GetTimestamp();
+            lapFrame[i] += (now - lapLast) * 1000.0 / Stopwatch.Frequency;
+            lapLast = now;
+        }
+
+        private static string Breakdown(double[] ms)
+        {
+            List<string> parts = new List<string>();
+            for (int i = 0; i < ms.Length; i++)
+            {
+                if (ms[i] >= 0.05)
+                {
+                    parts.Add(LapNames[i] + " " + ms[i].ToString("0.00"));
+                }
+            }
+            return parts.Count == 0 ? "-" : string.Join(", ", parts);
+        }
+
         // Start of View3D.Tick.
         public static void Begin()
         {
@@ -60,6 +90,8 @@ namespace IsoRim
                 return;
             }
             tickStart = Stopwatch.GetTimestamp();
+            lapLast = tickStart;
+            Array.Clear(lapFrame, 0, lapFrame.Length);
             if (passes == null)
             {
                 passes = new List<string>();
@@ -84,6 +116,7 @@ namespace IsoRim
                 applyFrame = Time.frameCount + DelayOf(pass);
             }
             lastTicks = ticks;
+            LogLoaded();
             Sticky();
             BookCheckDue();
 
@@ -95,6 +128,9 @@ namespace IsoRim
                     Apply(passes[pass]);
                 }
             }
+            // The probe's own work (spawning, the camera, sticky selections) is not IsoRim's.
+            tickStart = lapLast = Stopwatch.GetTimestamp();
+            Array.Clear(lapFrame, 0, lapFrame.Length);
         }
 
         private static void Apply(string line)
@@ -177,7 +213,7 @@ namespace IsoRim
             }
             float tickMs = (float)((Stopwatch.GetTimestamp() - tickStart) * 1000.0 / Stopwatch.Frequency);
             float dt = Time.unscaledDeltaTime * 1000f;
-            PerfFrame(dt, tickMs);
+            PerfFrame(dt, tickMs, lapFrame);
             if (!measuring)
             {
                 beforeDt.Add(dt);
@@ -197,6 +233,7 @@ namespace IsoRim
             {
                 maxTick = tickMs;
                 maxTickFrame = frames;
+                maxBreakdown = Breakdown(lapFrame);
             }
             if (tickMs > 1f)
             {
@@ -216,7 +253,7 @@ namespace IsoRim
             float usual = b.Count > 0 ? b[b.Count / 2] : 0f;
             Log.Message("[IsoRim probe] " + label + ": frames " + frames
                 + ", usual frame " + usual.ToString("0.0") + " ms, max frame " + maxDt.ToString("0.0") + " ms"
-                + ", IsoRim tick max " + maxTick.ToString("0.0") + " ms (frame " + maxTickFrame + ")"
+                + ", IsoRim tick max " + maxTick.ToString("0.0") + " ms (frame " + maxTickFrame + ") [" + maxBreakdown + "]"
                 + ", sum " + sumTick.ToString("0.0") + " ms, last frame > 1 ms: " + lastBusyFrame
                 + ", yaw " + View3D.Yaw.ToString("0") + ", pitch " + View3D.Pitch.ToString("0.0"));
             beforeDt.Clear();

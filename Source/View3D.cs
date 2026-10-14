@@ -161,6 +161,7 @@ namespace IsoRim
             try
             {
                 SpritePixels.Tick();
+                Probe.Lap(0);
                 TickInner();
             }
             finally
@@ -201,15 +202,22 @@ namespace IsoRim
             {
                 ResetCamera();
             }
+            Probe.Lap(1);
 
             RegenerateIfStateChanged();
+            Probe.Lap(2);
             MapSections.Process(8);
+            Probe.Lap(3);
             Ground.Sync();
+            Probe.Lap(4);
             Cutaway.Process();
+            Probe.Lap(5);
             if (Ready)
             {
                 Cutaway.TrackPointer();
+                Probe.Lap(6);
                 Effects.DrawAll();
+                Probe.Lap(7);
                 try
                 {
                     Interaction.DrawDesignationDrag();
