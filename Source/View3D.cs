@@ -195,9 +195,7 @@ namespace IsoRim
             if (Active)
             {
                 ApplyCamera(main);
-#if !RW17
-                Looks.Draw(main);   // 1.7: no grade until it is rebuilt as a 1.7 shader (design step 3)
-#endif
+                Grade.Draw(main);
             }
             else if (camerasOverridden)
             {
@@ -694,26 +692,6 @@ namespace IsoRim
             float t = (height - origin.y) / fwd.y;
             Vector3 hit = origin + fwd * t;
             return new Vector3(hit.x, height, hit.z);
-        }
-
-        // The corners of a sheet that covers the screen, a given distance in front of the camera:
-        // bottom left, top left, top right, bottom right. margin 1 fits the screen exactly.
-        public static void ScreenCorners(float distance, float margin, Vector3[] into)
-        {
-            Vector3 centre = eye + fwd * distance;
-            Vector3 across = right * (orthoSize * aspect * margin);
-            Vector3 upward = up * (orthoSize * margin);
-            into[0] = Unsquashed(centre - across - upward);
-            into[1] = Unsquashed(centre - across + upward);
-            into[2] = Unsquashed(centre + across + upward);
-            into[3] = Unsquashed(centre + across - upward);
-        }
-
-        // From a point as it appears on screen back to where it has to be put in the game's
-        // world, whose heights the camera multiplies by Squash.
-        private static Vector3 Unsquashed(Vector3 apparent)
-        {
-            return new Vector3(apparent.x, apparent.y / Squash, apparent.z);
         }
 
         // The block of map cells that can be seen, used by the game to decide what to draw.

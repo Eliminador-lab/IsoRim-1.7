@@ -54,7 +54,6 @@ namespace IsoRim
         public bool grade = true;        // colour grade on
         public string lookName = "Gentle";
         public float lookStrength = 1f;
-        public bool useLut = true;       // use the exact LUT for a look when the shader bundle is installed
         public string lutFile = "";      // a LUT file picked by name instead of a look's own
         public bool animals3D = true;
         public bool heldWeapons3D = true;
@@ -121,7 +120,6 @@ namespace IsoRim
             Scribe_Values.Look(ref grade, "grade", true);
             Scribe_Values.Look(ref lookName, "lookName", "Gentle");
             Scribe_Values.Look(ref lookStrength, "lookStrength", 1f);
-            Scribe_Values.Look(ref useLut, "useLut", true);
             Scribe_Values.Look(ref lutFile, "lutFile", "");
             Scribe_Values.Look(ref animals3D, "animals3D", true);
             Scribe_Values.Look(ref heldWeapons3D, "heldWeapons3D", true);
@@ -466,9 +464,6 @@ namespace IsoRim
 
         private static void ColourTab(Listing_Standard l, Listing_Standard r, IsoRimSettings st)
         {
-#if !RW17
-            // The colour grade is not drawn on 1.7 yet (it needs a shader 1.7 does not have), so
-            // its settings are hidden there until the 1.7 grade is built.
             if (l != null)
             {
                 Section(l, "Colour look", "A colour grade over the 3D view. The interface is not affected.");
@@ -476,8 +471,9 @@ namespace IsoRim
                 if (st.grade)
                 {
                     LookPreset look = Looks.Find(st.lookName);
+                    Grade.Table table = st.lutFile.NullOrEmpty() ? null : Grade.TableFor(st.lutFile);
                     Rect b = l.GetRect(30f);
-                    if (Widgets.ButtonText(b, "Look: " + look.label))
+                    if (Widgets.ButtonText(b, "Look: " + (table != null ? st.lutFile + " (LUT)" : look.label)))
                     {
                         List<FloatMenuOption> options = new List<FloatMenuOption>();
                         foreach (LookPreset p in Looks.Presets)
@@ -489,50 +485,37 @@ namespace IsoRim
                                 st.lutFile = "";
                             }));
                         }
+                        Grade.Rescan();
+                        foreach (string f in Grade.Files)
+                        {
+                            string chosen = f;
+                            options.Add(new FloatMenuOption(f + " (LUT)", delegate { st.lutFile = chosen; }));
+                        }
                         Find.WindowStack.Add(new FloatMenu(options));
                     }
-                    Note(l, look.description);
-                    Preview(l, Looks.Current());
-
-                    if (look.name == Looks.CustomName)
+                    if (table != null)
                     {
-                        st.saturation = Slider(l, "Colour kept", st.saturation, 0.5f, 1f, (st.saturation * 100f).ToString("0") + "%");
-                        st.brightness = Slider(l, "Brightness", st.brightness, 0.6f, 1f, (st.brightness * 100f).ToString("0") + "%");
-                    }
-                    else
-                    {
+                        Note(l, "A lookup table from the mod's LUTs folder. Your own 1024 x 32 strips can go there too.");
+                        Preview(l, c => Grade.ApplyFile(table, st.lookStrength, c));
                         st.lookStrength = Slider(l, "Strength", st.lookStrength, 0f, 1f, (st.lookStrength * 100f).ToString("0") + "%");
                     }
-
-                    Section(l, "Exact grading (LUT)");
-                    if (Lut.Available)
-                    {
-                        Check(l, "Use lookup tables", ref st.useLut, "Each look comes as a lookup table too, which grades the picture exactly. Off: the always-available blend is used.");
-                        if (st.useLut)
-                        {
-                            Rect fb = l.GetRect(28f);
-                            string shown = st.lutFile.NullOrEmpty() ? "the look's own table" : st.lutFile;
-                            if (Widgets.ButtonText(fb, "Table: " + shown))
-                            {
-                                List<FloatMenuOption> options = new List<FloatMenuOption>();
-                                options.Add(new FloatMenuOption("the look's own table", delegate { st.lutFile = ""; }));
-                                foreach (string f in Lut.Files)
-                                {
-                                    string chosen = f;
-                                    options.Add(new FloatMenuOption(f, delegate { st.lutFile = chosen; }));
-                                }
-                                Find.WindowStack.Add(new FloatMenu(options));
-                            }
-                            Note(l, "Put your own 1024 x 32 LUT strips (.png) in the mod's LUTs folder. The preview above shows the blended version.");
-                        }
-                    }
                     else
                     {
-                        Note(l, "Not installed. The looks above work without it. For exact LUT grading, build the small shader bundle as the README describes and put it in the mod's Shaders folder.");
+                        Note(l, look.description);
+                        LookPreset current = Looks.Current();
+                        Preview(l, c => Looks.Apply(current, c));
+                        if (look.name == Looks.CustomName)
+                        {
+                            st.saturation = Slider(l, "Colour kept", st.saturation, 0.5f, 1f, (st.saturation * 100f).ToString("0") + "%");
+                            st.brightness = Slider(l, "Brightness", st.brightness, 0.6f, 1f, (st.brightness * 100f).ToString("0") + "%");
+                        }
+                        else
+                        {
+                            st.lookStrength = Slider(l, "Strength", st.lookStrength, 0f, 1f, (st.lookStrength * 100f).ToString("0") + "%");
+                        }
                     }
                 }
             }
-#endif
             if (r != null)
             {
                 Section(r, "Shadows");
@@ -637,7 +620,7 @@ namespace IsoRim
         }
 
         // Two rows of colour chips: as they are, and under the look.
-        private static void Preview(Listing_Standard l, LookPreset look)
+        private static void Preview(Listing_Standard l, Func<Color, Color> grade)
         {
             Rect r = l.GetRect(34f);
             float w = r.width / Palette.Length;
@@ -646,7 +629,7 @@ namespace IsoRim
                 Rect top = new Rect(r.x + i * w, r.y, w - 2f, 15f);
                 Rect bottom = new Rect(r.x + i * w, r.y + 17f, w - 2f, 15f);
                 Widgets.DrawBoxSolid(top, Palette[i]);
-                Widgets.DrawBoxSolid(bottom, Looks.Apply(look, Palette[i]));
+                Widgets.DrawBoxSolid(bottom, grade(Palette[i]));
             }
             TooltipHandler.TipRegion(r, "Top: colours as they are. Bottom: under this look.");
             l.Gap(2f);

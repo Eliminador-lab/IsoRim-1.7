@@ -11,7 +11,7 @@ namespace IsoRim
 {
     // Harness-only scene keys for the probe file (see Probe): things the screenshot harness's
     // layouts cannot set up, for the 3D render checks. Cells are map cells (x,z).
-    //   set=<setting>,<value>        an IsoRim setting (bool 0/1, int or float)
+    //   set=<setting>,<value>        an IsoRim setting (bool 0/1, int, float or text, e.g. lookName,Noir)
     //   delay=<frames>               apply this pass that many frames after the clock jump (default 10)
     //   fire=x,z                     a fire in the cell (also on a wall)
     //   gas=x,z,<GasType>,<radius>   a gas cloud
@@ -29,6 +29,9 @@ namespace IsoRim
     //   overlay=power|temperature|beauty|roof|fertility|none
     //   darkness=1                   Anomaly's unnatural darkness
     //   fleck=smoke|dust|glow,x,z,<count>
+    //   ramp=0|1                     the grade's test band of known colours (Grade.TestPattern)
+    //   gradegpu=N                   the grade pass drawn N more times a frame (to time it on the GPU)
+    //   gradebench=N                 builds a grade table N times (alternating looks) and logs the times
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
     //                                roof, fertility, areas) are drawn in the shots; overlay=home
     //                                shows the home area
@@ -63,6 +66,30 @@ namespace IsoRim
             return float.Parse(s, CultureInfo.InvariantCulture);
         }
 
+        // Times the two halves of a grade table rebuild: working out the table, and the upload.
+        private static void GradeBench(int n)
+        {
+            List<double> build = new List<double>(), upload = new List<double>();
+            Color32[] px = null;
+            Texture2D tex = new Texture2D(Grade.Size * Grade.Size, Grade.Size, TextureFormat.RGBA32, false, true);
+            for (int i = 0; i < n; i++)
+            {
+                LookPreset p = Looks.Presets[i % (Looks.Presets.Count - 1)];
+                System.Diagnostics.Stopwatch w = System.Diagnostics.Stopwatch.StartNew();
+                px = LookMath.Strip(p, Grade.Size, px);
+                build.Add(w.Elapsed.TotalMilliseconds);
+                w.Restart();
+                tex.SetPixels32(px);
+                tex.Apply(false);
+                upload.Add(w.Elapsed.TotalMilliseconds);
+            }
+            UnityEngine.Object.Destroy(tex);
+            build.Sort();
+            upload.Sort();
+            Log.Message("[IsoRim probe] grade table x" + n + ": build median " + build[n / 2].ToString("0.000") + " max " + build[n - 1].ToString("0.000")
+                + " ms, upload median " + upload[n / 2].ToString("0.000") + " max " + upload[n - 1].ToString("0.000") + " ms");
+        }
+
         private static CellRect Rect(string[] a, int i)
         {
             return CellRect.FromLimits(I(a[i]), I(a[i + 1]), I(a[i + 2]), I(a[i + 3]));
@@ -83,7 +110,8 @@ namespace IsoRim
                 {
                     FieldInfo f = AccessTools.Field(typeof(IsoRimSettings), a[0]);
                     object v = f.FieldType == typeof(bool) ? (object)(a[1] == "1" || a[1] == "true")
-                        : f.FieldType == typeof(int) ? (object)I(a[1]) : (object)F(a[1]);
+                        : f.FieldType == typeof(int) ? (object)I(a[1])
+                        : f.FieldType == typeof(string) ? (object)a[1] : (object)F(a[1]);
                     if (a[0] == "showRoofs")
                     {
                         Roofs.Set((bool)v);   // as the button does: the roofs are rebuilt
@@ -231,6 +259,15 @@ namespace IsoRim
                     ps.showFertilityOverlay = overlay == "fertility";
                     break;
                 }
+                case "ramp":
+                    Grade.TestPattern = a[0] == "1";
+                    break;
+                case "gradegpu":
+                    Grade.ExtraDraws = I(a[0]);
+                    break;
+                case "gradebench":
+                    GradeBench(I(a[0]));
+                    break;
                 case "ui":
                     if (!uiPatched)
                     {

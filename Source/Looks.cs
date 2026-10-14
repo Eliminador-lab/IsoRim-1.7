@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using RimWorld.Planet;
 using UnityEngine;
 using Verse;
 
@@ -27,23 +29,11 @@ namespace IsoRim
         }
     }
 
-    // The colour grade over the 3D view.
-    //
-    // Two ways of doing it:
-    //   - Always available: a few see-through sheets held in front of the camera, each blended onto
-    //     the picture in a different way (multiply, screen, a squaring curve, a pull toward grey).
-    //     Together they shift the colour, lift or deepen the shadows and take colour out, using only
-    //     the plain shader every Unity game has.
-    //   - Exact: a colour lookup table (a LUT, a 1024 x 32 strip image of 32 slices) applied by a
-    //     small shader. The shader has to be compiled in Unity, so it only works once the shader
-    //     bundle has been built and put in the mod's Shaders folder (see the README). Every built-in
-    //     look comes as a LUT file too, and any LUT file put in the LUTs folder can be picked.
-    // The game's interface is drawn later and is not affected either way.
+    // The looks. What a look does to a colour is in LookMath; Grade draws it.
     [StaticConstructorOnStartup]
     public static class Looks
     {
         public const string CustomName = "Custom";
-        private const float Pivot = 0.3f;   // the grey colours are pulled toward
 
         public static readonly List<LookPreset> Presets = new List<LookPreset>();
 
@@ -118,57 +108,60 @@ namespace IsoRim
             return r;
         }
 
-        // What a colour becomes under a look, worked out the same way the sheets do it. Used for the
-        // previews in the options.
+        // What a colour becomes under a look. Used for the previews in the options.
         public static Color Apply(LookPreset p, Color c)
         {
-            float s, cc;
-            ContrastTerms(p.contrast, out s, out cc);
-            return new Color(Channel(p, c.r, 0, s, cc), Channel(p, c.g, 1, s, cc), Channel(p, c.b, 2, s, cc), 1f);
+            return LookMath.Apply(p, c);
         }
+    }
 
-        private static float Channel(LookPreset p, float x, int i, float s, float cc)
-        {
-            if (p.contrast > 0.001f)
-            {
-                float y = s * x;
-                x = Mathf.Clamp01(y * (cc + y));
-            }
-            float keep = 1f - p.desat;
-            x = Mathf.Clamp01(p.bright * (keep * x + (1f - keep) * Pivot));
-            x = Mathf.Clamp01(x * p.gain[i]);
-            x = Mathf.Clamp01(x + p.lift[i] * (1f - x));
-            x = Mathf.Clamp01(x * (1f + p.exposure));
-            return x;
-        }
+    // The colour grade over the 3D view: one full-screen pass after everything else in the map view
+    // (ShaderDef IsoRimGrade, queue 4900). The engine copies the picture drawn so far, and the pass
+    // looks every pixel up in a lookup table (LUT): one built here from the chosen look, or a LUT
+    // file from the mod's LUTs folder picked by name, mixed in by the strength slider. The game's
+    // interface is drawn later and is not affected.
+    [StaticConstructorOnStartup]
+    public static class Grade
+    {
+        public const string DefName = "IsoRimGrade";
+        // Slices of the built tables. 64 keeps them within 1/255 of the looks' curves; 32 (as in the LUT
+        // files) is up to 4/255 off where a curve bends sharply (the exposure clip of Vivid at 50%).
+        public const int Size = 64;
 
-        // The squaring curve: x is first scaled by s, then multiplied by (cc + itself). s and cc are
-        // picked so that white stays white and nothing overflows on the way.
-        private static void ContrastTerms(float contrast, out float s, out float cc)
-        {
-            s = 1f - 0.25f * Mathf.Clamp01(contrast);
-            cc = (1f - s * s) / s;
-        }
+        // Harness only (probe key ramp=1): a band of known colours is graded instead of the picture
+        // at the top left of the screen. Drawn with the grade off too (then ungraded).
+        public static bool TestPattern;
+        public static int ExtraDraws;   // harness only (probe key gradegpu=N): the pass drawn N more times, to time it
 
-        // ------------------------------------------------------------ drawing
+        private static readonly int strengthId = Shader.PropertyToID("_Strength");
+        private static readonly int lutId = Shader.PropertyToID("_LutTex");
+        private static readonly int testId = Shader.PropertyToID("_TestPattern");
 
-        private const int Passes = 6;   // scale, curve, grey, gain, lift, exposure
         private static bool tried;
-        private static Material[] passMats;
-        private static Mesh[] passMeshes;
-        private static readonly Vector3[] corners = new Vector3[4];
-        private static readonly Color[] colours = new Color[4];
+        private static Material material;
+        private static Mesh quad;
+
+        private static Texture2D built;
+        private static Color32[] builtPixels;
+        private static string builtKey;
+        private static int rebuilds;
+
+        private static readonly Dictionary<string, Table> tables = new Dictionary<string, Table>();
+        private static List<string> files;
+
+        // A LUT file, read once.
+        public class Table
+        {
+            public Texture2D texture;
+            public Color32[] pixels;   // SetPixels32 order, for the preview
+            public int size;
+        }
 
         // Called every frame while the 3D view is on.
         public static void Draw(Camera cam)
         {
             IsoRimSettings st = IsoRimMod.Settings;
-            if (!st.grade || cam == null)
-            {
-                return;
-            }
-            View3D.ScreenCorners(2f, 1.1f, corners);
-            if (st.useLut && Lut.Draw(cam, corners))
+            if ((!st.grade && !TestPattern) || cam == null || !WorldRendererUtility.DrawingMap)
             {
                 return;
             }
@@ -176,124 +169,102 @@ namespace IsoRim
             {
                 Init();
             }
-            if (passMats == null)
+            if (material == null)
             {
                 return;
             }
 
-            LookPreset p = Current();
-            float s, cc;
-            ContrastTerms(p.contrast, out s, out cc);
-            if (p.contrast > 0.001f)
+            Texture2D lut = null;
+            float strength = 0f;
+            if (st.grade)
             {
-                Sheet(cam, 0, new Color(s, s, s, 1f));
-                Sheet(cam, 1, new Color(cc, cc, cc, 1f));
+                Table file = st.lutFile.NullOrEmpty() ? null : TableFor(st.lutFile);
+                if (file != null)
+                {
+                    lut = file.texture;
+                    strength = Mathf.Clamp01(st.lookStrength);
+                }
+                else
+                {
+                    LookPreset p = Looks.Current();
+                    if (!LookMath.Identity(p))
+                    {
+                        lut = Built(p);
+                        strength = 1f;   // the strength slider is already worked into the look
+                    }
+                }
             }
-            float keep = 1f - Mathf.Clamp01(p.desat);
-            if (keep < 0.995f || p.bright < 0.995f)
+            if (lut == null || strength <= 0.001f)
             {
-                float add = p.bright * (1f - keep) * Pivot;
-                Sheet(cam, 2, new Color(add, add, add, p.bright * keep));
+                if (!TestPattern)
+                {
+                    return;
+                }
+                lut = Built(Looks.Find("Gentle"));
+                strength = 0f;
             }
-            if (p.gain.r < 0.995f || p.gain.g < 0.995f || p.gain.b < 0.995f)
+            material.SetTexture(lutId, lut);
+            material.SetFloat(strengthId, strength);
+            material.SetFloat(testId, TestPattern ? 1f : 0f);
+            Graphics.DrawMesh(quad, Matrix4x4.identity, material, 0, cam);
+            for (int i = 0; i < ExtraDraws; i++)
             {
-                Sheet(cam, 3, new Color(p.gain.r, p.gain.g, p.gain.b, 1f));
+                Graphics.DrawMesh(quad, Matrix4x4.identity, material, 0, cam);
             }
-            if (p.lift.r > 0.002f || p.lift.g > 0.002f || p.lift.b > 0.002f)
-            {
-                Sheet(cam, 4, new Color(p.lift.r, p.lift.g, p.lift.b, 1f));
-            }
-            if (p.exposure > 0.002f)
-            {
-                Sheet(cam, 5, new Color(p.exposure, p.exposure, p.exposure, 1f));
-            }
-        }
-
-        private static void Sheet(Camera cam, int pass, Color c)
-        {
-            Mesh mesh = passMeshes[pass];
-            for (int i = 0; i < 4; i++)
-            {
-                colours[i] = c;
-            }
-            mesh.vertices = corners;
-            mesh.colors = colours;
-            mesh.RecalculateBounds();
-            Graphics.DrawMesh(mesh, Matrix4x4.identity, passMats[pass], 0, cam);
         }
 
         private static void Init()
         {
             tried = true;
-            try
+            Shader shader = R3DMaterials.ShaderOf(DefName);
+            if (shader == null)
             {
-                Shader shader = Shader.Find("Hidden/Internal-Colored");
-                if (shader == null)
-                {
-                    ModLog.Warn("[IsoRim] The colour grade needs a shader this game does not have, so it is off.");
-                    return;
-                }
-                UnityEngine.Rendering.BlendMode[,] blends =
-                {
-                    { UnityEngine.Rendering.BlendMode.DstColor, UnityEngine.Rendering.BlendMode.Zero },          // out = src * dst
-                    { UnityEngine.Rendering.BlendMode.DstColor, UnityEngine.Rendering.BlendMode.DstColor },      // out = dst * (src + dst)
-                    { UnityEngine.Rendering.BlendMode.One, UnityEngine.Rendering.BlendMode.SrcAlpha },           // out = src + dst * alpha
-                    { UnityEngine.Rendering.BlendMode.DstColor, UnityEngine.Rendering.BlendMode.Zero },          // out = src * dst
-                    { UnityEngine.Rendering.BlendMode.OneMinusDstColor, UnityEngine.Rendering.BlendMode.One },   // screen
-                    { UnityEngine.Rendering.BlendMode.DstColor, UnityEngine.Rendering.BlendMode.One },           // out = dst * (1 + src)
-                };
-                passMats = new Material[Passes];
-                passMeshes = new Mesh[Passes];
-                for (int i = 0; i < Passes; i++)
-                {
-                    Material m = new Material(shader);
-                    m.name = "IsoRim_Look" + i;
-                    m.SetInt("_SrcBlend", (int)blends[i, 0]);
-                    m.SetInt("_DstBlend", (int)blends[i, 1]);
-                    m.SetInt("_ZWrite", 0);
-                    m.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
-                    m.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-                    m.renderQueue = 4900 + i;   // after everything else in the map view, in this order
-                    passMats[i] = m;
-
-                    Mesh mesh = new Mesh();
-                    mesh.name = "IsoRim_Look" + i;
-                    mesh.MarkDynamic();
-                    mesh.vertices = corners;
-                    mesh.colors = colours;
-                    mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
-                    passMeshes[i] = mesh;
-                }
+                return;
             }
-            catch (Exception e)
-            {
-                passMats = null;
-                Log.ErrorOnce("[IsoRim] Setting up the colour grade failed: " + e, 93611070);
-            }
+            material = new Material(shader);
+            material.name = "IsoRim_Grade";
+            // The whole screen, straight in clip space (the vertex shader ignores the camera).
+            quad = new Mesh();
+            quad.name = "IsoRim_Grade";
+            quad.vertices = new Vector3[] { new Vector3(-1f, -1f, 0f), new Vector3(-1f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f) };
+            quad.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+            quad.RecalculateBounds();
         }
-    }
 
-    // Exact colour grading with lookup tables, for when the shader bundle is present.
-    [StaticConstructorOnStartup]
-    public static class Lut
-    {
-        // 1.6 loaded the LUT shader from a Unity AssetBundle (Shaders\isorimshaders), which cannot load on
-        // 1.7 (Waylith). The 1.7 grade (design step 3) brings its own ShaderDef; until then there is no
-        // LUT shader and the sheet grade path is used, as when no bundle was installed.
-        private static Shader shader = null;
-        private static Material material;
-        private static Mesh mesh;
-        private static readonly Dictionary<string, Texture2D> tables = new Dictionary<string, Texture2D>();
-        private static List<string> files;
-        private static string loadedFor;
-        private static Texture2D current;
-        private static int strengthId = -1;
-
-        // True once there is a LUT shader.
-        public static bool Available
+        // The table of a look, rebuilt only when the look (with its sliders) changes.
+        private static Texture2D Built(LookPreset p)
         {
-            get { return shader != null; }
+            string key = Key(p);
+            if (built != null && key == builtKey)
+            {
+                return built;
+            }
+            Stopwatch watch = Stopwatch.StartNew();
+            builtPixels = LookMath.Strip(p, Size, builtPixels);
+            if (built == null)
+            {
+                built = new Texture2D(Size * Size, Size, TextureFormat.RGBA32, false, true);
+                built.name = "IsoRim_GradeLut";
+                built.filterMode = FilterMode.Bilinear;
+                built.wrapMode = TextureWrapMode.Clamp;
+            }
+            built.SetPixels32(builtPixels);
+            built.Apply(false);
+            builtKey = key;
+            rebuilds++;
+            if (rebuilds <= 5)
+            {
+                ModLog.Note("[IsoRim] Grade table for " + p.name + " built in " + watch.Elapsed.TotalMilliseconds.ToString("0.000") + " ms");
+            }
+            return built;
         }
+
+        private static string Key(LookPreset p)
+        {
+            return string.Join(",", p.contrast, p.desat, p.bright, p.exposure, p.gain.r, p.gain.g, p.gain.b, p.lift.r, p.lift.g, p.lift.b);
+        }
+
+        // ------------------------------------------------------------ LUT files
 
         public static string Folder
         {
@@ -334,81 +305,51 @@ namespace IsoRim
             files = null;
         }
 
-        // The table for the chosen look: a LUT file named after the look, or the chosen LUT file.
-        private static Texture2D TableFor(string name)
+        // A LUT file by name, or null if it is missing or not a LUT strip.
+        public static Table TableFor(string name)
         {
-            Texture2D tex;
-            if (tables.TryGetValue(name, out tex))
+            Table t;
+            if (tables.TryGetValue(name, out t))
             {
-                return tex;
+                return t;
             }
-            tex = null;
+            t = null;
             try
             {
                 string path = Folder != null ? Path.Combine(Folder, name + ".png") : null;
                 if (path != null && File.Exists(path))
                 {
-                    tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-                    if (ImageConversion.LoadImage(tex, File.ReadAllBytes(path), false) && tex.width == tex.height * tex.height)
+                    Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
+                    if (ImageConversion.LoadImage(tex, File.ReadAllBytes(path), false) && tex.height >= 2 && tex.width == tex.height * tex.height)
                     {
+                        tex.name = "IsoRim_Lut_" + name;
                         tex.filterMode = FilterMode.Bilinear;
                         tex.wrapMode = TextureWrapMode.Clamp;
                         tex.anisoLevel = 0;
+                        t = new Table { texture = tex, pixels = tex.GetPixels32(), size = tex.height };
                     }
                     else
                     {
                         ModLog.Warn("[IsoRim] " + path + " is not a LUT strip (it must be N*N wide and N high, for example 1024 x 32).");
                         UnityEngine.Object.Destroy(tex);
-                        tex = null;
                     }
                 }
             }
             catch (Exception e)
             {
                 ModLog.Warn("[IsoRim] Could not read LUT " + name + ": " + e.Message);
-                tex = null;
+                t = null;
             }
-            tables[name] = tex;
-            return tex;
+            tables[name] = t;
+            return t;
         }
 
-        // Draws the grade with a LUT. Returns false if it cannot, so the sheets are used instead.
-        public static bool Draw(Camera cam, Vector3[] corners)
+        // What a colour becomes under a LUT file at a strength. Used for the previews.
+        public static Color ApplyFile(Table t, float strength, Color c)
         {
-            IsoRimSettings st = IsoRimMod.Settings;
-            string name = st.lutFile.NullOrEmpty() ? st.lookName : st.lutFile;
-            if (name == Looks.CustomName || !Available)
-            {
-                return false;
-            }
-            if (loadedFor != name)
-            {
-                loadedFor = name;
-                current = TableFor(name);
-            }
-            if (current == null)
-            {
-                return false;
-            }
-            if (material == null)
-            {
-                material = new Material(shader);
-                material.name = "IsoRim_LUT";
-                material.renderQueue = 4950;
-                strengthId = Shader.PropertyToID("_Strength");
-                mesh = new Mesh();
-                mesh.name = "IsoRim_LUT";
-                mesh.MarkDynamic();
-                mesh.vertices = corners;
-                mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
-            }
-            material.mainTexture = current;
-            material.SetTexture("_LutTex", current);
-            material.SetFloat(strengthId, Mathf.Clamp01(st.lookStrength));
-            mesh.vertices = corners;
-            mesh.RecalculateBounds();
-            Graphics.DrawMesh(mesh, Matrix4x4.identity, material, 0, cam);
-            return true;
+            Color r = Color.Lerp(c, LookMath.Lookup(t.pixels, t.size, c), Mathf.Clamp01(strength));
+            r.a = 1f;
+            return r;
         }
     }
 }

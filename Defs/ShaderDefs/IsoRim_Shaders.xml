@@ -163,6 +163,28 @@
     </shaderProgram>
   </ShaderDef>
 
+  <!-- The colour grade: one full-screen pass after everything else in the map view. The engine copies
+       the picture drawn so far into _GrabIsoRimGrade; the pass looks each pixel up in a LUT strip.
+       The game's interface is drawn later, outside the map view, and is not graded. -->
+  <ShaderDef>
+    <defName>IsoRimGrade</defName>
+    <shaderProgram>
+      <vertexShaderFileName>IsoRimScreen.vert.glsl</vertexShaderFileName>
+      <fragmentShaderFileName>IsoRimGrade.frag.glsl</fragmentShaderFileName>
+      <useTexture>false</useTexture>
+      <flipTextureST>false</flipTextureST>
+      <blendMode>Opaque</blendMode>
+      <depthTest>false</depthTest>
+      <depthWrite>false</depthWrite>
+      <cullMode>None</cullMode>
+      <renderQueue>4900</renderQueue>
+      <sceneGrab>
+        <name>IsoRimGrade</name>
+        <queue>4900</queue>
+      </sceneGrab>
+    </shaderProgram>
+  </ShaderDef>
+
   <!-- Water ripples and flow streaks: the game's own Transparent shader with the texture repeating
        instead of clamped (the game's Transparent def clamps it). Their texture slides on without end
        (the material's texture offset), so with a clamped texture they were invisible. -->
