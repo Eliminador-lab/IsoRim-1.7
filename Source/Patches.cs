@@ -1356,7 +1356,11 @@ namespace IsoRim
                 if (t.def.category == ThingCategory.Building)
                 {
                     IsoCellMap.Dirty(map, t.OccupiedRect());   // the fog lid lies on what stands there
-                    if (t is Building_Door && IsoRimMod.Settings.cutRooms)
+                    if (t is Building_Door && IsoRimMod.Settings.cutRooms && ShaderCut.On)
+                    {
+                        IsoCellMap.Dirty(map, CellRect.CenteredOn(t.Position, WallBoxes.RockReach + 1));   // (shader cut-away)
+                    }
+                    else if (t is Building_Door && IsoRimMod.Settings.cutRooms)
                     {
                         // A door makes (or unmakes) a room: the walls and rock in front of it may change.
                         MapSections.QueueAround(map, t.Position, WallBoxes.RockReach + 1, typeof(SectionLayer_IsoRimWalls), true);
@@ -1687,7 +1691,11 @@ namespace IsoRim
                 {
                     if (maps[i].roofGrid == __instance)
                     {
-                        if (st.cutRooms)
+                        if (st.cutRooms && ShaderCut.On)
+                        {
+                            IsoCellMap.Dirty(maps[i], CellRect.CenteredOn(__0, WallBoxes.RockReach + 1));   // (shader cut-away)
+                        }
+                        else if (st.cutRooms)
                         {
                             Cutaway.RoofChanged(maps[i], __0);
                             if (st.cutRock)

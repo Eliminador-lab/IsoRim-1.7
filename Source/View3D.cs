@@ -526,7 +526,11 @@ namespace IsoRim
                 {
                     MapSections.QueueAll(map, typeof(SectionLayer_IsoRimEdge), here, true);
                 }
-                if (st.cutRooms)
+                if (st.cutRooms && ShaderCut.On)
+                {
+                    IsoCellMap.Rebuilt(map);   // (shader cut-away) which walls hide a room depends on the facing: worked out again, nothing rebuilt
+                }
+                else if (st.cutRooms)
                 {
                     MapSections.QueueAll(map, typeof(SectionLayer_IsoRimWalls), here);
                     MapSections.QueueAll(map, typeof(SectionLayer_IsoRimDamage), here);

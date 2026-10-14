@@ -51,6 +51,8 @@ namespace IsoRim
             height = map.Size.z;
             cells = new Color32[width * height];
             dirty = new bool[width * height];
+            cutTarget = new byte[width * height];
+            fading = new bool[width * height];
         }
 
         // The cell data of a map, made on first use. Maps that are gone are dropped.
@@ -168,13 +170,99 @@ namespace IsoRim
 
         private void Work(int i)
         {
-            int v = Mathf.Clamp(Mathf.RoundToInt(TopOf(map, new IntVec3(i % width, 0, i / width)) * HeightSteps), 0, 65535);
+            IntVec3 c = new IntVec3(i % width, 0, i / width);
+            bool shaderCut = ShaderCut.On;
+            float top;
+            byte cut = 0, bits = 0;
+            if (shaderCut)
+            {
+                // (shader cut-away) the whole height; b = how far the block is cut, a = tree thinned (1), roof open (2).
+                WallBoxes.FullHeights = true;
+                try
+                {
+                    top = TopOf(map, c);
+                }
+                finally
+                {
+                    WallBoxes.FullHeights = false;
+                }
+                Building b = c.GetEdifice(map);
+                if (b != null && Forms.For(b.def).form == Form3D.Block && WallBoxes.IsCut(map, c, b))
+                {
+                    cut = 255;
+                }
+                if (Cutaway.TreeThinned(map, c))
+                {
+                    bits |= 1;
+                }
+                if (Cutaway.RoofOpen(map, c))
+                {
+                    bits |= 2;
+                }
+            }
+            else
+            {
+                top = TopOf(map, c);
+            }
+            int v = Mathf.Clamp(Mathf.RoundToInt(top * HeightSteps), 0, 65535);
             byte hi = (byte)(v >> 8), lo = (byte)(v & 255);
             if (cells[i].r != hi || cells[i].g != lo)
             {
                 cells[i].r = hi;
                 cells[i].g = lo;
                 changed = true;
+            }
+            if (cells[i].a != bits)
+            {
+                cells[i].a = bits;
+                changed = true;
+            }
+            if (cutTarget[i] != cut || cells[i].b != cut)
+            {
+                cutTarget[i] = cut;
+                if (ShaderCut.Fade <= 0f || all)
+                {
+                    if (cells[i].b != cut)
+                    {
+                        cells[i].b = cut;
+                        changed = true;
+                    }
+                }
+                else if (!fading[i])
+                {
+                    fading[i] = true;
+                    fadingList.Add(i);
+                }
+            }
+        }
+
+        // (shader cut-away) cells on their way down or up (ShaderCut.Fade), one step a frame.
+        private readonly byte[] cutTarget;
+        private readonly bool[] fading;
+        private readonly List<int> fadingList = new List<int>();
+
+        private void Fade()
+        {
+            if (fadingList.Count == 0)
+            {
+                return;
+            }
+            float fade = ShaderCut.Fade;
+            int step = fade <= 0f ? 255 : Mathf.Max(1, Mathf.RoundToInt(255f * Time.unscaledDeltaTime / fade));
+            for (int k = fadingList.Count - 1; k >= 0; k--)
+            {
+                int i = fadingList[k];
+                int b = cells[i].b;
+                int t = cutTarget[i];
+                b = b < t ? Mathf.Min(t, b + step) : Mathf.Max(t, b - step);
+                cells[i].b = (byte)b;
+                changed = true;
+                if (b == t)
+                {
+                    fading[i] = false;
+                    fadingList[k] = fadingList[fadingList.Count - 1];
+                    fadingList.RemoveAt(fadingList.Count - 1);
+                }
             }
         }
 
@@ -206,6 +294,7 @@ namespace IsoRim
                 }
                 dirtyList.Clear();
             }
+            Fade();
             if (!changed && tex != null)
             {
                 return;
@@ -248,7 +337,7 @@ namespace IsoRim
         // it to the shaders. Only the fog lid reads it today.
         public static void BeginFrame(Map map)
         {
-            if (!View3D.Active || map == null || !IsoRimMod.Settings.fogLid)
+            if (!View3D.Active || map == null || !(IsoRimMod.Settings.fogLid || ShaderCut.On))
             {
                 return;
             }
@@ -261,7 +350,7 @@ namespace IsoRim
             }
             Shader.SetGlobalTexture(texId, c.Texture);
             Shader.SetGlobalVector(mapId, new Vector4(c.origin.x, c.origin.y, c.width, c.height));
-            Shader.SetGlobalVector(levelId, new Vector4(c.baseY, 0f, 0f, 0f));
+            Shader.SetGlobalVector(levelId, new Vector4(c.baseY, WallBoxes.CutFraction, 0f, 0f));   // y: what is left of a cut wall
         }
 
         // ---- the fog lid

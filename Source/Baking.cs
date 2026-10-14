@@ -665,6 +665,9 @@ namespace IsoRim
             float topY = height / squash;
             float rimY = topY + 0.002f / squash;
             Color32 lineColor = R3DMaterials.Shaded(tint, LineShade);
+            bool tags = CutTags.Enabled;
+            int own = tags && CanBeCut(t.def) ? ShaderCut.Lower : 0;
+            int whole = CutTags.Mark(layer);   // (shader cut-away) everything of this block goes down with its cell
 
             // The cap. Its texture repeats every two cells, so neighbouring blocks continue it.
             MeshWriter.TexturedQuad(top,
@@ -682,10 +685,17 @@ namespace IsoRim
             Vector3 centre = new Vector3(x0 + 0.5f, 0f, z0 + 0.5f);
             for (int f = 0; f < 4; f++)
             {
+                int cond = 0;
                 if (!ExposedFrom(map, c, c + FaceOut[f], height))
                 {
-                    continue;
+                    // (shader cut-away) against a block that may be cut down: baked, shown only while it is lower.
+                    if (!tags || !MayDrop(map, c + FaceOut[f]) || HullCorners.Covers(map, c + FaceOut[f], c, height))
+                    {
+                        continue;
+                    }
+                    cond = ShaderCut.Cond(FaceOut[f]);
                 }
+                int faceMark = CutTags.Mark(layer);
 
                 Vector3 outward = FaceOut[f].ToVector3();
                 Vector3 right = FaceRight[f].ToVector3();
@@ -702,11 +712,14 @@ namespace IsoRim
                     float u0 = along * 0.5f;
                     float u1 = (along + 1f) * 0.5f;
                     float v1 = height / SideCellsHigh;
+                    int sideMark = CutTags.Mark(layer);
                     MeshWriter.TexturedQuad(side, p0, Raised(p0, topY), Raised(p1, topY), p1,
                         new Vector2(u0, 0f), new Vector2(u0, v1), new Vector2(u1, v1), new Vector2(u1, 0f), White);
+                    CutTags.Apply(layer, sideMark, c, own | cond | ShaderCut.TexSide);
                 }
                 if (!room)
                 {
+                    CutTags.Apply(layer, faceMark, c, own | cond);
                     continue;
                 }
 
@@ -724,7 +737,8 @@ namespace IsoRim
                 Vector3 q1 = q0 + right;
                 float lineTop = OutlineWidth * 0.7f / squash;
                 MeshWriter.Quad(solid, q0, Raised(q0, lineTop), Raised(q1, lineTop), q1, lineColor);
-                EndLines(solid, map, c, f, q0, right, topY, height, lineColor);
+                EndLines(solid, map, c, f, q0, right, topY, height, lineColor, layer, cond == 0 ? own : -1);
+                CutTags.Apply(layer, faceMark, c, own | cond);
             }
 
             // Where a wall turns a corner inward, the rim needs a small square to stay unbroken.
@@ -746,6 +760,7 @@ namespace IsoRim
                     }
                 }
             }
+            CutTags.Apply(layer, whole, c, own);
             return true;
         }
 
@@ -775,6 +790,9 @@ namespace IsoRim
             IntVec3 c = t.Position;
             float squash = View3D.Squash;
             Color32 lineColor = R3DMaterials.Shaded(tint, LineShade);
+            bool tags = CutTags.Enabled;
+            int own = tags && CanBeCut(t.def) ? ShaderCut.Lower : 0;
+            int whole = CutTags.Mark(layer);
 
             for (int k = 0; k < 4; k++)
             {
@@ -796,10 +814,16 @@ namespace IsoRim
 
             for (int f = 0; f < 4; f++)
             {
+                int cond = 0;
                 if (!Exposed(map, c + FaceOut[f], height))
                 {
-                    continue;
+                    if (!tags || !MayDrop(map, c + FaceOut[f]))
+                    {
+                        continue;
+                    }
+                    cond = ShaderCut.Cond(FaceOut[f]);   // (shader cut-away) shown only while that cell is lower
                 }
+                int faceMark = CutTags.Mark(layer);
                 Vector3 outward = FaceOut[f].ToVector3();
                 Vector3 right = FaceRight[f].ToVector3();
                 int l = FaceLeft[f];
@@ -818,8 +842,10 @@ namespace IsoRim
                     bool textured = side != null && side.verts.Count + 4 <= MeshWriter.MaxVerts;
                     if (textured)
                     {
+                        int sideMark = CutTags.Mark(layer);
                         MeshWriter.TexturedQuad(side, ToWorld(a, squash), ToWorld(b, squash), ToWorld(e, squash), ToWorld(d, squash),
                             SideUV(a, right), SideUV(b, right), SideUV(e, right), SideUV(d, right), White);
+                        CutTags.Apply(layer, sideMark, c, own | cond | ShaderCut.TexSide);
                     }
                     if (room)
                     {
@@ -831,6 +857,7 @@ namespace IsoRim
                 }
                 if (!room)
                 {
+                    CutTags.Apply(layer, faceMark, c, own | cond);
                     continue;
                 }
 
@@ -844,7 +871,9 @@ namespace IsoRim
                 Vector3 q1 = rockGround[r] - back;
                 Vector3 lineTop = new Vector3(0f, OutlineWidth * 0.7f, 0f);
                 MeshWriter.Quad(solid, ToWorld(q0, squash), ToWorld(q0 + lineTop, squash), ToWorld(q1 + lineTop, squash), ToWorld(q1, squash), lineColor);
+                CutTags.Apply(layer, faceMark, c, own | cond);
             }
+            CutTags.Apply(layer, whole, c, own);
             return true;
         }
 
@@ -937,18 +966,29 @@ namespace IsoRim
         // (IsoRim.vert.glsl) shares the line's width between them by how much each face is turned
         // toward the camera: half each when both show equally, the full width on the one face
         // that shows when the other is turned away (a silhouette corner).
-        private static void EndLines(LayerSubMesh solid, Map map, IntVec3 c, int f, Vector3 q0, Vector3 right, float topY, float height, Color32 lineColor)
+        private static void EndLines(LayerSubMesh solid, Map map, IntVec3 c, int f, Vector3 q0, Vector3 right, float topY, float height, Color32 lineColor,
+            SectionLayer layer = null, int own = -1)
         {
-            if (ExposedFrom(map, c, c - FaceRight[f], height))
+            // own >= 0 (shader cut-away, on a face that always shows): an end against a block that may be cut down is
+            // baked too, shown only while that block is lower.
+            bool left = ExposedFrom(map, c, c - FaceRight[f], height);
+            bool leftMay = !left && own >= 0 && layer != null && MayDrop(map, c - FaceRight[f]) && !HullCorners.Covers(map, c - FaceRight[f], c, height);
+            if (left || leftMay)
             {
+                int m = leftMay ? CutTags.Mark(layer) : -1;
                 Vector3 s = q0 - right * Gap;
                 EndLine(solid, f, s, q0, right, topY, lineColor, false);
+                CutTags.Apply(layer, m, c, own | ShaderCut.Cond(IntVec3.Zero - FaceRight[f]));
             }
-            if (ExposedFrom(map, c, c + FaceRight[f], height))
+            bool rightEnd = ExposedFrom(map, c, c + FaceRight[f], height);
+            bool rightMay = !rightEnd && own >= 0 && layer != null && MayDrop(map, c + FaceRight[f]) && !HullCorners.Covers(map, c + FaceRight[f], c, height);
+            if (rightEnd || rightMay)
             {
+                int m = rightMay ? CutTags.Mark(layer) : -1;
                 Vector3 k = q0 + right;
                 Vector3 e = k + right * Gap;
                 EndLine(solid, f, e, k, -right, topY, lineColor, true);
+                CutTags.Apply(layer, m, c, own | ShaderCut.Cond(FaceRight[f]));
             }
         }
 
@@ -1006,7 +1046,22 @@ namespace IsoRim
         // stands between the camera and a room.
         public static float HeightFor(Thing t, float full)
         {
-            return IsCut(t.Map, t.Position, t) ? full * CutFraction : full;
+            return !FullHeights && IsCut(t.Map, t.Position, t) ? full * CutFraction : full;
+        }
+
+        // Set while a layer the shader cut-away lowers is built (ShaderCut): every block is baked whole and the
+        // sides against neighbours that can be cut are baked too; the vertex stage does the cutting.
+        public static bool FullHeights;
+
+        // A block in this cell that the cut-away can lower (so the side of a block beside it may come to show).
+        public static bool MayDrop(Map map, IntVec3 c)
+        {
+            if (!c.InBounds(map))
+            {
+                return false;
+            }
+            Building b = c.GetEdifice(map);
+            return b != null && Forms.For(b.def).form == Form3D.Block && CanBeCut(b.def) && SectionLayer_IsoRimWalls.Handles(b);
         }
 
         public static float CutFraction
@@ -1031,7 +1086,7 @@ namespace IsoRim
             {
                 return 0f;
             }
-            return IsCut(map, c, b) ? form.height * CutFraction : form.height;
+            return !FullHeights && IsCut(map, c, b) ? form.height * CutFraction : form.height;
         }
 
         // As in the Sims games: a built wall is cut down when the cell just behind it, seen from
@@ -1742,7 +1797,7 @@ namespace IsoRim
                     scale *= plant.def.plant.visualSizeRange.LerpThroughRange(plant.Growth);
                 }
                 bare = plant.LeaflessNow
-                    || (plant.def.plant != null && plant.def.plant.IsTree && Cutaway.TreeThinned(thing.Map, thing.Position));
+                    || (!CutTags.Enabled && plant.def.plant != null && plant.def.plant.IsTree && Cutaway.TreeThinned(thing.Map, thing.Position));
             }
 
             Vector3 offset = def.offset;
@@ -2004,14 +2059,23 @@ namespace IsoRim
             float biggest = Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
             float hullScale = outlineBold * Mathf.Min(1f, 1f / Mathf.Max(0.01f, biggest));
 
+            // (shader cut-away) a leafy tree keeps its leaves and its twigs: the vertex stage shows one or the other as
+            // the tree is thinned out near the pointer.
+            Plant treePlant = thing as Plant;
+            bool treeTags = CutTags.Enabled && !bare && treePlant != null && treePlant.def.plant != null && treePlant.def.plant.IsTree;
+            Vector3 leafTag = treeTags ? CutTags.Tag(thing.Position, ShaderCut.Leaf) : Vector3.zero;
+            Vector3 twigTag = treeTags ? CutTags.Tag(thing.Position, ShaderCut.Twig) : Vector3.zero;
+
             for (int i = 0; i + 2 < n; i += 3)
             {
                 int mi = m.material != null ? m.material[i] : 0;
                 ModelMaterial mm = m.materials != null ? m.materials[mi] : null;
-                if (mm != null && ((bare && mm.leaf) || (!bare && mm.twig) || (NoFire && mm.fire)))
+                bool tagged = treeTags && mm != null && (mm.leaf || mm.twig);
+                if (mm != null && ((bare && mm.leaf) || (!bare && mm.twig && !tagged) || (NoFire && mm.fire)))
                 {
                     continue;   // no leaves on a bare tree; no hidden twigs on a leafy one; no flame once the fire is out
                 }
+                Vector3 triTag = tagged ? (mm.leaf ? leafTag : twigTag) : Vector3.zero;
 
                 bool glow = mm != null && mm.glow;
 
@@ -2071,6 +2135,10 @@ namespace IsoRim
                     pm.verts.Add(new Vector3(center.x + p.x, baseY + Mathf.Max(0f, p.y) / squash, center.z + p.z));
                     pm.colors.Add(R3DMaterials.Shaded(c, 1f));
                     pm.uvs.Add(default);
+                    if (tagged)
+                    {
+                        CutTags.Stamp(pm, triTag);
+                    }
 
                     // 2. outline
                     if (outline != null)
@@ -2080,6 +2148,10 @@ namespace IsoRim
                         outline.verts.Add(new Vector3(center.x + h.x, baseY + Mathf.Max(0f, h.y) / squash, center.z + h.z));
                         outline.colors.Add(R3DMaterials.Shaded(c, OutlineShade));
                         outline.uvs.Add(default);
+                        if (tagged)
+                        {
+                            CutTags.Stamp(outline, triTag);
+                        }
                     }
 
                     // 3. textured face
@@ -2091,6 +2163,10 @@ namespace IsoRim
                         tm.verts.Add(new Vector3(center.x + q.x, baseY + Mathf.Max(0f, q.y) / squash, center.z + q.z));
                         tm.colors.Add(White);
                         tm.uvs.Add(new Vector3(uv.x, uv.y, 0f));
+                        if (tagged)
+                        {
+                            CutTags.Stamp(tm, triTag);
+                        }
                     }
                 }
             }

@@ -43,8 +43,9 @@ float TopAt(vec2 p, ivec2 size)
         return 0.0;
     }
     // Rows are stored north first (the texture upload flips them).
-    vec2 t = texelFetch(_IsoCellTex, ivec2(c.x, size.y - 1 - c.y), 0).rg;
-    return (round(t.r * 255.0) * 256.0 + round(t.g * 255.0)) / 4096.0;   // 16-bit height, 1/4096 cell steps
+    vec4 t = texelFetch(_IsoCellTex, ivec2(c.x, size.y - 1 - c.y), 0);
+    float full = (round(t.r * 255.0) * 256.0 + round(t.g * 255.0)) / 4096.0;   // 16-bit height, 1/4096 cell steps
+    return full * (1.0 - (1.0 - uMaterial._IsoLevel.y) * t.b);   // (shader cut-away) b = how far the block is cut down
 }
 
 void main()
