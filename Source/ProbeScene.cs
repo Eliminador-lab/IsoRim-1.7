@@ -69,6 +69,14 @@ namespace IsoRim
     //   ritual=x,z                   the building in the cell counts as the target of a running ritual (RitualUtility.IsRitualTarget)
     //   contain=x,z,<Def>[,<Stuff>]  a new thing put into the building's container (its own or its first holding comp);
     //                                a race def gives a new pawn, corpse:<race> a new corpse (reliquary, gibbet cage, dryad cocoon)
+    //                                (contain=x,z,<Def>,-|<Stuff>,<count> for a stack)
+    //   gestate=x,z,<RecipeDef>,forming|formed  a mech bill started at the gestator, its gathering finished; formed runs its cycles out
+    //   vatchild=x,z,<age>           a new child colonist chosen for the growth vat (walks in: run tick= after it)
+    //   embryo=x,z[,<done 0-1>]      a new embryo started in the powered growth vat, optionally that far along
+    //   sculpt=x,z,<cycle key>[,new] the biosculpter pod filled and the nearest colonist (or a new one) taken in for that cycle
+    //   hold=x,z,<PawnKindDef>       a new entity held on the holding platform in the cell
+    //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
+    //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
     //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
     //   spincheck=1                logs each building with a turning part (Spinners): turning or still, angle; and every mote
     //   power=x,z                    the building in the cell counts as powered from now on
@@ -80,6 +88,7 @@ namespace IsoRim
     //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
     //   emitcheck=1                  logs the smoke emitters and how many puffs are in the air
     //   opendoor=x,z                 the door in the cell opened by a colonist (Building_Door.StartManualOpenBy)
+    //   hack=x,z[,half]              the hackable building in the cell hacked by a colonist, all the way or half way
     //   doorcheck=1                  logs every door: rotation, cells, open, open fraction
     //   charged=x,z                  the shield in the cell out of its recharge pause
     //   shieldcheck=1                logs every shield: active, charging, cooldown, selected, faction
@@ -617,6 +626,139 @@ namespace IsoRim
                         hb.Patch(AccessTools.PropertyGetter(typeof(ScreenshotModeHandler), nameof(ScreenshotModeHandler.Active)), postfix: new HarmonyMethod(typeof(Probe), nameof(BarsShot)));
                     }
                     break;
+                case "gestate":
+                {
+                    // gestate=x,z,<RecipeDef>,forming|formed: a mech bill started at the gestator as the game does
+                    // (bill started by a colonist, its work finished: gathering -> forming); "formed" also runs the
+                    // last gestation cycle out (Bill_Mech.ForceCompleteAllCycles, one bill tick: the mech is made).
+                    Building_MechGestator mg = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_MechGestator;
+                    Pawn doer = map.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+                    if (mg == null || doer == null)
+                    {
+                        Log.Warning("[IsoRim probe] gestate: no mech gestator at " + a[0] + "," + a[1] + " or no colonist");
+                        return;
+                    }
+                    Bill_Mech mb = (Bill_Mech)DefDatabase<RecipeDef>.GetNamed(a[2]).MakeNewBill();
+                    mg.billStack.AddBill(mb);
+                    mb.Notify_DoBillStarted(doer);
+                    mb.Notify_BillWorkFinished(doer);
+                    if (a.Length > 3 && a[3] == "formed")
+                    {
+                        mb.ForceCompleteAllCycles();
+                        mb.BillTick();
+                    }
+                    Log.Message("[IsoRim probe] gestate " + mg.def.defName + " " + mg.Position + " " + a[2] + " -> " + mb.State + " mech " + (mg.GestatingMech != null ? mg.GestatingMech.def.defName : "none"));
+                    break;
+                }
+                case "vatchild":
+                {
+                    // vatchild=x,z,<age>: a new child colonist of that age at the growth vat, chosen with the vat's
+                    // select button: the child walks in (a real job: run tick= after it).
+                    Building_GrowthVat gv = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_GrowthVat;
+                    if (gv == null)
+                    {
+                        Log.Warning("[IsoRim probe] vatchild: no growth vat at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    float age = F(a[2]);
+                    Pawn kid = PawnGenerator.GeneratePawn(new PawnGenerationRequest(PawnKindDefOf.Colonist, Faction.OfPlayer, PawnGenerationContext.NonPlayer,
+                        fixedBiologicalAge: age, fixedChronologicalAge: age, developmentalStages: DevelopmentalStage.Child));
+                    GenSpawn.Spawn(kid, gv.InteractionCell, map);
+                    AccessTools.Method(gv.GetType(), "SelectPawn").Invoke(gv, new object[] { kid });
+                    AcceptanceReport ok = gv.CanAcceptPawn(kid);
+                    Log.Message("[IsoRim probe] vatchild: " + kid.LabelShort + " age " + age + " goes into the growth vat at " + gv.Position + " (can accept: " + (ok.Accepted ? "yes" : ok.Reason) + ")");
+                    break;
+                }
+                case "embryo":
+                {
+                    // embryo=x,z[,<fraction done>]: a new embryo put in the powered growth vat and started as the vat
+                    // does (TryGrowEmbryo); with a fraction, its gestation that far along.
+                    Building_GrowthVat ev = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_GrowthVat;
+                    if (ev == null)
+                    {
+                        Log.Warning("[IsoRim probe] embryo: no growth vat at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    HumanEmbryo em = (HumanEmbryo)ThingMaker.MakeThing(ThingDefOf.HumanEmbryo);
+                    ev.SelectEmbryo(em);
+                    ev.innerContainer.TryAdd(em);
+                    AccessTools.Method(typeof(Building_GrowthVat), "TryGrowEmbryo").Invoke(ev, null);
+                    if (a.Length > 2 && ev.Working)
+                    {
+                        Traverse.Create(ev).Field("startTick").SetValue(Find.TickManager.TicksGame + (int)(540000 * (1f - F(a[2]))));
+                    }
+                    Log.Message("[IsoRim probe] embryo in growth vat " + ev.Position + ": working " + ev.Working + ", " + ev.EmbryoGestationPct.ToString("0.00") + " done");
+                    break;
+                }
+                case "sculpt":
+                {
+                    // sculpt=x,z,<cycle key>: the pod's nutrition filled and the nearest free colonist taken in for
+                    // that cycle (CompBiosculpterPod.TryAcceptPawn, as when they walk in).
+                    Thing bp2 = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompBiosculpterPod pod = bp2 != null ? bp2.TryGetComp<CompBiosculpterPod>() : null;
+                    Pawn sp = pod == null ? null : map.mapPawns.FreeColonistsSpawned.Where(p => !p.Downed).OrderBy(p => p.Position.DistanceToSquared(bp2.Position)).FirstOrDefault();
+                    if (pod != null && a.Length > 3 && a[3] == "new")
+                    {
+                        // sculpt=x,z,<key>,new: a new colonist at the pod instead
+                        sp = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction.OfPlayer);
+                        GenSpawn.Spawn(sp, bp2.InteractionCell, map);
+                    }
+                    if (sp == null)
+                    {
+                        Log.Warning("[IsoRim probe] sculpt: no biosculpter pod at " + a[0] + "," + a[1] + " or no colonist");
+                        return;
+                    }
+                    Traverse.Create(pod).Field("liquifiedNutrition").SetValue(5f);
+                    bool took = pod.TryAcceptPawn(sp, a[2]);
+                    Log.Message("[IsoRim probe] sculpt: " + sp.LabelShort + " into " + bp2.def.defName + " " + bp2.Position + " cycle " + a[2] + ": " + (took ? "in" : "refused") + ", state " + pod.State);
+                    break;
+                }
+                case "hold":
+                {
+                    // hold=x,z,<PawnKindDef>: a new entity of that kind (entities' faction) held on the holding platform
+                    // (put into its container, which the harvesters linked to it watch to rebuild their cables).
+                    Building_HoldingPlatform hp = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_HoldingPlatform;
+                    if (hp == null)
+                    {
+                        Log.Warning("[IsoRim probe] hold: no holding platform at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    Pawn ent = PawnGenerator.GeneratePawn(DefDatabase<PawnKindDef>.GetNamed(a[2]), Faction.OfEntities);
+                    bool held = hp.innerContainer.TryAdd(ent);
+                    Log.Message("[IsoRim probe] hold " + hp.Position + " <- " + ent.def.defName + " " + (held ? "held" : "refused") + ", occupied " + hp.Occupied);
+                    break;
+                }
+                case "workcheck":
+                    foreach (Thing wt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && x.TryGetComp<CompCableConnection>() != null).ToList())
+                    {
+                        Log.Message("[IsoRim probe] workcheck " + wt.def.defName + " " + wt.Position + " rot " + wt.Rotation + ": " + WorkPanels.Report(wt)
+                            + ", cables " + Cables.Count(wt.TryGetComp<CompCableConnection>()) + ", form " + Forms.For(wt.def).form);
+                    }
+                    break;
+                case "glasscheck":
+                    foreach (Thing gt in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building && Glass.EntryFor(x) != null).ToList())
+                    {
+                        string state = "";
+                        if (gt is Building_MechGestator g1)
+                        {
+                            state = "bill " + (g1.ActiveBill != null ? g1.ActiveBill.State.ToString() : "none") + " mech " + (g1.GestatingMech != null ? g1.GestatingMech.def.defName : "none");
+                        }
+                        else if (gt is Building_GrowthVat g2)
+                        {
+                            state = "working " + g2.Working + " child " + (g2.SelectedPawn != null ? g2.SelectedPawn.LabelShort + " inside " + g2.innerContainer.Contains(g2.SelectedPawn) : "none")
+                                + " embryo " + (g2.selectedEmbryo != null ? g2.EmbryoGestationPct.ToString("0.00") : "none");
+                        }
+                        else if (gt is Building_WastepackAtomizer g3)
+                        {
+                            state = "wastepacks " + g3.Atomizer.TotalStackCount;
+                        }
+                        else if (gt.TryGetComp<CompBiosculpterPod>() is CompBiosculpterPod g4)
+                        {
+                            state = "pod " + g4.State + " occupant " + (g4.Occupant != null ? g4.Occupant.LabelShort : "none");
+                        }
+                        Log.Message("[IsoRim probe] glasscheck " + gt.def.defName + " " + gt.Position + " rot " + gt.Rotation + ": " + state + ", floor " + Forms.HeightOf(gt));
+                    }
+                    break;
                 case "halfdone":
                 {
                     // halfdone=x,z: the gene extractor in the cell half way through its work.
@@ -649,11 +791,29 @@ namespace IsoRim
                     od.StartManualOpenBy(opener);
                     break;
                 }
+                case "hack":
+                {
+                    // hack=x,z[,half]: the hackable building in the cell hacked by a colonist (CompHackable.Hack),
+                    // all the way, or half way (still locked).
+                    Thing hk = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompHackable ch = hk != null ? hk.TryGetComp<CompHackable>() : null;
+                    if (ch == null)
+                    {
+                        Log.Warning("[IsoRim probe] hack: nothing hackable at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    float need = ch.defence * (a.Length > 2 && a[2] == "half" ? 0.5f : 1f);
+                    ch.Hack(need, map.mapPawns.FreeColonistsSpawned.FirstOrDefault(), true);
+                    Log.Message("[IsoRim probe] hack " + hk.def.defName + " " + hk.Position + ": hacked " + ch.IsHacked + ", progress " + ch.ProgressPercent.ToString("0.00"));
+                    break;
+                }
                 case "doorcheck":
                     foreach (Building_Door dc in map.listerThings.AllThings.OfType<Building_Door>())
                     {
+                        CompHackable dh = dc.GetComp<CompHackable>();
                         Log.Message("[IsoRim probe] doorcheck " + dc.def.defName + " " + dc.Position + " rot " + dc.Rotation.ToStringHuman() + " cells " + dc.OccupiedRect() + " open " + dc.Open
-                            + " pct " + Traverse.Create(dc).Property("OpenPct").GetValue<float>().ToString("0.00"));
+                            + " pct " + Traverse.Create(dc).Property("OpenPct").GetValue<float>().ToString("0.00")
+                            + (dh != null ? " hacked " + dh.IsHacked : "") + " cut " + WallBoxes.CellCut(map, dc.Position));
                     }
                     break;
                 case "charged":
@@ -1013,7 +1173,11 @@ namespace IsoRim
             }
             else
             {
-                t = ThingMaker.MakeThing(def, a.Length > 3 ? DefDatabase<ThingDef>.GetNamed(a[3]) : GenStuff.DefaultStuffFor(def));
+                t = ThingMaker.MakeThing(def, a.Length > 3 && a[3] != "-" ? DefDatabase<ThingDef>.GetNamed(a[3]) : GenStuff.DefaultStuffFor(def));
+                if (a.Length > 4)
+                {
+                    t.stackCount = I(a[4]);
+                }
             }
             Building_Casket casket = holder as Building_Casket;
             bool ok = casket != null ? casket.TryAcceptThing(t, false) : holder.GetDirectlyHeldThings().TryAdd(t);

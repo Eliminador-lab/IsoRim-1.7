@@ -71,6 +71,10 @@ namespace IsoRim
         // doorTopModel an optional fixed piece on top (the arch). Drawn by Doors.DrawWide.
         public string doorLeafModel;
         public string doorTopModel;
+        // One-cell supported doors (vac barrier, ancient blast door; Doors.DrawSupported) use model (frame),
+        // doorTopModel (lintel) and doorLeafModel (optional, two sliding leaves) the same way, plus
+        // hackTerminalModel: drawn while the door's CompHackable is not hacked (the blast door's terminal).
+        public string hackTerminalModel;
         public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
         public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
@@ -80,6 +84,26 @@ namespace IsoRim
         public string spinModel;
         public float spinSpeed = 90f;       // degrees a second at normal game speed
         public string spinMote;             // the game's flat mote for that part (Mote_LightBall), left out in 3D
+        public string litMaterial;          // a material of spinModel that lights up while the part turns (the lightball's
+                                            // lenses, party_lens): unlit, in litColors, one colour per separate piece in turn
+        public List<Color> litColors;
+        // See-through parts (Glass.cs): a glass cover or window built in the same space as model, drawn
+        // every frame over the body and over what is inside it, in one shared pale glass colour, darkening
+        // with the scene at night. The game's flat glass, top and window sprites over the contents are
+        // left out in 3D (mech gestators, growth vat, biosculpter pod, wastepack atomizer).
+        public string glassModel;
+        public float contentTop = -1f;      // roof of the chamber under the glass: what stands inside (a forming
+                                            // mech, a vat embryo or child) is fitted between surfaceHeight and this
+        public bool heldPawnUpright = false; // the person held inside floats upright (growth vat) instead of lying
+        public float barHeight = -1f;       // height of the game's progress bar over it (mech gestator console); -1 surfaceHeight
+        // Harvesters (WorkParts.cs). cableAnchors: the connectors (x, height, z; model space, facing north) the
+        // game's cables to holding platforms (CompCableConnection) run up to, taken in turn. workPanel: the two
+        // ends (x, height, z) of a strip on the model where lights run while the building works (stopped while
+        // paused, dark while idle), in workPanelColor, workPanelWidth wide.
+        public List<Vector3> cableAnchors;
+        public List<Vector3> workPanel;
+        public Color workPanelColor = new Color(1f, 0.5f, 0.2f);
+        public float workPanelWidth = 0.08f;
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -319,6 +343,9 @@ namespace IsoRim
         public Model doorTop;
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
         public Model spin;        // spinModel, or null
+        public Model spinLit;     // spinModel with its litMaterial lit, or null
+        public Model glass;       // glassModel, or null
+        public Model hackTerminal; // hackTerminalModel, or null
 
         public bool HasModel
         {
@@ -583,6 +610,18 @@ namespace IsoRim
             if (!md.spinModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.spin = LoadFile(Path.Combine(md.modContentPack.RootDir, md.spinModel));
+                if (entry.spin != null && !md.litMaterial.NullOrEmpty())
+                {
+                    entry.spinLit = ObjLoader.Relit(entry.spin, md.litMaterial, md.litColors);
+                }
+            }
+            if (!md.hackTerminalModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.hackTerminal = LoadFile(Path.Combine(md.modContentPack.RootDir, md.hackTerminalModel));
+            }
+            if (!md.glassModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.glass = LoadFile(Path.Combine(md.modContentPack.RootDir, md.glassModel));
             }
             return entry;
         }
@@ -723,6 +762,121 @@ namespace IsoRim
         private static readonly Color DefaultColor = new Color(0.8f, 0.8f, 0.8f);
         private const float OutlineWidth = 0.03f;   // in cells
         private static int nextId = 1;
+
+        // A copy of a model whose faces of one material give off light (unlit, see ModelMaterial.glow),
+        // each separate piece of them (faces joined by shared corners) in the next of colors in turn:
+        // the lightball's lenses during a party. Null if the model has no such material.
+        public static Model Relit(Model src, string material, List<Color> colors)
+        {
+            if (src == null || src.materials == null || src.material == null)
+            {
+                return null;
+            }
+            int from = -1;
+            for (int i = 0; i < src.materials.Length; i++)
+            {
+                if (string.Equals(src.materials[i].name, material, StringComparison.OrdinalIgnoreCase))
+                {
+                    from = i;
+                }
+            }
+            if (from < 0)
+            {
+                ModLog.Warn("[IsoRim] litMaterial " + material + " is not used by the model");
+                return null;
+            }
+            if (colors == null || colors.Count == 0)
+            {
+                colors = new List<Color> { Color.white };
+            }
+            ModelMaterial lit = new ModelMaterial();
+            lit.name = "glow_" + material;
+            lit.glow = true;
+            lit.color = Color.white;
+            List<ModelMaterial> mats = new List<ModelMaterial>(src.materials);
+            mats.Add(lit);
+            int to = mats.Count - 1;
+
+            // The material's triangles grouped into pieces by shared corners.
+            int n = src.positions.Length;
+            Dictionary<long, int> corner = new Dictionary<long, int>();
+            List<int> parent = new List<int>();
+            int[] triPiece = new int[n / 3];
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                if (src.material[i] != from)
+                {
+                    continue;
+                }
+                int t = parent.Count;
+                triPiece[i / 3] = t;
+                parent.Add(t);
+                for (int k = i; k < i + 3; k++)
+                {
+                    Vector3 p = src.positions[k];
+                    long key = (((long)Mathf.RoundToInt(p.x * 2000f) & 0xFFFFF) << 40) | (((long)Mathf.RoundToInt(p.y * 2000f) & 0xFFFFF) << 20)
+                        | ((long)Mathf.RoundToInt(p.z * 2000f) & 0xFFFFF);
+                    int other;
+                    if (corner.TryGetValue(key, out other))
+                    {
+                        parent[Root(parent, other)] = Root(parent, t);
+                    }
+                    else
+                    {
+                        corner[key] = t;
+                    }
+                }
+            }
+
+            Model m = new Model();
+            m.positions = src.positions;
+            m.normals = src.normals;
+            m.uvs = src.uvs;
+            m.hull = src.hull;
+            m.maxY = src.maxY;
+            m.halfDepth = src.halfDepth;
+            m.minX = src.minX;
+            m.maxX = src.maxX;
+            m.minZ = src.minZ;
+            m.maxZ = src.maxZ;
+            m.materials = mats.ToArray();
+            m.colors = (Color[])src.colors.Clone();
+            m.tinted = (bool[])src.tinted.Clone();
+            m.material = (int[])src.material.Clone();
+            Dictionary<int, int> pieceOf = new Dictionary<int, int>();
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                if (src.material[i] != from)
+                {
+                    continue;
+                }
+                int root = Root(parent, triPiece[i / 3]);
+                int piece;
+                if (!pieceOf.TryGetValue(root, out piece))
+                {
+                    piece = pieceOf.Count;
+                    pieceOf[root] = piece;
+                }
+                for (int k = i; k < i + 3; k++)
+                {
+                    m.material[k] = to;
+                    m.colors[k] = colors[piece % colors.Count];
+                    m.tinted[k] = false;
+                }
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        private static int Root(List<int> parent, int x)
+        {
+            while (parent[x] != x)
+            {
+                parent[x] = parent[parent[x]];
+                x = parent[x];
+            }
+            return x;
+        }
 
         public static Model Load(string path)
         {

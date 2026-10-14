@@ -4876,6 +4876,15 @@
     <builtFor>(1, 1)</builtFor>
     <spinModel>Models/lightball_rotor.obj</spinModel>
     <spinMote>Mote_LightBall</spinMote>
+    <litMaterial>party_lens</litMaterial>
+    <litColors>
+      <li>(1.0, 0.30, 0.30)</li>
+      <li>(0.35, 1.0, 0.40)</li>
+      <li>(0.40, 0.55, 1.0)</li>
+      <li>(1.0, 0.90, 0.30)</li>
+      <li>(1.0, 0.40, 0.90)</li>
+      <li>(0.35, 0.95, 1.0)</li>
+    </litColors>
   </IsoRim.ModelDef>
   <!-- Coop batch 2 class B: contents the game draws every frame, at the model's own anchors -->
   <IsoRim.ModelDef>
@@ -5007,5 +5016,104 @@
     <thingDef>SignalJammer</thingDef>
     <model>Models/signal_jammer.obj</model>
     <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <!-- Coop batch 2 class B: glass over contents (Glass.cs; one shared glass colour, user decision 2026-10-14) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_MechGestator</defName>
+    <thingDef>MechGestator</thingDef>
+    <model>Models/mech_gestator.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/mech_gestator_glass.obj</glassModel>
+    <surfaceHeight>0.32</surfaceHeight>
+    <contentTop>1.5</contentTop>
+    <barHeight>0.31</barHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeMechGestator</defName>
+    <thingDef>LargeMechGestator</thingDef>
+    <model>Models/large_mech_gestator.obj</model>
+    <builtFor>(4, 3)</builtFor>
+    <glassModel>Models/large_mech_gestator_glass.obj</glassModel>
+    <surfaceHeight>0.32</surfaceHeight>
+    <contentTop>1.97</contentTop>
+    <barHeight>0.31</barHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GrowthVat</defName>
+    <thingDef>GrowthVat</thingDef>
+    <model>Models/growth_vat.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <glassModel>Models/growth_vat_glass.obj</glassModel>
+    <surfaceHeight>0.26</surfaceHeight>
+    <contentTop>0.64</contentTop>
+    <heldPawnUpright>true</heldPawnUpright>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BiosculpterPod</defName>
+    <thingDef>BiosculpterPod</thingDef>
+    <model>Models/biosculpter_pod.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/biosculpter_pod_glass.obj</glassModel>
+    <surfaceHeight>0.30</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_WastepackAtomizer</defName>
+    <thingDef>WastepackAtomizer</thingDef>
+    <model>Models/wastepack_atomizer.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <glassModel>Models/wastepack_atomizer_window.obj</glassModel>
+    <surfaceHeight>0.50</surfaceHeight>
+  </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: harvesters (WorkParts.cs): cables to the model's connectors, lights running while at work -->
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteHarvester</defName>
+    <thingDef>BioferriteHarvester</thingDef>
+    <model>Models/bioferrite_harvester.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <cableAnchors>
+      <li>(-0.26, 0.80, 0.76)</li>
+      <li>(0.26, 0.80, 0.76)</li>
+    </cableAnchors>
+    <workPanel>
+      <li>(-0.26, 0.755, 0.24)</li>
+      <li>(0.26, 0.755, 0.24)</li>
+    </workPanel>
+    <workPanelColor>(1.0, 0.42, 0.18)</workPanelColor>
+    <workPanelWidth>0.09</workPanelWidth>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_Electroharvester</defName>
+    <thingDef>Electroharvester</thingDef>
+    <model>Models/electroharvester.obj</model>
+    <builtFor>(2, 1)</builtFor>
+    <cableAnchors>
+      <li>(-0.65, 0.67, -0.25)</li>
+      <li>(-0.65, 0.67, -0.08)</li>
+      <li>(-0.65, 0.67, 0.09)</li>
+      <li>(-0.65, 0.67, 0.26)</li>
+    </cableAnchors>
+    <workPanel>
+      <li>(-0.435, 0.815, -0.30)</li>
+      <li>(-0.435, 0.815, 0.30)</li>
+    </workPanel>
+    <workPanelColor>(0.45, 0.85, 1.0)</workPanelColor>
+    <workPanelWidth>0.08</workPanelWidth>
+  </IsoRim.ModelDef>
+  <!-- Coop batch 3 class B: one-cell supported doors with their own models (Doors.DrawSupported) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_VacBarrier</defName>
+    <thingDef>VacBarrier</thingDef>
+    <model>Models/vac_barrier.obj</model>
+    <doorTopModel>Models/vac_barrier_top.obj</doorTopModel>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientBlastDoor</defName>
+    <thingDef>AncientBlastDoor</thingDef>
+    <model>Models/blast_door.obj</model>
+    <doorTopModel>Models/blast_top.obj</doorTopModel>
+    <doorLeafModel>Models/blast_leaf.obj</doorLeafModel>
+    <hackTerminalModel>Models/blast_terminal.obj</hackTerminalModel>
+    <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
 </Defs>
