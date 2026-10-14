@@ -14,11 +14,13 @@ namespace IsoRim
     // and head, the apparel it holds over the body and head, and the weapon it holds. With the model,
     // the stand and its body are baked like any realtime building (SectionLayer_IsoRimBodies); here
     // go the rest, so that a stand looks like a 3D colonist wearing the same outfit, minus the colonist:
-    //   - the stand's head model (headModel), left out as the game leaves out its head while worn
-    //     apparel hides the head (renderSkipFlags Head: the burka, shown as a hood in its colour);
-    //   - the clothes as the same 3D parts a colonist of the stand's body type wears (People.Dress:
-    //     trousers, shirt, coat or armour, hat or helmet), in the same colours, fitted over the stand's
-    //     body (dressScale, dressRise) and head (dressHeadScale about dressHeadCentre);
+    //   - the figure is a colonist of the stand's body type and size (People's figure space, as is),
+    //     lifted dressRise onto the stand, so heads, hats and clothes have a colonist's sizes and places;
+    //   - the stand's head model (headModel) over the colonist's head (person_head), left out as the game
+    //     leaves out its head while worn apparel hides the head (renderSkipFlags Head: the burka, shown
+    //     as a hood in its colour);
+    //   - the clothes as the same 3D parts a colonist of that body type wears (People.Dress: trousers,
+    //     shirt, coat or armour, hat or helmet), in the same colours;
     //   - clothing with no 3D part (packs, belts) as the game's sprite, stood upright over the body
     //     (apparelHeight, apparelScale) as before;
     //   - the weapon made solid from its sprite (as a colonist's held weapon), placed and turned as the
@@ -27,7 +29,6 @@ namespace IsoRim
     {
         private const float DepthScale = 0.3f;   // the game's drawing heights, squeezed into a thin stack toward the camera
         private const float Nudge = 0.36f;       // and that stack held this far in front of the model's body, in cells
-        private const float PersonHeadCentre = 0.998f;   // middle of a figure's head (person_head.obj), figure space
         private const float PersonHeight = 1.12f;        // a figure of size 1, feet to the top of the head (People.FigureHeight)
         private const float PictureHeight = 1.5f;        // the game's picture of a pawn (its 1.5-cell body mesh)
         private const float WeaponGap = 0.05f;           // between the dressed body and the weapon held in front of it, figure units
@@ -94,25 +95,27 @@ namespace IsoRim
             Vector3 c = stand.TrueCenter();
             Vector3 ground = new Vector3(c.x, 0f, c.z);
             Vector3 fit = entry.Fit(stand.def) * def.scale;
-            Matrix4x4 place = Matrix4x4.Translate(def.offset) * Matrix4x4.Scale(fit);
+            // The dressed figure: a colonist of the stand's body type and size (People's figure space in cells, as a
+            // colonist is drawn), lifted dressRise cells onto the stand (the stand model is sized to it: ModelDef.scale).
+            float size = FigureSize(body);
+            Matrix4x4 figure = Matrix4x4.Translate(new Vector3(0f, def.dressRise, 0f))
+                * Matrix4x4.Scale(Vector3.one * size);
 
             if (!skipHead && entry.head != null)
             {
-                DynamicModels.DrawLocal(entry.head, ground, yaw, place, R3DTextures.ModelTint(stand), R3DTextures.ModelSwatch(stand));
+                // The stand's own head, the size of a colonist's head and where it sits (person_head).
+                DynamicModels.DrawLocal(entry.head, ground, yaw, figure * HeadFit(entry.head), R3DTextures.ModelTint(stand), R3DTextures.ModelSwatch(stand));
             }
 
             Outfit outfit = OutfitOf(stand, body, skipHead);
-            Matrix4x4 bodyPlace = place * Matrix4x4.Translate(new Vector3(0f, def.dressRise, 0f)) * Matrix4x4.Scale(def.dressScale);
-            Matrix4x4 headPlace = place * Matrix4x4.Translate(new Vector3(0f, def.dressHeadCentre - PersonHeadCentre * def.dressHeadScale, 0f))
-                * Matrix4x4.Scale(Vector3.one * def.dressHeadScale);
-            DynamicModels.DrawParts(MeshesFor(outfit.bodyKey), ground, yaw, bodyPlace);
-            DynamicModels.DrawParts(MeshesFor(outfit.headKey), ground, yaw, headPlace);
+            DynamicModels.DrawParts(MeshesFor(outfit.bodyKey), ground, yaw, figure);
+            DynamicModels.DrawParts(MeshesFor(outfit.headKey), ground, yaw, figure);
 
             ThingWithComps weapon = stand.HeldWeapon;
             bool weaponDrawn = weapon == null;
             if (weapon != null && IsoRimMod.Settings.heldWeapons3D)
             {
-                weaponDrawn = DrawWeapon(stand, weapon, def, fit, c, outfit);
+                weaponDrawn = DrawWeapon(stand, weapon, def, size, c, outfit);
             }
 
             Rot4 seen = Seen(stand.Rotation);
@@ -160,7 +163,7 @@ namespace IsoRim
                 {
                     float importantY = AltitudeLayer.ItemImportant.AltitudeFor();
                     Vector3 head = drawLoc + HeadOffsetAt(body, seen);
-                    DrawHook.xform = Card(c, def.dressHeadCentre * fit.y, scale, new Vector3(head.x, importantY, head.z));
+                    DrawHook.xform = Card(c, def.dressRise + PersonHeadCentre * size, scale, new Vector3(head.x, importantY, head.z));
                     for (int i = 0; i < pieces.Count; i++)
                     {
                         Piece p = pieces[i];
@@ -190,26 +193,75 @@ namespace IsoRim
         // moved by the game's offset for the stand's facing (east-west across the picture, south = lower on the
         // figure), held just clear of the dressed body: in front of it (south), or behind it for a stand facing
         // north, which the game draws under the body. Sized with the dressed figure.
-        private static bool DrawWeapon(Building_OutfitStand stand, ThingWithComps weapon, ModelDef def, Vector3 fit, Vector3 c, Outfit outfit)
+        private static bool DrawWeapon(Building_OutfitStand stand, ThingWithComps weapon, ModelDef def, float size, Vector3 c, Outfit outfit)
         {
             Rot4 facing = stand.Rotation;
             float aim = facing == Rot4.West ? 217f : 143f;
             Vector3 off = EqLoc[facing.AsInt] * (float)weaponFactorGetter.Invoke(stand, null);
             float picture = PersonHeight / PictureHeight;   // the game's picture units to figure units
-            float height = (def.dressRise + (PersonHeight * 0.5f + off.z * picture) * def.dressScale.y) * fit.y;
-            float across = off.x * picture * def.dressScale.x * fit.x;
+            float height = def.dressRise + (PersonHeight * 0.5f + off.z * picture) * size;
+            float across = off.x * picture * size;
             // Clear of the body: its reach toward the south (its depth, or its width if it faces east or west).
             float reach = facing.IsHorizontal ? outfit.halfWidth : outfit.halfDepth;
-            float clear = (reach * Mathf.Max(def.dressScale.x, def.dressScale.z) + WeaponGap) * Mathf.Max(fit.x, fit.z);
+            float clear = (reach + WeaponGap) * size;
             Vector3 centre = new Vector3(c.x + across, height, facing == Rot4.North ? c.z + clear : c.z - clear);
 
             bool flip = aim > 200f && aim < 340f;
             float angle = flip ? aim - 270f - weapon.def.equippedAngleOffset : aim - 90f + weapon.def.equippedAngleOffset;
-            if (IsoRimMod.Settings.itemsFromArt && SpriteSolids.DrawUpright(weapon, centre, angle, flip, def.dressScale.y * fit.y))
+            if (IsoRimMod.Settings.itemsFromArt && SpriteSolids.DrawUpright(weapon, centre, angle, flip, size))
             {
                 return true;
             }
             return Patches.HeldWeapon3D(weapon, centre, aim);   // no sprite to make solid: its model, level
+        }
+
+        // The size of the colonist figure a stand is dressed as: People's size for the stand's body (the kid
+        // stand's child body: a child's life stage; adult stands 1).
+        private static float FigureSize(BodyTypeDef body)
+        {
+            LifeStageDef child = LifeStageDefOf.HumanlikeChild;
+            return People.SizeFor(body == BodyTypeDefOf.Child && child != null ? child.bodySizeFactor : 1f);
+        }
+
+        // Places a stand's head model over a colonist's head (person_head: its box, in figure space).
+        private static Matrix4x4 HeadFit(Model head)
+        {
+            Model person = People.Part("person_head");
+            if (person == null)
+            {
+                return Matrix4x4.identity;
+            }
+            Bounds from = BoxOf(head), to = BoxOf(person);
+            Vector3 scale = new Vector3(to.size.x / Mathf.Max(from.size.x, 1e-4f), to.size.y / Mathf.Max(from.size.y, 1e-4f), to.size.z / Mathf.Max(from.size.z, 1e-4f));
+            return Matrix4x4.Translate(to.center) * Matrix4x4.Scale(scale) * Matrix4x4.Translate(-from.center);
+        }
+
+        // The middle of a colonist's head, figure space.
+        private static float PersonHeadCentre
+        {
+            get
+            {
+                Model person = People.Part("person_head");
+                return person != null ? BoxOf(person).center.y : 1f;
+            }
+        }
+
+        private static readonly Dictionary<int, Bounds> boxes = new Dictionary<int, Bounds>();
+
+        private static Bounds BoxOf(Model m)
+        {
+            Bounds b;
+            if (boxes.TryGetValue(m.id, out b))
+            {
+                return b;
+            }
+            b = new Bounds(m.positions.Length > 0 ? m.positions[0] : Vector3.zero, Vector3.zero);
+            for (int i = 1; i < m.positions.Length; i++)
+            {
+                b.Encapsulate(m.positions[i]);
+            }
+            boxes[m.id] = b;
+            return b;
         }
 
         // The stand's clothes as figure parts (People.Dress), kept until its contents change.

@@ -78,6 +78,7 @@ namespace IsoRim
     //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
     //   sealflag=x,z                 the portal in the cell marked sealed (CompSealable) and its map mesh redrawn
     //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
+    //   dressed=x,z,rot,age,Def[:Stuff];...  a new drafted colonist (adults male body) wearing/holding exactly those, facing rot
     //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
@@ -764,6 +765,43 @@ namespace IsoRim
                             + (mh != null ? ", hacked " + mh.IsHacked : "") + ", form " + Forms.For(mp.def).form);
                     }
                     break;
+                case "dressed":
+                {
+                    // dressed=x,z,<rot 0-3>,<age>,<Def[:Stuff]>;...: a new colonist of that age (adults the male body,
+                    // as the outfit stand) wearing exactly those things and holding the weapon among them, drafted
+                    // so it stands still facing rot (to compare with an outfit stand).
+                    float dage = F(a[3]);
+                    bool dchild = dage < 13f;
+                    Pawn dp = PawnGenerator.GeneratePawn(new PawnGenerationRequest(PawnKindDefOf.Colonist, Faction.OfPlayer, PawnGenerationContext.NonPlayer,
+                        fixedBiologicalAge: dage, fixedChronologicalAge: dage, developmentalStages: dchild ? DevelopmentalStage.Child : DevelopmentalStage.Adult));
+                    dp.apparel.DestroyAll();
+                    dp.equipment.DestroyAllEquipment();
+                    if (!dchild)
+                    {
+                        dp.story.bodyType = BodyTypeDefOf.Male;
+                    }
+                    foreach (string item in a[4].Split(';'))
+                    {
+                        string[] ds = item.Split(':');
+                        ThingDef dd = DefDatabase<ThingDef>.GetNamed(ds[0]);
+                        ThingDef dstuff = ds.Length > 1 && ds[1] != "-" ? DefDatabase<ThingDef>.GetNamed(ds[1]) : (dd.MadeFromStuff ? GenStuff.DefaultStuffFor(dd) : null);
+                        Thing dt = ThingMaker.MakeThing(dd, dstuff);
+                        if (dt is Apparel dap)
+                        {
+                            dp.apparel.Wear(dap, false, true);
+                        }
+                        else if (dt is ThingWithComps deq && dd.IsWeapon)
+                        {
+                            dp.equipment.AddEquipment(deq);
+                        }
+                    }
+                    GenSpawn.Spawn(dp, new IntVec3(I(a[0]), 0, I(a[1])), map, new Rot4(I(a[2])));
+                    dp.drafter.Drafted = true;
+                    dp.Rotation = new Rot4(I(a[2]));
+                    Log.Message("[IsoRim probe] dressed " + dp.LabelShort + " at " + dp.Position + " rot " + dp.Rotation + ": " + string.Join(", ", dp.apparel.WornApparel.Select(x => x.def.defName))
+                        + (dp.equipment.Primary != null ? " + " + dp.equipment.Primary.def.defName : ""));
+                    break;
+                }
                 case "standcheck":
                     foreach (Building_OutfitStand os in map.listerThings.AllThings.OfType<Building_OutfitStand>().ToList())
                     {

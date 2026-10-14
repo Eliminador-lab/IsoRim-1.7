@@ -409,7 +409,7 @@ namespace IsoRim
             {
                 grown = pawn.ageTracker.CurLifeStage.bodySizeFactor;
             }
-            look.size = Mathf.Lerp(0.5f, 1f, Mathf.Clamp01(grown));
+            look.size = SizeFor(grown);
 
             // Head, hair and beard.
             string headName = story.headType != null ? (story.headType.defName ?? "") : "";
@@ -465,6 +465,12 @@ namespace IsoRim
                 return "fat";
             }
             return "male";
+        }
+
+        // A figure's size for a life stage's body size factor (children are smaller, not thinner).
+        internal static float SizeFor(float bodySizeFactor)
+        {
+            return Mathf.Lerp(0.5f, 1f, Mathf.Clamp01(bodySizeFactor));
         }
 
         internal static float Shoulders(string build)
