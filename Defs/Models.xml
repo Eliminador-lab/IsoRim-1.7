@@ -5107,4 +5107,13 @@
     <doorTopModel>Models/vac_barrier_top.obj</doorTopModel>
     <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientBlastDoor</defName>
+    <thingDef>AncientBlastDoor</thingDef>
+    <model>Models/blast_door.obj</model>
+    <doorTopModel>Models/blast_top.obj</doorTopModel>
+    <doorLeafModel>Models/blast_leaf.obj</doorLeafModel>
+    <hackTerminalModel>Models/blast_terminal.obj</hackTerminalModel>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
 </Defs>
