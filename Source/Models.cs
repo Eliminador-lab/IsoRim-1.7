@@ -59,6 +59,11 @@ namespace IsoRim
         public Vector2 builtFor = Vector2.zero; // the footprint (x, z) in cells the model was built for; it is stretched to the thing's real size
         public string topModel;             // turrets: the gun that turns, drawn every frame
         public float topHeight = 0.5f;      // height of the turret's pivot, in cells
+        // Doors wider than one cell (ornate door): model is the fixed frame over the doorway, doorLeafModel one
+        // leaf (spanning x 0..1 from the doorway centre; the other leaf is the same turned half round),
+        // doorTopModel an optional fixed piece on top (the arch). Drawn by Doors.DrawWide.
+        public string doorLeafModel;
+        public string doorTopModel;
         public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
         public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
@@ -289,6 +294,8 @@ namespace IsoRim
         public Model leg;   // animals only
         public Model top;   // turrets only
         public Model empty;       // emptyModel, or null
+        public Model doorLeaf;    // wide doors only
+        public Model doorTop;
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
 
         public bool HasModel
@@ -495,6 +502,14 @@ namespace IsoRim
             if (!md.topModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.top = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModel));
+            }
+            if (!md.doorLeafModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.doorLeaf = LoadFile(Path.Combine(md.modContentPack.RootDir, md.doorLeafModel));
+            }
+            if (!md.doorTopModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.doorTop = LoadFile(Path.Combine(md.modContentPack.RootDir, md.doorTopModel));
             }
             if (!md.emptyModel.NullOrEmpty() && md.modContentPack != null)
             {

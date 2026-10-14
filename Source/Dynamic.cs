@@ -1388,6 +1388,55 @@ namespace IsoRim
             return true;
         }
 
+        // A door wider than one cell with its own models (ornate door, ModelDef doorLeafModel): the
+        // fixed frame (and arch, doorTopModel) over the doorway and two leaves sliding apart into the
+        // walls either side, as far as the game slides its own (0.7 of a leaf's width for the
+        // ornate door). Lies along the door's rotation; as tall as the walls, cut down with them
+        // (without the arch, which would float over the cut wall). openPct is the game's OpenPct;
+        // a door stuck open shows no leaves, as in the game. Returns false if it drew nothing.
+        public static bool DrawWide(Building_Door door, ModelEntry entry, float openPct, bool stuckOpen)
+        {
+            Map map = door.Map;
+            if (map == null || entry == null || !entry.HasModel || entry.doorLeaf == null)
+            {
+                return false;
+            }
+            ModelDef def = entry.def;
+            float yaw = door.Rotation.AsAngle + def.rotation;
+            Vector3 along = Quaternion.AngleAxis(yaw, Vector3.up) * Vector3.right;
+            Vector3 at = door.DrawPos;
+            Vector3 centre = new Vector3(at.x, 0f, at.z);
+
+            float height = View3D.WallHeight;
+            bool cut = false;
+            foreach (IntVec3 c in door.OccupiedRect())
+            {
+                cut |= WallBoxes.CellCut(map, c);
+            }
+            if (cut)
+            {
+                height *= WallBoxes.CutFraction;
+            }
+            float s = def.scale;
+            Matrix4x4 sized = Matrix4x4.Scale(new Vector3(s, s * height / BuiltForWallHeight, s));
+            Color tint = door.DrawColor;
+            string swatch = R3DTextures.StuffSwatch(door);
+
+            DynamicModels.DrawLocal(entry.variants[0], centre, yaw, sized, tint, swatch);
+            if (entry.doorTop != null && !cut)
+            {
+                DynamicModels.DrawLocal(entry.doorTop, centre, yaw, sized, tint, swatch);
+            }
+            if (!stuckOpen)
+            {
+                // The game: each leaf's middle sits 0.25 + 0.35 * OpenPct door widths from the centre.
+                float slide = 0.35f * Mathf.Clamp01(openPct) * door.def.size.x * s;
+                DynamicModels.DrawLocal(entry.doorLeaf, centre + along * slide, yaw, sized, tint, swatch);
+                DynamicModels.DrawLocal(entry.doorLeaf, centre - along * slide, yaw + 180f, sized, tint, swatch);
+            }
+            return true;
+        }
+
         private static int Block(Map map, IntVec3 cell)
         {
             if (!cell.InBounds(map))

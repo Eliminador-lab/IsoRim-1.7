@@ -60,6 +60,8 @@ namespace IsoRim
     //   bars=1                       progress bars are drawn in the shots (the game leaves them out in screenshot mode)
     //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
     //   emitcheck=1                  logs the smoke emitters and how many puffs are in the air
+    //   opendoor=x,z                 the door in the cell opened by a colonist (Building_Door.StartManualOpenBy)
+    //   doorcheck=1                  logs every door: rotation, cells, open, open fraction
     //   charged=x,z                  the shield in the cell out of its recharge pause
     //   shieldcheck=1                logs every shield: active, charging, cooldown, selected, faction
     //   wake=x,z                   the dormant building in the cell (mech capsule) woken at once, as when disturbed
@@ -520,6 +522,26 @@ namespace IsoRim
                     }
                     break;
                 }
+                case "opendoor":
+                {
+                    // opendoor=x,z: the door in the cell opened as a colonist walking through opens it.
+                    Building_Door od = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_Door;
+                    Pawn opener = map.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+                    if (od == null || opener == null)
+                    {
+                        Log.Warning("[IsoRim probe] opendoor: no door at " + a[0] + "," + a[1] + " or no colonist");
+                        return;
+                    }
+                    od.StartManualOpenBy(opener);
+                    break;
+                }
+                case "doorcheck":
+                    foreach (Building_Door dc in map.listerThings.AllThings.OfType<Building_Door>())
+                    {
+                        Log.Message("[IsoRim probe] doorcheck " + dc.def.defName + " " + dc.Position + " rot " + dc.Rotation.ToStringHuman() + " cells " + dc.OccupiedRect() + " open " + dc.Open
+                            + " pct " + Traverse.Create(dc).Property("OpenPct").GetValue<float>().ToString("0.00"));
+                    }
+                    break;
                 case "charged":
                 {
                     // charged=x,z: the shield in the cell is not in its recharge pause (the game picks that time at random).

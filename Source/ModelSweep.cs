@@ -63,6 +63,10 @@ namespace IsoRim
                 {
                     drawnBy = "Doors.Draw";
                 }
+                else if (typeof(Building_MultiTileDoor).IsAssignableFrom(def.thingClass) && listed && entry.doorLeaf != null && entry.HasModel && st.doors3D)
+                {
+                    drawnBy = "Doors.DrawWide";
+                }
 
                 // Which name entry the <match> lists pick, with the old substring rule and with the
                 // current word rule (only for things with no entry of their own or of a category).

@@ -256,6 +256,9 @@ namespace IsoRim
                 movers = null;
             }
             Patch("3D doors", movers, prefix: nameof(DrawMovers_Prefix));
+            // Doors wider than a cell with their own models (ornate door): frame, arch and two sliding leaves (Doors.DrawWide).
+            Patch("3D wide doors", AccessTools.DeclaredMethod(typeof(Building_MultiTileDoor), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(MultiTileDoorDrawAt_Prefix));
 
             // Buildings the game draws every frame (campfire, torches, caskets): their model is baked
             // into the map mesh (SectionLayer_IsoRimBodies); only the body sprite is held back, and
@@ -1555,13 +1558,52 @@ namespace IsoRim
             {
                 if (__instance.def.size.x != 1 || __instance.def.size.z != 1)
                 {
-                    return true;   // wide doors keep the game's drawing for now
+                    return true;   // wide doors without their own models (MultiTileDoorDrawAt_Prefix) keep the game's drawing
                 }
                 return !Doors.Draw(__instance, __1);
             }
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a door failed: " + e, 93611017);
+                return true;
+            }
+        }
+
+        private static Func<Building_Door, float> doorOpenPct;
+        private static Func<Building_Door, bool> doorStuckOpen;
+        private static Action<ThingWithComps> compsPostDraw;
+
+        // A wide door with its own models: drawn in 3D in place of the game's movers, frame and top
+        // sprites; its comps still draw (the rest of what Building_Door.DrawAt does).
+        public static bool MultiTileDoorDrawAt_Prefix(Building_MultiTileDoor __instance)
+        {
+            if (!View3D.Ready || __instance == null || !IsoRimMod.Settings.doors3D || !IsoRimMod.Settings.models3D)
+            {
+                return true;
+            }
+            try
+            {
+                ModelEntry entry;
+                if (!ModelLibrary.TryGet(__instance.def, out entry) || entry.doorLeaf == null || !entry.HasModel)
+                {
+                    return true;
+                }
+                if (doorOpenPct == null)
+                {
+                    doorOpenPct = AccessTools.MethodDelegate<Func<Building_Door, float>>(AccessTools.PropertyGetter(typeof(Building_Door), "OpenPct"));
+                    doorStuckOpen = AccessTools.MethodDelegate<Func<Building_Door, bool>>(AccessTools.PropertyGetter(typeof(Building_Door), "StuckOpen"));
+                    compsPostDraw = AccessTools.MethodDelegate<Action<ThingWithComps>>(AccessTools.Method(typeof(ThingWithComps), "Comps_PostDraw"));
+                }
+                if (!Doors.DrawWide(__instance, entry, doorOpenPct(__instance), doorStuckOpen(__instance)))
+                {
+                    return true;
+                }
+                compsPostDraw(__instance);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a wide door failed: " + e, 93611231);
                 return true;
             }
         }

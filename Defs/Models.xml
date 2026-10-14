@@ -4390,4 +4390,15 @@
     <emitterRise>0.15</emitterRise>
   </IsoRim.ModelDef>
 
+  <!-- Ornate door (2x1): the lintel stays, the two leaves slide apart into the walls (Doors.DrawWide).
+       The arch on top is its own piece (user's choice 2026-10-14: on); leave out doorTopModel to drop it. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_OrnateDoor</defName>
+    <thingDef>OrnateDoor</thingDef>
+    <model>Models/ornate_door_frame.obj</model>
+    <doorLeafModel>Models/ornate_door_leaf.obj</doorLeafModel>
+    <doorTopModel>Models/ornate_door_top.obj</doorTopModel>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
 </Defs>
