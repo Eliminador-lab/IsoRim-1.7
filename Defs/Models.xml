@@ -4832,24 +4832,40 @@
     <thingDef>Altar_Small</thingDef>
     <model>Models/altar_small.obj</model>
     <builtFor>(1, 1)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarSmall</style><model>Models/morbid_altar_small.obj</model></li>
+      <li><style>Totemic_AltarSmall</style><model>Models/totemic_altar_small.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Medium</defName>
     <thingDef>Altar_Medium</thingDef>
     <model>Models/altar_medium.obj</model>
     <builtFor>(3, 1)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarMedium</style><model>Models/morbid_altar_medium.obj</model></li>
+      <li><style>Totemic_AltarMedium</style><model>Models/totemic_altar_medium.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Large</defName>
     <thingDef>Altar_Large</thingDef>
     <model>Models/altar_large.obj</model>
     <builtFor>(3, 2)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarLarge</style><model>Models/morbid_altar_large.obj</model></li>
+      <li><style>Totemic_AltarLarge</style><model>Models/totemic_altar_large.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Grand</defName>
     <thingDef>Altar_Grand</thingDef>
     <model>Models/altar_grand.obj</model>
     <builtFor>(3, 3)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarGrand</style><model>Models/morbid_altar_grand.obj</model></li>
+      <li><style>Totemic_AltarGrand</style><model>Models/totemic_altar_grand.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
 
 </Defs>

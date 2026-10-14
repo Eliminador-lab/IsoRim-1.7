@@ -141,7 +141,7 @@ namespace IsoRim
 
         // def: what is being placed; center: its cell; rot: its rotation. tint: the game's
         // ghost colour (green where it can go, red where it cannot).
-        public static void DrawPreview(ThingDef def, IntVec3 center, Rot4 rot, Color tint, ThingDef stuff = null)
+        public static void DrawPreview(ThingDef def, IntVec3 center, Rot4 rot, Color tint, ThingDef stuff = null, ThingStyleDef style = null)
         {
             IsoRimSettings st = IsoRimMod.Settings;
             Material mat = R3DMaterials.Ghost;
@@ -155,7 +155,7 @@ namespace IsoRim
             if (form.form == Form3D.Model && form.model != null && form.model.HasModel)
             {
                 ModelEntry entry = form.model;
-                Model m = entry.ForStuff(stuff) ?? entry.variants[0];
+                Model m = entry.ForStyle(style) ?? entry.ForStuff(stuff) ?? entry.variants[0];
                 Mesh mesh = MeshFor(m);
                 if (mesh == null)
                 {

@@ -1323,7 +1323,9 @@ namespace IsoRim
             }
             try
             {
-                Ghosts.DrawPreview(__2, __0, __1, __4, __8);
+                // The style the designator places (a Morbid altar): its own model, as the game's ghost sprite.
+                Designator_Place place = Find.DesignatorManager != null ? Find.DesignatorManager.SelectedDesignator as Designator_Place : null;
+                Ghosts.DrawPreview(__2, __0, __1, __4, __8, place != null && place.PlacingDef == __2 ? place.ThingStyleDefForPreview : null);
             }
             catch (Exception e)
             {

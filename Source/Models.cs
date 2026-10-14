@@ -34,6 +34,9 @@ namespace IsoRim
         public List<string> models;         // several models: each thing picks one and keeps it
         public List<AppearanceModel> byAppearance;  // a different model for things made of stuff of this look (the
                                             // game's Graphic_Appearances: Planks, Bricks, Smooth ...); others use model
+        public List<StyleModel> byStyle;    // a different model for things of this style (Ideology's ThingStyleDef):
+                                            // <li><style>Morbid_AltarSmall</style><model>Models/x.obj</model></li>;
+                                            // wins over byAppearance; things of no listed style use model
         public string thingCategory;        // apply to every thing in this category instead of one thingDef
         public bool randomRotation = false; // give each thing its own turn
         public float scaleJitter = 0f;      // vary each thing's size by up to this fraction
@@ -286,11 +289,19 @@ namespace IsoRim
         public string model;
     }
 
+    // One entry of ModelDef.byStyle.
+    public class StyleModel
+    {
+        public string style;    // a ThingStyleDef defName
+        public string model;
+    }
+
     public class ModelEntry
     {
         public ModelDef def;
         public Model[] variants;
         public Dictionary<string, Model> byAppearance;   // StuffAppearanceDef defName -> model; null if none
+        public Dictionary<string, Model> byStyle;        // ThingStyleDef defName -> model; null if none
         public Model leg;   // animals only
         public Model top;   // turrets only
         public Model empty;       // emptyModel, or null
@@ -340,6 +351,14 @@ namespace IsoRim
             {
                 return null;
             }
+            if (byStyle != null && t != null)
+            {
+                Model styled = ForStyle(StyleOf(t));
+                if (styled != null)
+                {
+                    return styled;
+                }
+            }
             if (byAppearance != null && t != null)
             {
                 // As Graphic_Appearances: a blueprint or frame by the stuff it will be built of.
@@ -356,6 +375,20 @@ namespace IsoRim
                 n = -n;
             }
             return variants[n % variants.Length];
+        }
+
+        // The style a thing is built in (a blueprint: will be built in); null for none.
+        public static ThingStyleDef StyleOf(Thing t)
+        {
+            Blueprint bp = t as Blueprint;
+            return bp != null ? bp.EntityToBuildStyle() : t.StyleDef;
+        }
+
+        // The model of byStyle for things of this style; null if there is none.
+        public Model ForStyle(ThingStyleDef style)
+        {
+            Model own;
+            return byStyle != null && style != null && byStyle.TryGetValue(style.defName, out own) ? own : null;
         }
 
         // The model of byAppearance for things of this stuff; null if there is none.
@@ -492,6 +525,23 @@ namespace IsoRim
                             entry.byAppearance = new Dictionary<string, Model>();
                         }
                         entry.byAppearance[am.appearance] = m;
+                    }
+                }
+            }
+            if (md.byStyle != null && md.modContentPack != null)
+            {
+                for (int i = 0; i < md.byStyle.Count; i++)
+                {
+                    StyleModel sm = md.byStyle[i];
+                    Model m = sm != null && !sm.style.NullOrEmpty() && !sm.model.NullOrEmpty()
+                        ? LoadFile(Path.Combine(md.modContentPack.RootDir, sm.model)) : null;
+                    if (m != null)
+                    {
+                        if (entry.byStyle == null)
+                        {
+                            entry.byStyle = new Dictionary<string, Model>();
+                        }
+                        entry.byStyle[sm.style] = m;
                     }
                 }
             }

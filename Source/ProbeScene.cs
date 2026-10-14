@@ -65,6 +65,7 @@ namespace IsoRim
     //                                fog of the cell north of it and tick logged) until N frames after it broke
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
+    //   style=x,z,<ThingStyleDef>|-   the building in the cell given that style (as the game's "Set style" debug action)
     //   power=x,z                    the building in the cell counts as powered from now on
     //   enter=x,z[,<Xenotype>]       the nearest free colonist (made that xenotype) is sent into the enterable building (as its select button)
     //   entercheck=1                 logs each enterable building: working, chosen person, people inside
@@ -393,6 +394,18 @@ namespace IsoRim
                 case "spritestats":
                     SpriteSweep.Stats();
                     break;
+                case "style":
+                {
+                    // As the game's "Set style" debug action: the style, then the map mesh rebuilt.
+                    Building sb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (sb != null)
+                    {
+                        sb.StyleDef = a[2] == "-" ? null : DefDatabase<ThingStyleDef>.GetNamed(a[2]);
+                        sb.DirtyMapMesh(map);
+                        Log.Message("[IsoRim probe] style " + sb.def.defName + " " + sb.Position + " -> " + (sb.StyleDef != null ? sb.StyleDef.defName : "none"));
+                    }
+                    break;
+                }
                 case "itemsheet":
                     SpriteSweep.PlaceSheet(map, I(a[0]), I(a[1]), I(a[2]), I(a[3]), I(a[4]));
                     break;
