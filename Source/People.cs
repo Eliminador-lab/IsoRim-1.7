@@ -129,6 +129,7 @@ namespace IsoRim
 
         private const int RefreshFrames = 90;
         private const float HeadHeight = 0.98f;   // where the middle of the head is on the figure
+        private const float GibbetScale = 0.78f;  // a corpse hanging in a gibbet cage, shrunk to stay under its dome
 
         private static readonly Dictionary<int, Look> looks = new Dictionary<int, Look>();
         private static readonly Dictionary<string, Model> models = new Dictionary<string, Model>();
@@ -169,12 +170,19 @@ namespace IsoRim
             }
 
             bool dead = pawn.Dead;
-            bool lying = dead || pawn.GetPosture() != PawnPosture.Standing;
-            float size = look.size;
+            // A corpse in a gibbet cage shown as its model hangs upright in the cage (lying, an
+            // adult would reach out through the bars), feet on the cage floor.
+            Building_GibbetCage gibbet = dead ? GibbetOf(pawn) : null;
+            bool lying = gibbet == null && (dead || pawn.GetPosture() != PawnPosture.Standing);
+            float size = look.size * (gibbet != null ? GibbetScale : 1f);
             float yaw;
             float phase = 0f;
             float gait = 0f;
-            if (dead)
+            if (gibbet != null)
+            {
+                yaw = 180f + (Hashing.Unit(pawn.thingIDNumber, 3, 9) - 0.5f) * 50f;
+            }
+            else if (dead)
             {
                 yaw = pawn.Rotation.AsAngle + (Hashing.Unit(pawn.thingIDNumber, 3, 9) - 0.5f) * 60f;
             }
@@ -220,6 +228,14 @@ namespace IsoRim
                     }
                 }
             }
+            else if (gibbet != null)
+            {
+                // Hanging slack: a slight lean, no step, nothing held.
+                ground = Forms.HeightOf(gibbet);
+                pose = Matrix4x4.Rotate(Quaternion.AngleAxis(5f, Vector3.right));
+                Vector3 c = gibbet.TrueCenter();
+                drawLoc = new Vector3(c.x, drawLoc.y, c.z);
+            }
             else
             {
                 // A little waddle and bounce in step.
@@ -259,6 +275,14 @@ namespace IsoRim
             handHeight = 0.46f * size;
             facing = yaw;
             return true;
+        }
+
+        // The gibbet cage holding this dead person's corpse, while the cage is drawn as its model; else null.
+        public static Building_GibbetCage GibbetOf(Pawn pawn)
+        {
+            Corpse corpse = pawn.Corpse;
+            Building_GibbetCage cage = corpse != null ? corpse.ParentHolder as Building_GibbetCage : null;
+            return cage != null && cage.Spawned && View3D.Ready && Forms.For(cage.def).form == Form3D.Model ? cage : null;
         }
 
         // People who are invisible must stay so: they keep their sprite, which the game hides.

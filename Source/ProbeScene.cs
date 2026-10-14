@@ -65,6 +65,12 @@ namespace IsoRim
     //                                fog of the cell north of it and tick logged) until N frames after it broke
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
+    //   style=x,z,<ThingStyleDef>|-   the building in the cell given that style (as the game's "Set style" debug action)
+    //   ritual=x,z                   the building in the cell counts as the target of a running ritual (RitualUtility.IsRitualTarget)
+    //   contain=x,z,<Def>[,<Stuff>]  a new thing put into the building's container (its own or its first holding comp);
+    //                                a race def gives a new pawn, corpse:<race> a new corpse (reliquary, gibbet cage, dryad cocoon)
+    //   containcheck=1               logs each building with a CompThingContainer: in the dynamic draw list, what it holds, height, form
+    //   spincheck=1                logs each building with a turning part (Spinners): turning or still, angle; and every mote
     //   power=x,z                    the building in the cell counts as powered from now on
     //   enter=x,z[,<Xenotype>]       the nearest free colonist (made that xenotype) is sent into the enterable building (as its select button)
     //   entercheck=1                 logs each enterable building: working, chosen person, people inside
@@ -394,6 +400,39 @@ namespace IsoRim
                 case "spritestats":
                     SpriteSweep.Stats();
                     break;
+                case "contain":
+                    Contain(map, a);
+                    break;
+                case "containcheck":
+                {
+                    object dd = AccessTools.Field(typeof(DynamicDrawManager), "drawThings").GetValue(map.dynamicDrawManager);
+                    HashSet<Thing> drawn = new HashSet<Thing>();
+                    foreach (object o in (System.Collections.IEnumerable)dd)
+                    {
+                        drawn.Add(o as Thing);
+                    }
+                    foreach (Thing ct in map.listerThings.AllThings.Where(x => x.TryGetComp<CompThingContainer>() != null).ToList())
+                    {
+                        CompThingContainer cc = ct.TryGetComp<CompThingContainer>();
+                        Thing inner = cc.ContainedThing;
+                        Log.Message("[IsoRim probe] containcheck " + ct.def.defName + " " + ct.Position + " dynamic " + drawn.Contains(ct) + " holds "
+                            + (inner != null ? inner.def.defName + " graphic " + inner.Graphic + " spawned " + inner.Spawned : "nothing")
+                            + " height " + Forms.HeightOf(ct) + " form " + Forms.For(ct.def).form);
+                    }
+                    break;
+                }
+                case "style":
+                {
+                    // As the game's "Set style" debug action: the style, then the map mesh rebuilt.
+                    Building sb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (sb != null)
+                    {
+                        sb.StyleDef = a[2] == "-" ? null : DefDatabase<ThingStyleDef>.GetNamed(a[2]);
+                        sb.DirtyMapMesh(map);
+                        Log.Message("[IsoRim probe] style " + sb.def.defName + " " + sb.Position + " -> " + (sb.StyleDef != null ? sb.StyleDef.defName : "none"));
+                    }
+                    break;
+                }
                 case "itemsheet":
                     SpriteSweep.PlaceSheet(map, I(a[0]), I(a[1]), I(a[2]), I(a[3]), I(a[4]));
                     break;
@@ -493,6 +532,40 @@ namespace IsoRim
                     powered.Add(pw);
                     break;
                 }
+                case "ritual":
+                {
+                    // ritual=x,z: the building counts as the target of a running ritual (a party at the lightball);
+                    // its own comps then react as in a real one.
+                    Building rb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (rb == null)
+                    {
+                        Log.Warning("[IsoRim probe] no building at " + a[0] + "," + a[1]);
+                        return;
+                    }
+                    if (!ritualPatched)
+                    {
+                        ritualPatched = true;
+                        new Harmony("peren.isorim17.probe.ritual").Patch(AccessTools.Method(typeof(RitualUtility), nameof(RitualUtility.IsRitualTarget)),
+                            postfix: new HarmonyMethod(typeof(Probe), nameof(RitualPostfix)));
+                    }
+                    ritualTargets.Add(rb);
+                    break;
+                }
+                case "spincheck":
+                    foreach (Thing st in map.listerThings.AllThings.Where(x => x.def.category == ThingCategory.Building).ToList())
+                    {
+                        ModelEntry se;
+                        if (ModelLibrary.TryGet(st.def, out se) && se.spin != null)
+                        {
+                            Log.Message("[IsoRim probe] spincheck " + st.def.defName + " " + st.Position + " " + Spinners.Report(st));
+                            // Motes are not in the lister: the ones in its cell.
+                            foreach (Thing mt in st.Position.GetThingList(map).Where(x => x is Mote).ToList())
+                            {
+                                Log.Message("[IsoRim probe] spincheck   mote " + mt.def.defName + " drawn " + Spinners.MoteDrawAt_Prefix((Mote)mt));
+                            }
+                        }
+                    }
+                    break;
                 case "enter":
                 {
                     // enter=x,z: as the building's "select a person" button: the nearest free colonist walks in.
@@ -899,6 +972,65 @@ namespace IsoRim
             }
         }
         private static readonly HashSet<Thing> powered = new HashSet<Thing>();
+        // contain=x,z,<Def>[,<Stuff>]: a new thing put into the building's container (the building's own,
+        // or its first comp that holds things: reliquary, dryad cocoon). A race def gives a new pawn of it
+        // (the player's); corpse:<race> a new corpse of one.
+        private static void Contain(Map map, string[] a)
+        {
+            // Any building (a dryad cocoon is a plain ThingWithComps, not a Building).
+            Thing b = new IntVec3(I(a[0]), 0, I(a[1])).GetThingList(map).FirstOrDefault(x => x.def.category == ThingCategory.Building);
+            IThingHolder holder = b as IThingHolder;
+            if (b != null && !(b is Building_Casket))
+            {
+                ThingWithComps twc = b as ThingWithComps;
+                IThingHolder comp = twc != null ? twc.AllComps.OfType<IThingHolder>().FirstOrDefault() : null;
+                holder = comp ?? holder;
+            }
+            if (holder == null)
+            {
+                Log.Warning("[IsoRim probe] contain: nothing that holds things at " + a[0] + "," + a[1]);
+                return;
+            }
+            bool corpse = a[2].StartsWith("corpse:");
+            ThingDef def = DefDatabase<ThingDef>.GetNamed(corpse ? a[2].Substring(7) : a[2]);
+            Thing t;
+            if (def.race != null)
+            {
+                PawnKindDef kind = def.race.Humanlike ? PawnKindDefOf.Colonist : DefDatabase<PawnKindDef>.AllDefs.First(k => k.race == def);
+                // A corpse of no faction: a gibbet cage takes strangers' corpses by default, not colonists'.
+                Pawn p = PawnGenerator.GeneratePawn(kind, corpse ? null : Faction.OfPlayer);
+                if (corpse)
+                {
+                    GenSpawn.Spawn(p, b.InteractionCell.IsValid && b.def.hasInteractionCell ? b.InteractionCell : CellFinder.StandableCellNear(b.Position, map, 5), map);
+                    p.Kill(null);
+                    t = p.Corpse;
+                    t.DeSpawn();
+                }
+                else
+                {
+                    t = p;
+                }
+            }
+            else
+            {
+                t = ThingMaker.MakeThing(def, a.Length > 3 ? DefDatabase<ThingDef>.GetNamed(a[3]) : GenStuff.DefaultStuffFor(def));
+            }
+            Building_Casket casket = holder as Building_Casket;
+            bool ok = casket != null ? casket.TryAcceptThing(t, false) : holder.GetDirectlyHeldThings().TryAdd(t);
+            Log.Message("[IsoRim probe] contain " + b.def.defName + " " + b.Position + " <- " + t.def.defName + " " + (ok ? "ok" : "refused"));
+        }
+
+        private static readonly HashSet<Thing> ritualTargets = new HashSet<Thing>();
+        private static bool ritualPatched;
+
+        // ritual=x,z: the building counts as a running ritual's target.
+        public static void RitualPostfix(Thing thing, ref bool __result)
+        {
+            if (!__result && ritualTargets.Contains(thing))
+            {
+                __result = true;
+            }
+        }
 
         // power=x,z: the building counts as powered (the harness scenes have no power grid).
         public static void PoweredPostfix(CompPowerTrader __instance, ref bool __result)

@@ -28,12 +28,19 @@ namespace IsoRim
         public Vector3 offset = Vector3.zero;
         public float rotation = 0f;         // extra turn around the vertical axis, degrees
         public float surfaceHeight = -1f;   // where a pawn lying on it rests; -1 uses the top of the model
+                                            // (also the height the game's per-frame drawing of it is raised to:
+                                            // contents such as a reliquary's relic, a gibbet's corpse, a cocoon's dryad)
+        public Vector3 contentOffset = Vector3.zero; // those contents moved this far (x, z; model space, facing north)
+                                            // from where the game draws them, to where the model holds them
         public float height = -1f;          // height in cells of the automatic shape; -1 lets the mod decide
         public bool flat = false;           // true keeps the thing as a flat sprite
 
         public List<string> models;         // several models: each thing picks one and keeps it
         public List<AppearanceModel> byAppearance;  // a different model for things made of stuff of this look (the
                                             // game's Graphic_Appearances: Planks, Bricks, Smooth ...); others use model
+        public List<StyleModel> byStyle;    // a different model for things of this style (Ideology's ThingStyleDef):
+                                            // <li><style>Morbid_AltarSmall</style><model>Models/x.obj</model></li>;
+                                            // wins over byAppearance; things of no listed style use model
         public string thingCategory;        // apply to every thing in this category instead of one thingDef
         public bool randomRotation = false; // give each thing its own turn
         public float scaleJitter = 0f;      // vary each thing's size by up to this fraction
@@ -67,6 +74,12 @@ namespace IsoRim
         public List<Vector3> emitters;      // nozzles (x, height, z; model space, facing north) the game's thrown smoke or dust comes out of (Emitters.cs)
         public float emitterRise = 0.4f;    // how fast those puffs rise, in cells a second
         public string topModelLoaded;       // the gun while the game shows its loaded gun sprite (rocketswarm launcher: fully loaded)
+        // A part that turns about the thing's upright axis (the lightball's ball), drawn every frame
+        // (Spinners.cs). Built in the same space as model (same ground origin, facing north); it turns
+        // while the thing is powered and wants to be on, and stands still otherwise.
+        public string spinModel;
+        public float spinSpeed = 90f;       // degrees a second at normal game speed
+        public string spinMote;             // the game's flat mote for that part (Mote_LightBall), left out in 3D
 
         // Bookcases: the books they hold are drawn on these shelves (Bookcases.cs).
         public List<float> bookShelves;     // height of each shelf top, in cells, lowest first
@@ -286,17 +299,26 @@ namespace IsoRim
         public string model;
     }
 
+    // One entry of ModelDef.byStyle.
+    public class StyleModel
+    {
+        public string style;    // a ThingStyleDef defName
+        public string model;
+    }
+
     public class ModelEntry
     {
         public ModelDef def;
         public Model[] variants;
         public Dictionary<string, Model> byAppearance;   // StuffAppearanceDef defName -> model; null if none
+        public Dictionary<string, Model> byStyle;        // ThingStyleDef defName -> model; null if none
         public Model leg;   // animals only
         public Model top;   // turrets only
         public Model empty;       // emptyModel, or null
         public Model doorLeaf;    // wide doors only
         public Model doorTop;
         public Model topLoaded;   // turrets whose gun sprite changes once loaded (rocket launchers)
+        public Model spin;        // spinModel, or null
 
         public bool HasModel
         {
@@ -340,6 +362,14 @@ namespace IsoRim
             {
                 return null;
             }
+            if (byStyle != null && t != null)
+            {
+                Model styled = ForStyle(StyleOf(t));
+                if (styled != null)
+                {
+                    return styled;
+                }
+            }
             if (byAppearance != null && t != null)
             {
                 // As Graphic_Appearances: a blueprint or frame by the stuff it will be built of.
@@ -356,6 +386,20 @@ namespace IsoRim
                 n = -n;
             }
             return variants[n % variants.Length];
+        }
+
+        // The style a thing is built in (a blueprint: will be built in); null for none.
+        public static ThingStyleDef StyleOf(Thing t)
+        {
+            Blueprint bp = t as Blueprint;
+            return bp != null ? bp.EntityToBuildStyle() : t.StyleDef;
+        }
+
+        // The model of byStyle for things of this style; null if there is none.
+        public Model ForStyle(ThingStyleDef style)
+        {
+            Model own;
+            return byStyle != null && style != null && byStyle.TryGetValue(style.defName, out own) ? own : null;
         }
 
         // The model of byAppearance for things of this stuff; null if there is none.
@@ -495,6 +539,23 @@ namespace IsoRim
                     }
                 }
             }
+            if (md.byStyle != null && md.modContentPack != null)
+            {
+                for (int i = 0; i < md.byStyle.Count; i++)
+                {
+                    StyleModel sm = md.byStyle[i];
+                    Model m = sm != null && !sm.style.NullOrEmpty() && !sm.model.NullOrEmpty()
+                        ? LoadFile(Path.Combine(md.modContentPack.RootDir, sm.model)) : null;
+                    if (m != null)
+                    {
+                        if (entry.byStyle == null)
+                        {
+                            entry.byStyle = new Dictionary<string, Model>();
+                        }
+                        entry.byStyle[sm.style] = m;
+                    }
+                }
+            }
             if (!md.legModel.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.leg = LoadFile(Path.Combine(md.modContentPack.RootDir, md.legModel));
@@ -518,6 +579,10 @@ namespace IsoRim
             if (!md.topModelLoaded.NullOrEmpty() && md.modContentPack != null)
             {
                 entry.topLoaded = LoadFile(Path.Combine(md.modContentPack.RootDir, md.topModelLoaded));
+            }
+            if (!md.spinModel.NullOrEmpty() && md.modContentPack != null)
+            {
+                entry.spin = LoadFile(Path.Combine(md.modContentPack.RootDir, md.spinModel));
             }
             return entry;
         }

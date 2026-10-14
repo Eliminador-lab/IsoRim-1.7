@@ -1,0 +1,12 @@
+newmtl anomaly_shell
+Kd 0.48 0.49 0.46
+newmtl anomaly_trim
+Kd 0.64 0.64 0.59
+newmtl anomaly_dark
+Kd 0.23 0.25 0.23
+newmtl anomaly_copper
+Kd 0.40 0.27 0.22
+newmtl anomaly_panel
+Kd 0.38 0.35 0.32
+newmtl anomaly_green
+Kd 0.34 0.41 0.23

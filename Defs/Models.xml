@@ -4832,24 +4832,180 @@
     <thingDef>Altar_Small</thingDef>
     <model>Models/altar_small.obj</model>
     <builtFor>(1, 1)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarSmall</style><model>Models/morbid_altar_small.obj</model></li>
+      <li><style>Totemic_AltarSmall</style><model>Models/totemic_altar_small.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Medium</defName>
     <thingDef>Altar_Medium</thingDef>
     <model>Models/altar_medium.obj</model>
     <builtFor>(3, 1)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarMedium</style><model>Models/morbid_altar_medium.obj</model></li>
+      <li><style>Totemic_AltarMedium</style><model>Models/totemic_altar_medium.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Large</defName>
     <thingDef>Altar_Large</thingDef>
     <model>Models/altar_large.obj</model>
     <builtFor>(3, 2)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarLarge</style><model>Models/morbid_altar_large.obj</model></li>
+      <li><style>Totemic_AltarLarge</style><model>Models/totemic_altar_large.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
     <defName>R3D_Altar_Grand</defName>
     <thingDef>Altar_Grand</thingDef>
     <model>Models/altar_grand.obj</model>
     <builtFor>(3, 3)</builtFor>
+    <byStyle>
+      <li><style>Morbid_AltarGrand</style><model>Models/morbid_altar_grand.obj</model></li>
+      <li><style>Totemic_AltarGrand</style><model>Models/totemic_altar_grand.obj</model></li>
+    </byStyle>
   </IsoRim.ModelDef>
 
+  <!-- Coop batch 2 class B: turning part (Spinners) -->
+  <IsoRim.ModelDef>
+    <defName>R3D_LightBall</defName>
+    <thingDef>LightBall</thingDef>
+    <model>Models/lightball.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <spinModel>Models/lightball_rotor.obj</spinModel>
+    <spinMote>Mote_LightBall</spinMote>
+  </IsoRim.ModelDef>
+  <!-- Coop batch 2 class B: contents the game draws every frame, at the model's own anchors -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Reliquary</defName>
+    <thingDef>Reliquary</thingDef>
+    <model>Models/reliquary.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.31</surfaceHeight>
+    <contentOffset>(0, 0, -0.28)</contentOffset>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GibbetCage</defName>
+    <thingDef>GibbetCage</thingDef>
+    <model>Models/gibbet_cage.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.11</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_DryadCocoon</defName>
+    <thingDef>DryadCocoon</thingDef>
+    <model>Models/dryad_shell.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.15</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_DryadHealingPod</defName>
+    <thingDef>DryadHealingPod</thingDef>
+    <model>Models/dryad_shell.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.15</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BandNode</defName>
+    <thingDef>BandNode</thingDef>
+    <model>Models/band_node.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.22</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <!-- Coop batch 3 class A (cut-off 2026-10-14 06:50): Anomaly and Odyssey buildings, bind-only -->
+  <IsoRim.ModelDef>
+    <defName>R3D_ElectricInhibitor</defName>
+    <thingDef>ElectricInhibitor</thingDef>
+    <model>Models/electric_inhibitor.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteShaper</defName>
+    <thingDef>BioferriteShaper</thingDef>
+    <model>Models/bioferrite_shaper.obj</model>
+    <builtFor>(3, 1)</builtFor>
+    <surfaceHeight>0.60</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SerumCentrifuge</defName>
+    <thingDef>SerumCentrifuge</thingDef>
+    <model>Models/serum_lab.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.59</surfaceHeight>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SleepSuppressor</defName>
+    <thingDef>SleepSuppressor</thingDef>
+    <model>Models/sleep_suppressor.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_BioferriteGenerator</defName>
+    <thingDef>BioferriteGenerator</thingDef>
+    <model>Models/bioferrite_generator.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_ProximityDetector</defName>
+    <thingDef>ProximityDetector</thingDef>
+    <model>Models/proximity_detector.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_PilotConsole</defName>
+    <thingDef>PilotConsole</thingDef>
+    <model>Models/pilot_console.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SmallThruster</defName>
+    <thingDef>SmallThruster</thingDef>
+    <model>Models/small_thruster.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeThruster</defName>
+    <thingDef>LargeThruster</thingDef>
+    <model>Models/large_thruster.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_ChemfuelTank</defName>
+    <thingDef>ChemfuelTank</thingDef>
+    <model>Models/chemfuel_tank.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_LargeChemfuelTank</defName>
+    <thingDef>LargeChemfuelTank</thingDef>
+    <model>Models/large_chemfuel_tank.obj</model>
+    <builtFor>(3, 3)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_GravFieldExtender</defName>
+    <thingDef>GravFieldExtender</thingDef>
+    <model>Models/grav_extender.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_OxygenPump</defName>
+    <thingDef>OxygenPump</thingDef>
+    <model>Models/oxygen_pump.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_OrbitalScanner</defName>
+    <thingDef>OrbitalScanner</thingDef>
+    <model>Models/orbital_scanner.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+  <IsoRim.ModelDef>
+    <defName>R3D_SignalJammer</defName>
+    <thingDef>SignalJammer</thingDef>
+    <model>Models/signal_jammer.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
 </Defs>

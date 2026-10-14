@@ -240,7 +240,9 @@ namespace IsoRim
             }
             if (f.form == Form3D.Model && f.model != null && f.model.HasModel)
             {
-                return Mathf.Max(Forms.HeightOf(t), f.model.variants[0].maxY * f.model.def.scale * f.model.Fit(t.def).y);
+                // A turning part drawn over the body (the lightball's ball) may stand taller than it.
+                float top = f.model.spin != null ? Mathf.Max(f.model.variants[0].maxY, f.model.spin.maxY) : f.model.variants[0].maxY;
+                return Mathf.Max(Forms.HeightOf(t), top * f.model.def.scale * f.model.Fit(t.def).y);
             }
             return Forms.HeightOf(t);
         }
@@ -381,7 +383,7 @@ namespace IsoRim
             {
                 if (cells[i] != mouse)
                 {
-                    Ghosts.DrawPreview(def, cells[i], rot, col, place.StuffDef);
+                    Ghosts.DrawPreview(def, cells[i], rot, col, place.StuffDef, place.ThingStyleDefForPreview);
                 }
             }
         }
