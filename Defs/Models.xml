@@ -1982,7 +1982,13 @@
 
   <IsoRim.ModelDef>
     <defName>R3D_NoMatch_AncientTankTrap</defName>
-    <thingDef>AncientTankTrap</thingDef>   <!-- an anti-tank obstacle, not a tank: automatic shape -->
+    <thingDef>AncientTankTrap</thingDef>   <!-- an anti-tank obstacle, not a tank (coop batch 2: three models, sprite order A-C) -->
+    <models>
+      <li>Models/tank_trap_a.obj</li>
+      <li>Models/tank_trap_b.obj</li>
+      <li>Models/tank_trap_c.obj</li>
+    </models>
+    <builtFor>(2, 2)</builtFor>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -4399,6 +4405,396 @@
     <doorLeafModel>Models/ornate_door_leaf.obj</doorLeafModel>
     <doorTopModel>Models/ornate_door_top.obj</doorTopModel>
     <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Coop model batch 2 (D:\ClaudeGPTCoopHere\models_incoming, deliveries 2026-10-14 00:29 to 04:36), bind-only.
+       AncientTankTrap: its models are in R3D_NoMatch_AncientTankTrap above. -->
+  <!-- The waste bar lies in the dark tray on top (surfaceHeight = tray top, as delivered). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_BasicRecharger</defName>
+    <thingDef>BasicRecharger</thingDef>
+    <model>Models/basic_recharger.obj</model>
+    <builtFor>(3, 1)</builtFor>
+    <surfaceHeight>0.345</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_StandardRecharger</defName>
+    <thingDef>StandardRecharger</thingDef>
+    <model>Models/standard_recharger.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.34</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_MechbandDish</defName>
+    <thingDef>MechbandDish</thingDef>
+    <model>Models/mechband_dish.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SubcoreEncoder</defName>
+    <thingDef>SubcoreEncoder</thingDef>
+    <model>Models/subcore_encoder.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Who is inside lies on the couch (IThingHolderWithDrawnPawn, as the gene extractor). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_SubcoreSoftscanner</defName>
+    <thingDef>SubcoreSoftscanner</thingDef>
+    <model>Models/subcore_softscanner.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.40</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SubcoreRipscanner</defName>
+    <thingDef>SubcoreRipscanner</thingDef>
+    <model>Models/subcore_ripscanner.obj</model>
+    <builtFor>(3, 2)</builtFor>
+    <surfaceHeight>0.40</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <!-- A bed: the sleeper lies on the mattress, not on the rim. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_DeathrestCasket</defName>
+    <thingDef>DeathrestCasket</thingDef>
+    <model>Models/deathrest_casket.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <surfaceHeight>0.34</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_DeathrestAccelerator</defName>
+    <thingDef>DeathrestAccelerator</thingDef>
+    <model>Models/deathrest_accelerator.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GlucosoidPump</defName>
+    <thingDef>GlucosoidPump</thingDef>
+    <model>Models/glucosoid_pump.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_HemogenAmplifier</defName>
+    <thingDef>HemogenAmplifier</thingDef>
+    <model>Models/hemogen_amplifier.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Hemopump</defName>
+    <thingDef>Hemopump</thingDef>
+    <model>Models/hemopump.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_PsychofluidPump</defName>
+    <thingDef>PsychofluidPump</thingDef>
+    <model>Models/psychofluid_pump.obj</model>
+    <builtFor>(1, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_PollutionPump</defName>
+    <thingDef>PollutionPump</thingDef>
+    <model>Models/pollution_pump.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ToxifierGenerator</defName>
+    <thingDef>ToxifierGenerator</thingDef>
+    <model>Models/toxifier_generator.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_BurnoutMechlinkBooster</defName>
+    <thingDef>BurnoutMechlinkBooster</thingDef>
+    <model>Models/mechband_antenna.obj</model>
+    <builtFor>(2, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- RealtimeOnly: baked in the body layer. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_MechBooster</defName>
+    <thingDef>MechBooster</thingDef>
+    <model>Models/mech_booster.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- In the order of the game's sprites A-C (both pick by thing ID). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Hive</defName>
+    <thingDef>Hive</thingDef>
+    <models>
+      <li>Models/hive_a.obj</li>
+      <li>Models/hive_b.obj</li>
+      <li>Models/hive_c.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SlabBed</defName>
+    <thingDef>SlabBed</thingDef>
+    <model>Models/slab_bed.obj</model>
+    <builtFor>(1, 2)</builtFor>
+    <surfaceHeight>0.38</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SlabDoubleBed</defName>
+    <thingDef>SlabDoubleBed</thingDef>
+    <model>Models/slab_double_bed.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.38</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_StylingStation</defName>
+    <thingDef>StylingStation</thingDef>
+    <model>Models/styling_station.obj</model>
+    <builtFor>(3, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_NeuralSupercharger</defName>
+    <thingDef>NeuralSupercharger</thingDef>
+    <model>Models/neural_supercharger.obj</model>
+    <builtFor>(1, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SleepAccelerator</defName>
+    <thingDef>SleepAccelerator</thingDef>
+    <model>Models/sleep_accelerator.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Burnbong, Pyre, Effigy, SacrificialFlag, Autobong, DarktorchFungus: RealtimeOnly (body layer). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Burnbong</defName>
+    <thingDef>Burnbong</thingDef>
+    <model>Models/burnbong.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_IncenseShrine</defName>
+    <thingDef>IncenseShrine</thingDef>
+    <model>Models/incense_shrine.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Pyre</defName>
+    <thingDef>Pyre</thingDef>
+    <model>Models/ritual_pyre.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ChristmasTree</defName>
+    <thingDef>ChristmasTree</thingDef>
+    <model>Models/christmas_tree.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Effigy</defName>
+    <thingDef>Effigy</thingDef>
+    <model>Models/ritual_effigy.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_SacrificialFlag</defName>
+    <thingDef>SacrificialFlag</thingDef>
+    <model>Models/sacrificial_flag.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_KneelPillow</defName>
+    <thingDef>KneelPillow</thingDef>
+    <model>Models/kneel_pillow.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Lectern</defName>
+    <thingDef>Lectern</thingDef>
+    <model>Models/lectern.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Pew</defName>
+    <thingDef>Pew</thingDef>
+    <model>Models/pew.obj</model>
+    <builtFor>(3, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Loudspeaker</defName>
+    <thingDef>Loudspeaker</thingDef>
+    <model>Models/loudspeaker.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Drum</defName>
+    <thingDef>Drum</thingDef>
+    <model>Models/ritual_drum.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Skullspike</defName>
+    <thingDef>Skullspike</thingDef>
+    <model>Models/skullspike.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Autobong</defName>
+    <thingDef>Autobong</thingDef>
+    <model>Models/autobong.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_DarktorchFungus</defName>
+    <thingDef>DarktorchFungus</thingDef>
+    <model>Models/fungus_darktorch.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- The bonsai grows from the soil (0.205), not from the rim (plants rest on the pot's surfaceHeight). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_PlantPot_Bonsai</defName>
+    <thingDef>PlantPot_Bonsai</thingDef>
+    <model>Models/bonsai_pot.obj</model>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.205</surfaceHeight>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_KneelSheet</defName>
+    <thingDef>KneelSheet</thingDef>
+    <model>Models/kneel_sheet.obj</model>
+    <builtFor>(2, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Sprite order A-C. No offset: the pot's surfaceHeight already lifts it onto the soil. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_Plant_TreeBonsai</defName>
+    <thingDef>Plant_TreeBonsai</thingDef>
+    <models>
+      <li>Models/bonsai_a.obj</li>
+      <li>Models/bonsai_b.obj</li>
+      <li>Models/bonsai_c.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+    <growthScale>true</growthScale>
+    <outline>0.55</outline>
+    <groundShadow>false</groundShadow>
+  </IsoRim.ModelDef>
+
+  <!-- Sprite order A-C. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_GaumakerCocoon</defName>
+    <thingDef>GaumakerCocoon</thingDef>
+    <models>
+      <li>Models/gaumaker_a.obj</li>
+      <li>Models/gaumaker_b.obj</li>
+      <li>Models/gaumaker_c.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_CannibalPlatter</defName>
+    <thingDef>CannibalPlatter</thingDef>
+    <model>Models/cannibal_platter.obj</model>
+    <builtFor>(2, 3)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Closed while it holds something, open and empty after (emptyModel, StateModels.cs). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientSecurityCrate</defName>
+    <thingDef>AncientSecurityCrate</thingDef>
+    <model>Models/security_crate.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <emptyModel>Models/security_crate_open.obj</emptyModel>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientCommsConsole</defName>
+    <thingDef>AncientCommsConsole</thingDef>
+    <model>Models/ancient_comms.obj</model>
+    <builtFor>(3, 2)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientEnemyTerminal</defName>
+    <thingDef>AncientEnemyTerminal</thingDef>
+    <model>Models/enemy_terminal.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Sprite order A-C. -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientMechDropBeacon</defName>
+    <thingDef>AncientMechDropBeacon</thingDef>
+    <models>
+      <li>Models/broken_beacon_a.obj</li>
+      <li>Models/broken_beacon_b.obj</li>
+      <li>Models/broken_beacon_c.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- Post, then the half panel toward each neighbour it joins (like Fence). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientFence</defName>
+    <thingDef>AncientFence</thingDef>
+    <models>
+      <li>Models/ancient_fence_post.obj</li>
+      <li>Models/ancient_fence_arm.obj</li>
+    </models>
+    <builtFor>(1, 1)</builtFor>
+    <surfaceHeight>0.00</surfaceHeight>
+    <linked>true</linked>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientATM</defName>
+    <thingDef>AncientATM</thingDef>
+    <model>Models/ancient_atm.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientAirConditioner</defName>
+    <thingDef>AncientAirConditioner</thingDef>
+    <model>Models/ancient_ac.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_AncientHydrant</defName>
+    <thingDef>AncientHydrant</thingDef>
+    <model>Models/ancient_hydrant.obj</model>
+    <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
 
 </Defs>

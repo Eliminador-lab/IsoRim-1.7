@@ -1,0 +1,18 @@
+newmtl mech_support_shell
+Kd 0.55 0.55 0.52
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_support_trim
+Kd 0.32 0.34 0.32
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_support_light
+Kd 0.69 0.69 0.65
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_support_base
+Kd 0.43 0.29 0.28
+map_Kd IsoRim/Swatches/Metal
+newmtl mech_support_olive
+Kd 0.36 0.40 0.21
+newmtl mech_support_red
+Kd 0.65 0.19 0.17
+newmtl mech_support_dark
+Kd 0.19 0.22 0.22

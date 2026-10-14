@@ -1,0 +1,12 @@
+newmtl street_shell
+Kd 0.52 0.51 0.47
+newmtl street_rust
+Kd 0.39 0.24 0.19
+newmtl street_dark
+Kd 0.19 0.20 0.18
+newmtl street_screen
+Kd 0.17 0.23 0.22
+newmtl street_trim
+Kd 0.40 0.40 0.36
+newmtl hydrant_red
+Kd 0.42 0.25 0.23

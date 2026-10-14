@@ -1,0 +1,58 @@
+newmtl ancient_shell
+Kd 0.48 0.48 0.45
+map_Kd IsoRim/Swatches/Metal
+newmtl ancient_dark
+Kd 0.22 0.24 0.21
+newmtl ancient_panel
+Kd 0.29 0.21 0.20
+newmtl ancient_trim
+Kd 0.63 0.61 0.55
+map_Kd IsoRim/Swatches/Metal
+newmtl ancient_amber
+Kd 0.78 0.43 0.16
+newmtl ancient_red
+Kd 0.64 0.18 0.13
+newmtl pod_orange
+Kd 0.64 0.36 0.17
+newmtl pod_inner
+Kd 0.76 0.45 0.23
+newmtl pod_rib
+Kd 0.40 0.36 0.19
+newmtl pod_yellow
+Kd 0.88 0.77 0.40
+newmtl pod_gold
+Kd 0.72 0.59 0.28
+newmtl decor_soil
+Kd 0.34 0.26 0.17
+newmtl stuff_cloth_motif
+Kd 0.65 0.65 0.65
+map_Kd IsoRim/Swatches/{stuff}
+newmtl relic_bone
+Kd 0.87 0.85 0.76
+newmtl relic_socket
+Kd 0.16 0.14 0.11
+newmtl ritual_wood
+Kd 0.52 0.36 0.19
+map_Kd IsoRim/Swatches/Wood
+newmtl ritual_dark
+Kd 0.30 0.20 0.105
+map_Kd IsoRim/Swatches/Wood
+newmtl ritual_end
+Kd 0.66 0.49 0.27
+map_Kd IsoRim/Swatches/Wood
+newmtl ritual_fill
+Kd 0.25 0.24 0.13
+newmtl ritual_rope
+Kd 0.61 0.47 0.29
+newmtl party_shell
+Kd 0.24 0.25 0.25
+map_Kd IsoRim/Swatches/Metal
+newmtl party_dark
+Kd 0.10 0.12 0.12
+newmtl party_trim
+Kd 0.43 0.44 0.42
+map_Kd IsoRim/Swatches/Metal
+newmtl party_lens
+Kd 0.26 0.32 0.33
+newmtl party_indicator
+Kd 0.38 0.43 0.29
