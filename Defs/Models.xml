@@ -1455,6 +1455,7 @@
     <defName>R3D_ChessTable</defName>
     <thingDef>ChessTable</thingDef>
     <model>Models/chess_table.obj</model>
+    <outlineMinSize>0.3</outlineMinSize>
     <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
 
@@ -2577,9 +2578,8 @@
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
-    <defName>R3D_Ambrosia</defName>
-    <thingDef>Ambrosia</thingDef>
-    <model>Models/food_beer.obj</model>
+    <defName>R3D_NoModel_Ambrosia</defName>
+    <thingDef>Ambrosia</thingDef>   <!-- not the beer crate or the Drugs pills: its own sprite, extruded -->
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>

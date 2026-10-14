@@ -2141,7 +2141,7 @@ namespace IsoRim
                     }
 
                     // 2. outline
-                    if (outline != null)
+                    if (outline != null && (m.noOutline == null || !m.noOutline[k]))
                     {
                         Vector3 h = turn * (Vector3.Scale(lay * (m.positions[k] + hull) + layLift, scale) + offset);
                         outline.tris.Add(outline.verts.Count);

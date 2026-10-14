@@ -559,6 +559,9 @@ Kd 0.160 0.220 0.270
 newmtl screen
 Kd 0.100 0.130 0.160
 
+newmtl screen_off
+Kd 0.040 0.042 0.048
+
 newmtl glow_screen
 Kd 0.480 0.860 0.960
 map_Kd IsoRim/Swatches/Glow
@@ -627,7 +630,10 @@ Kd 0.300 0.480 0.720
 map_Kd IsoRim/Swatches/Metal
 
 newmtl medicine
-Kd 0.920 0.920 0.900
+Kd 0.360 0.600 0.660
+
+newmtl medicine_cross
+Kd 0.720 0.860 0.870
 
 newmtl red_cross
 Kd 0.820 0.180 0.160

@@ -57,6 +57,8 @@ namespace IsoRim
         public string emptyModel;           // used instead while the game draws the thing as empty (CompEmptyStateGraphic: an opened mech capsule)
         public bool groundShadow = true;    // soft shading on the ground under it
         public float outline = 1f;          // how bold the dark outline is; 0 for none
+        public float outlineMinSize = 0f;   // separate pieces smaller than this (cells, largest side), and flat sheets,
+                                            // get no outline (a chess table's pieces and board), so small detail does not turn black
         public bool linked = false;         // the first model stands in the cell; the second is added toward each neighbour it joins
 
         // Matching by name: every building or item whose defName has one of these as a whole word or
@@ -204,6 +206,7 @@ namespace IsoRim
         public int[] material;  // which entry of materials each vertex uses
         public ModelMaterial[] materials;
         public Vector3[] hull;  // how far each vertex moves outward to form the dark outline
+        public bool[] noOutline; // per vertex: true where its triangle gets no outline (ModelDef.outlineMinSize); null for none
         public float maxY;
         public float halfDepth; // furthest the model reaches north or south of its centre
         public float minX, maxX, minZ, maxZ;   // the box the model covers on the ground
@@ -634,6 +637,13 @@ namespace IsoRim
             {
                 loaded[0] = WithParts(loaded[0], md.parts, md.modContentPack.RootDir);
             }
+            if (md.outlineMinSize > 0f)
+            {
+                for (int i = 0; i < loaded.Count; i++)
+                {
+                    loaded[i] = ObjLoader.WithoutSmallOutlines(loaded[i], md.outlineMinSize);
+                }
+            }
             ModelEntry entry = new ModelEntry();
             entry.def = md;
             entry.variants = loaded.ToArray();
@@ -933,6 +943,7 @@ namespace IsoRim
             m.normals = src.normals;
             m.uvs = src.uvs;
             m.hull = src.hull;
+            m.noOutline = src.noOutline;
             m.maxY = src.maxY;
             m.halfDepth = src.halfDepth;
             m.minX = src.minX;
@@ -995,6 +1006,7 @@ namespace IsoRim
             m.normals = src.normals;
             m.uvs = src.uvs;
             m.hull = src.hull;
+            m.noOutline = src.noOutline;
             m.maxY = src.maxY;
             m.halfDepth = src.halfDepth;
             m.minX = src.minX;
@@ -1045,6 +1057,7 @@ namespace IsoRim
             m.normals = src.normals;
             m.uvs = src.uvs;
             m.hull = src.hull;
+            m.noOutline = src.noOutline;
             m.maxY = src.maxY;
             m.halfDepth = src.halfDepth;
             m.minX = src.minX;
@@ -1160,6 +1173,91 @@ namespace IsoRim
                 m.minZ = Mathf.Min(m.minZ, src.minZ);
                 m.maxZ = Mathf.Max(m.maxZ, src.maxZ);
             }
+            if (models.Exists(src => src.noOutline != null))
+            {
+                List<bool> none = new List<bool>();
+                foreach (Model src in models)
+                {
+                    none.AddRange(src.noOutline ?? new bool[src.positions.Length]);
+                }
+                m.noOutline = none.ToArray();
+            }
+            m.id = nextId++;
+            return m;
+        }
+
+        // The model with no outline on its small separate pieces (corners shared by position make
+        // one piece): every piece whose box is under size cells on its largest side, and every flat
+        // sheet (under 0.01 cells on its smallest side; a sheet of faces gets a broken outline). A chess
+        // table keeps the outline of its top and legs but not of its pieces and squares.
+        public static Model WithoutSmallOutlines(Model src, float size)
+        {
+            int n = src.positions.Length;
+            List<int> parent = new List<int>();
+            Dictionary<Vector3Int, int> corner = new Dictionary<Vector3Int, int>();
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                int t = i / 3;
+                parent.Add(t);
+                for (int k = i; k < i + 3; k++)
+                {
+                    Vector3Int key = HullKey(src.positions[k]);
+                    int other;
+                    if (corner.TryGetValue(key, out other))
+                    {
+                        int a = Root(parent, t), b = Root(parent, other);
+                        if (a != b)
+                        {
+                            parent[a] = b;
+                        }
+                    }
+                    else
+                    {
+                        corner[key] = t;
+                    }
+                }
+            }
+            Dictionary<int, Bounds> boxes = new Dictionary<int, Bounds>();
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                int r = Root(parent, i / 3);
+                Bounds b;
+                if (!boxes.TryGetValue(r, out b))
+                {
+                    b = new Bounds(src.positions[i], Vector3.zero);
+                }
+                for (int k = i; k < i + 3; k++)
+                {
+                    b.Encapsulate(src.positions[k]);
+                }
+                boxes[r] = b;
+            }
+            bool[] none = src.noOutline != null ? (bool[])src.noOutline.Clone() : new bool[n];
+            for (int i = 0; i + 2 < n; i += 3)
+            {
+                Vector3 s = boxes[Root(parent, i / 3)].size;
+                if (Mathf.Max(s.x, Mathf.Max(s.y, s.z)) < size || Mathf.Min(s.x, Mathf.Min(s.y, s.z)) < 0.01f)
+                {
+                    none[i] = none[i + 1] = none[i + 2] = true;
+                }
+            }
+
+            Model m = new Model();
+            m.positions = src.positions;
+            m.normals = src.normals;
+            m.colors = src.colors;
+            m.tinted = src.tinted;
+            m.uvs = src.uvs;
+            m.material = src.material;
+            m.materials = src.materials;
+            m.hull = src.hull;
+            m.noOutline = none;
+            m.maxY = src.maxY;
+            m.halfDepth = src.halfDepth;
+            m.minX = src.minX;
+            m.maxX = src.maxX;
+            m.minZ = src.minZ;
+            m.maxZ = src.maxZ;
             m.id = nextId++;
             return m;
         }

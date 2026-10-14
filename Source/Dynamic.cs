@@ -214,7 +214,7 @@ namespace IsoRim
                                 c *= tint;
                             }
                             into.Add(local.MultiplyPoint3x4(m.positions[v]), R3DMaterials.Shaded(c, 1f), Vector2.zero);
-                            if (m.hull != null)
+                            if (m.hull != null && (m.noOutline == null || !m.noOutline[v]))
                             {
                                 outline.Add(local.MultiplyPoint3x4(m.positions[v] + m.hull[v]), R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
                             }
@@ -389,7 +389,7 @@ namespace IsoRim
                         c *= tint;
                     }
                     into.Add(tl != null ? m.positions[k] - hull * ModelBaker.Inset : m.positions[k], R3DMaterials.Shaded(c, 1f), Vector2.zero);
-                    if (m.hull != null)
+                    if (m.hull != null && (m.noOutline == null || !m.noOutline[k]))
                     {
                         outline.Add(m.positions[k] + hull, R3DMaterials.Shaded(c, ModelBaker.OutlineShade), Vector2.zero);
                     }
