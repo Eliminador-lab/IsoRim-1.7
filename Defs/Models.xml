@@ -4331,4 +4331,34 @@
     <surfaceHeight>0.245</surfaceHeight>
   </IsoRim.ModelDef>
 
+  <IsoRim.ModelDef>
+    <defName>R3D_BroadshieldProjector</defName>
+    <thingDef>BroadshieldProjector</thingDef>
+    <model>Models/broadshield_projector.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ShieldGeneratorBullets</defName>
+    <thingDef>ShieldGeneratorBullets</thingDef>
+    <model>Models/mech_low_shield.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_ShieldGeneratorMortar</defName>
+    <thingDef>ShieldGeneratorMortar</thingDef>
+    <model>Models/mech_high_shield.obj</model>
+    <builtFor>(1, 1)</builtFor>
+  </IsoRim.ModelDef>
+
+  <!-- The person inside lies on the couch (surfaceHeight, the top of the mattress). -->
+  <IsoRim.ModelDef>
+    <defName>R3D_GeneExtractor</defName>
+    <thingDef>GeneExtractor</thingDef>
+    <model>Models/gene_extractor.obj</model>
+    <builtFor>(2, 2)</builtFor>
+    <surfaceHeight>0.40</surfaceHeight>
+  </IsoRim.ModelDef>
+
 </Defs>

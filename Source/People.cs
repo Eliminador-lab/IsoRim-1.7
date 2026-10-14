@@ -203,6 +203,14 @@ namespace IsoRim
                     headOnly = ground > 0.05f && bed.def.building != null && !bed.def.building.bed_showSleeperBody;
                     pose = Matrix4x4.Translate(new Vector3(0f, (headOnly ? 0.24f : 0.15f) * size, HeadHeight * size)) * Matrix4x4.Rotate(onBack);
                 }
+                else if (!dead && pawn.ParentHolder is IThingHolderWithDrawnPawn holder && holder is Building inside && inside.Spawned)
+                {
+                    // Lying in a building that shows who is inside (gene extractor): on its couch,
+                    // along the body angle the game draws them at, centred where the game draws them.
+                    yaw = holder.HeldPawnBodyAngle + 180f;
+                    ground = Forms.HeightOf(inside);
+                    pose = Matrix4x4.Translate(new Vector3(0f, 0.15f * size, HeadHeight * 0.5f * size)) * Matrix4x4.Rotate(onBack);
+                }
                 else
                 {
                     pose = Matrix4x4.Translate(new Vector3(0f, 0.15f * size, 0.55f * size)) * Matrix4x4.Rotate(onBack);

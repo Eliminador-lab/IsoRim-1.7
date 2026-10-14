@@ -279,6 +279,9 @@ namespace IsoRim
             Patch("3D models of buildings drawn every frame", AccessTools.DeclaredMethod(typeof(Thing), "Notify_ColorChanged"),
                 postfix: nameof(BodyColorChanged_Postfix));
 
+            // Shield bubbles: a dome over the circle instead of a flat ring on the ground (ShieldDomes).
+            Patch("shield domes", AccessTools.DeclaredMethod(typeof(CompProjectileInterceptor), "PostDraw"), transpiler: nameof(ShieldDraw_Transpiler));
+
             // Turret guns: a 3D gun turning on its 3D base.
             Type turretTop = AccessTools.TypeByName("RimWorld.TurretTop");
             if (turretTop != null)
@@ -1090,9 +1093,11 @@ namespace IsoRim
                 {
                     if (pawn.Dead || pawn.GetPosture() != PawnPosture.Standing)
                     {
-                        // Lying down stays flat, but is raised onto the bed if the bed has height.
+                        // Lying down stays flat, but is raised onto the bed (or the couch of a building
+                        // that shows who is inside, such as the gene extractor) if it has height.
                         Building_Bed bed = pawn.Dead ? null : pawn.CurrentBed();
-                        float bedTop = bed != null ? Forms.HeightOf(bed) : 0f;
+                        float bedTop = bed != null ? Forms.HeightOf(bed)
+                            : (pawn.ParentHolder is IThingHolderWithDrawnPawn && pawn.ParentHolder is Building holder ? Forms.HeightOf(holder) : 0f);
                         if (bedTop > 0f)
                         {
                             DrawHook.xform = View3D.LiftMatrix(bedTop);
@@ -2062,6 +2067,20 @@ namespace IsoRim
                 && callee.DeclaringType == typeof(Graphics)
                 && callee.Name == "DrawMesh"
                 && DrawHook.ReplacementFor(callee) != null;
+        }
+
+        public static IEnumerable<CodeInstruction> ShieldDraw_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            MethodInfo from = AccessTools.Method(typeof(Graphics), "DrawMesh", new[] { typeof(Mesh), typeof(Matrix4x4), typeof(Material), typeof(int), typeof(Camera), typeof(int), typeof(MaterialPropertyBlock) });
+            MethodInfo to = AccessTools.Method(typeof(ShieldDomes), nameof(ShieldDomes.DrawMesh));
+            foreach (CodeInstruction ci in instructions)
+            {
+                if (ci.opcode == OpCodes.Call && from != null && ci.operand as MethodInfo == from)
+                {
+                    ci.operand = to;
+                }
+                yield return ci;
+            }
         }
 
         public static IEnumerable<CodeInstruction> Redirect_Transpiler(IEnumerable<CodeInstruction> instructions)

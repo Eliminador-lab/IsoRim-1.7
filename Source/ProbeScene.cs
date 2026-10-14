@@ -53,11 +53,20 @@ namespace IsoRim
     //   bookcheck=1                  logs, for each bookcase, the books held against the books baked
     //   paint=x,z,<ColorDef>|-        the building in the cell painted (Building.ChangePaint, as the paint job does)
     //   power=x,z                    the building in the cell counts as powered from now on
-    //   wake=x,z                     the dormant building in the cell (mech capsule) woken at once, as when disturbed
+    //   enter=x,z[,<Xenotype>]       the nearest free colonist (made that xenotype) is sent into the enterable building (as its select button)
+    //   entercheck=1                 logs each enterable building: working, chosen person, people inside
+    //   faction=x,z,<FactionDef>     the building in the cell given to that faction (e.g. Mechanoid)
+    //   shoot=x0,z0,x1,z1            a colonist's revolver bullet launched from one cell at the other
+    //   bars=1                       progress bars are drawn in the shots (the game leaves them out in screenshot mode)
+    //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
+    //   charged=x,z                  the shield in the cell out of its recharge pause
+    //   shieldcheck=1                logs every shield: active, charging, cooldown, selected, faction
+    //   wake=x,z                   the dormant building in the cell (mech capsule) woken at once, as when disturbed
     //   eggs=x,z,N[,<Def>]           the egg box in the cell holds N eggs (default unfertilized chicken eggs)
+    //   motecheck=1                  logs every mote on the map (def, cell, draw position, age, linked thing)
     //   statecheck=1                 logs, for each building with an empty-state sprite, its state against its built model
     //   blueprint=<Def>,x,z[,<Stuff>|-[,rot]]  the player's blueprint to build it there
-    //   tickuntil=bursting,N         game ticks until some turret fires a burst (at most N <= 900)
+    //   tickuntil=bursting|intercept,N  game ticks until some turret fires a burst / some shield stops a projectile (at most N <= 900)
     //   interact=x,z                 the nearest free colonist is ordered to activate the building (as its float menu option)
     //   turretcheck=1                logs every turret's verb state, aim override, gun rotation and which gun model it shows
     //   ui=1                         map overlays the screenshot mode hides (selection, temperature,
@@ -439,6 +448,85 @@ namespace IsoRim
                     powered.Add(pw);
                     break;
                 }
+                case "enter":
+                {
+                    // enter=x,z: as the building's "select a person" button: the nearest free colonist walks in.
+                    Building_Enterable be = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map) as Building_Enterable;
+                    Pawn bp = be == null ? null : map.mapPawns.FreeColonistsSpawned.Where(p => !p.Downed).OrderBy(p => p.Position.DistanceToSquared(be.Position)).FirstOrDefault();
+                    if (bp == null)
+                    {
+                        Log.Warning("[IsoRim probe] enter: no enterable building at " + a[0] + "," + a[1] + " or no colonist");
+                        return;
+                    }
+                    if (bp.drafter != null)
+                    {
+                        bp.drafter.Drafted = false;
+                    }
+                    if (a.Length > 2 && bp.genes != null)
+                    {
+                        bp.genes.SetXenotype(DefDatabase<XenotypeDef>.GetNamed(a[2]));   // someone with genes to extract
+                    }
+                    AccessTools.Method(be.GetType(), "SelectPawn").Invoke(be, new object[] { bp });
+                    AcceptanceReport can = be.CanAcceptPawn(bp);
+                    Log.Message("[IsoRim probe] enter: " + bp.LabelShort + " at " + bp.Position + " goes into " + be.def.defName + " (can accept: " + (can.Accepted ? "yes" : can.Reason) + ", queued " + bp.jobs.jobQueue.Count + ")");
+                    break;
+                }
+                case "faction":
+                {
+                    Building fb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    Faction ff = Find.FactionManager.FirstFactionOfDef(DefDatabase<FactionDef>.GetNamed(a[2]));
+                    if (fb != null && ff != null)
+                    {
+                        fb.SetFaction(ff);
+                    }
+                    break;
+                }
+                case "shoot":
+                {
+                    // shoot=x0,z0,x1,z1: a colonist's revolver bullet flies from the first cell at the second.
+                    Pawn shooter = map.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+                    IntVec3 from = new IntVec3(I(a[0]), 0, I(a[1])), to = new IntVec3(I(a[2]), 0, I(a[3]));
+                    Projectile bullet = (Projectile)GenSpawn.Spawn(DefDatabase<ThingDef>.GetNamed("Bullet_Revolver"), from, map);
+                    bullet.Launch(shooter, from.ToVector3Shifted(), to, to, ProjectileHitFlags.IntendedTarget);
+                    break;
+                }
+                case "bars":
+                    if (!barsPatched)
+                    {
+                        barsPatched = true;
+                        Harmony hb = new Harmony("peren.isorim17.probe.bars");
+                        hb.Patch(AccessTools.Method(typeof(MoteProgressBar), "DrawAt"), prefix: new HarmonyMethod(typeof(Probe), nameof(BarsOn)), finalizer: new HarmonyMethod(typeof(Probe), nameof(BarsOff)));
+                        hb.Patch(AccessTools.PropertyGetter(typeof(ScreenshotModeHandler), nameof(ScreenshotModeHandler.Active)), postfix: new HarmonyMethod(typeof(Probe), nameof(BarsShot)));
+                    }
+                    break;
+                case "halfdone":
+                {
+                    // halfdone=x,z: the gene extractor in the cell half way through its work.
+                    Building hb2 = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    if (hb2 is Building_GeneExtractor)
+                    {
+                        Traverse.Create(hb2).Field("ticksRemaining").SetValue(15000);
+                    }
+                    break;
+                }
+                case "charged":
+                {
+                    // charged=x,z: the shield in the cell is not in its recharge pause (the game picks that time at random).
+                    Building cb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
+                    CompProjectileInterceptor ci = cb != null ? cb.TryGetComp<CompProjectileInterceptor>() : null;
+                    if (ci != null)
+                    {
+                        Traverse.Create(ci).Field("startedChargingTick").SetValue(-1);
+                    }
+                    break;
+                }
+                case "shieldcheck":
+                    foreach (Thing sh in map.listerThings.AllThings.Where(x => x.TryGetComp<CompProjectileInterceptor>() != null))
+                    {
+                        CompProjectileInterceptor sc = sh.TryGetComp<CompProjectileInterceptor>();
+                        Log.Message("[IsoRim probe] shieldcheck " + sh.def.defName + " " + sh.Position + " active " + sc.Active + " charging " + sc.Charging + " cooldown " + sc.OnCooldown + " selected " + Find.Selector.IsSelected(sh) + " faction " + (sh.Faction != null ? sh.Faction.def.defName : "-"));
+                    }
+                    break;
                 case "wake":
                 {
                     Building wb = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstBuilding(map);
@@ -469,6 +557,21 @@ namespace IsoRim
                     }
                     break;
                 }
+                case "entercheck":
+                    foreach (Building_Enterable en in map.listerThings.AllThings.OfType<Building_Enterable>())
+                    {
+                        Effecter bar = Traverse.Create(en).Field("progressBar").GetValue<Effecter>();
+                        MoteProgressBar barMote = bar != null && bar.children.Count > 0 ? (bar.children[0] as SubEffecter_ProgressBar)?.mote : null;
+                        Log.Message("[IsoRim probe] entercheck " + en.def.defName + " " + en.Position + " working " + en.Working + " holds " + (en.SelectedPawn != null ? en.SelectedPawn.LabelShort : "-") + " inside " + en.innerContainer.Count
+                            + " bar draws " + barDraws + "/" + barShotChecks + " zoom " + Find.CameraDriver.CurrentZoom + " progress bar " + (barMote == null ? "none" : "spawned " + barMote.Spawned + " at " + barMote.DrawPos + " progress " + barMote.progress.ToString("0.000")));
+                    }
+                    break;
+                case "motecheck":
+                    foreach (Mote mo in map.listerThings.AllThings.OfType<Mote>())
+                    {
+                        Log.Message("[IsoRim probe] motecheck " + mo.def.defName + " " + mo.Position + " draw " + mo.DrawPos + " age " + mo.AgeSecs.ToString("0.00") + " link " + (mo.link1.Target.HasThing ? mo.link1.Target.Thing.def.defName : "-"));
+                    }
+                    break;
                 case "statecheck":
                     foreach (Thing st in map.listerThings.AllThings.Where(x => StateModels.CompOf(x) != null))
                     {
@@ -487,7 +590,11 @@ namespace IsoRim
                 {
                     // tickuntil=bursting,N: game ticks one at a time until some turret is firing a burst (at most N).
                     int limit = Mathf.Clamp(I(a[1]), 1, 900), done = 0;
-                    while (done < limit && !map.listerThings.AllThings.OfType<Building_Turret>().Any(t => t.CurrentEffectiveVerb != null && t.CurrentEffectiveVerb.state == VerbState.Bursting))
+                    Func<bool> reached = a[0] == "intercept"
+                        ? (Func<bool>)(() => map.listerThings.AllThings.Any(t => t.TryGetComp<CompProjectileInterceptor>() is CompProjectileInterceptor pi
+                            && Traverse.Create(pi).Field("lastInterceptTicks").GetValue<int>() == Find.TickManager.TicksGame))
+                        : () => map.listerThings.AllThings.OfType<Building_Turret>().Any(t => t.CurrentEffectiveVerb != null && t.CurrentEffectiveVerb.state == VerbState.Bursting);
+                    while (done < limit && !reached())
                     {
                         Find.TickManager.DoSingleTick();
                         done++;
@@ -673,6 +780,24 @@ namespace IsoRim
 
         private static bool uiPatched;
         private static bool powerPatched;
+        private static bool barsPatched;
+        private static bool inBar;
+
+        // bars=1: progress bars are drawn in the shots too (the game hides them in screenshot mode).
+        public static int barDraws, barShotChecks;
+
+        public static void BarsOn() { inBar = true; barDraws++; }
+
+        public static void BarsOff() { inBar = false; }
+
+        public static void BarsShot(ref bool __result)
+        {
+            if (inBar)
+            {
+                barShotChecks++;
+                __result = false;
+            }
+        }
         private static readonly HashSet<Thing> powered = new HashSet<Thing>();
 
         // power=x,z: the building counts as powered (the harness scenes have no power grid).
