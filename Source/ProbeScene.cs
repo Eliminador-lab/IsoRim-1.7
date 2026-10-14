@@ -78,7 +78,8 @@ namespace IsoRim
     //   chaincheck=1                 logs each holding platform: what it holds, its chains (to the entity or across), floor height
     //   sealflag=x,z                 the portal in the cell marked sealed (CompSealable) and its map mesh redrawn
     //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
-    //   dressed=x,z,rot,age,Def[:Stuff];...  a new drafted colonist (adults male body) wearing/holding exactly those, facing rot
+    //   dressed=x,z,rot,age[:Body],Def[:Stuff];...  a new drafted colonist (adults male body, or that BodyTypeDef)
+    //                                wearing/holding exactly those ("-" for nothing), facing rot
     //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
@@ -770,7 +771,8 @@ namespace IsoRim
                     // dressed=x,z,<rot 0-3>,<age>,<Def[:Stuff]>;...: a new colonist of that age (adults the male body,
                     // as the outfit stand) wearing exactly those things and holding the weapon among them, drafted
                     // so it stands still facing rot (to compare with an outfit stand).
-                    float dage = F(a[3]);
+                    string[] dageBody = a[3].Split(':');
+                    float dage = F(dageBody[0]);
                     bool dchild = dage < 13f;
                     Pawn dp = PawnGenerator.GeneratePawn(new PawnGenerationRequest(PawnKindDefOf.Colonist, Faction.OfPlayer, PawnGenerationContext.NonPlayer,
                         fixedBiologicalAge: dage, fixedChronologicalAge: dage, developmentalStages: dchild ? DevelopmentalStage.Child : DevelopmentalStage.Adult));
@@ -778,10 +780,14 @@ namespace IsoRim
                     dp.equipment.DestroyAllEquipment();
                     if (!dchild)
                     {
-                        dp.story.bodyType = BodyTypeDefOf.Male;
+                        dp.story.bodyType = dageBody.Length > 1 ? DefDatabase<BodyTypeDef>.GetNamed(dageBody[1]) : BodyTypeDefOf.Male;
                     }
                     foreach (string item in a[4].Split(';'))
                     {
+                        if (item == "-")
+                        {
+                            continue;   // nothing worn
+                        }
                         string[] ds = item.Split(':');
                         ThingDef dd = DefDatabase<ThingDef>.GetNamed(ds[0]);
                         ThingDef dstuff = ds.Length > 1 && ds[1] != "-" ? DefDatabase<ThingDef>.GetNamed(ds[1]) : (dd.MadeFromStuff ? GenStuff.DefaultStuffFor(dd) : null);
