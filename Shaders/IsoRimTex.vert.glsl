@@ -47,6 +47,7 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     float _OutlinePush; // @default = 0.0   vertex stage only (IsoRim.vert.glsl): moving outlines
     vec4 _IsoCellMap; // global, no default: (origin x, origin z, W, H) of the cell texture (IsoCellMap)
     vec4 _IsoLevel;   // global, no default: x = the map's ground height in cells, y = what is left of a cut wall
+    vec4 _IsoFloorGlow; // global, no default: stacked floors (Floors.GlowFloors): x = floors above the ground, y = storey height (true cells), z = rows from one floor to the next; 0 without floors
 } uMaterial;
 
 // ---- Step 7: the cut-away in the vertex stage (C# ShaderCut, Source\ShaderCut.cs). IsoRim's walls, damage,
