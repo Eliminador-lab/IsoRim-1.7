@@ -2583,7 +2583,8 @@ namespace IsoRim
         }
 
         // Whether the ground in cell c, beside the block in cell from, is open (a gravship hull corner
-        // piece standing against that block covers it, see HullCorners).
+        // piece standing against that block covers it, see HullCorners) and is there at all (stacked floors: an upper
+        // floor's open air has no ground for the band to lie on, Floors.HasFloor).
         private static bool Open(Map map, IntVec3 from, IntVec3 c)
         {
             if (!c.InBounds(map))
@@ -2591,7 +2592,8 @@ namespace IsoRim
                 return false;
             }
             Building b = c.GetEdifice(map);
-            return (b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block)) && !HullCorners.Covers(map, c, from, 0f);
+            return (b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block)) && !HullCorners.Covers(map, c, from, 0f)
+                && Floors.HasFloor(map, c);   // (stacked floors) no band over the open air beside a wall upstairs
         }
 
         // Under something that moves (an animal): a soft oval, drawn afresh every frame.

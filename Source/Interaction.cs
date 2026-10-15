@@ -191,30 +191,34 @@ namespace IsoRim
             Vector2 mouse = Input.mousePosition;
             const float Top = 3.2f;
             const float Step = 0.08f;
-            // On stacked floors (Floors) the floor the pointer works on.
-            float floorH;
-            int floorZ;
-            Floors.PointerPlane(out floorH, out floorZ);
-            for (float h = Top; h >= 0.1f; h -= Step)
+            // On stacked floors (Floors) every floor the pointer works on, from the viewed one down to the one its ray lands on.
+            int lowest = Floors.PointerFloorAt(mouse);
+            for (int k = Floors.PointerTop; k >= lowest; k--)
             {
-                Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
-                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
-                if (!c.InBounds(map))
+                float floorH;
+                int floorZ;
+                Floors.FloorPlane(k, out floorH, out floorZ);
+                for (float h = Top; h >= 0.1f; h -= Step)
                 {
-                    continue;
-                }
-                List<Thing> things = map.thingGrid.ThingsListAtFast(c);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    Thing t = things[i];
-                    if (found.Contains(t))
+                    Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
+                    IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
+                    if (!c.InBounds(map) || Floors.On && Floors.FloorOfRow(c.z) != k)
                     {
                         continue;
                     }
-                    float top = PickHeight(t);
-                    if (top >= h)
+                    List<Thing> things = map.thingGrid.ThingsListAtFast(c);
+                    for (int i = 0; i < things.Count; i++)
                     {
-                        found.Add(t);
+                        Thing t = things[i];
+                        if (found.Contains(t))
+                        {
+                            continue;
+                        }
+                        float top = PickHeight(t);
+                        if (top >= h)
+                        {
+                            found.Add(t);
+                        }
                     }
                 }
             }
@@ -299,28 +303,32 @@ namespace IsoRim
         {
             const float Top = 3.2f;
             const float Step = 0.08f;
-            float floorH;
-            int floorZ;
-            Floors.PointerPlane(out floorH, out floorZ);
-            for (float h = Top; h >= 0.1f; h -= Step)
+            int lowest = Floors.PointerFloorAt(mouse);   // (stacked floors) the viewed floor down to where the ray lands
+            for (int k = Floors.PointerTop; k >= lowest; k--)
             {
-                Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
-                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
-                if (!c.InBounds(map))
+                float floorH;
+                int floorZ;
+                Floors.FloorPlane(k, out floorH, out floorZ);
+                for (float h = Top; h >= 0.1f; h -= Step)
                 {
-                    continue;
-                }
-                List<Thing> things = map.thingGrid.ThingsListAtFast(c);
-                for (int i = 0; i < things.Count; i++)
-                {
-                    if (things[i] is Building)
+                    Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
+                    IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
+                    if (!c.InBounds(map) || Floors.On && Floors.FloorOfRow(c.z) != k)
                     {
-                        float t = PickHeight(things[i]);
-                        if (t >= h)
+                        continue;
+                    }
+                    List<Thing> things = map.thingGrid.ThingsListAtFast(c);
+                    for (int i = 0; i < things.Count; i++)
+                    {
+                        if (things[i] is Building)
                         {
-                            cell = c;
-                            top = t;
-                            return true;
+                            float t = PickHeight(things[i]);
+                            if (t >= h)
+                            {
+                                cell = c;
+                                top = t;
+                                return true;
+                            }
                         }
                     }
                 }

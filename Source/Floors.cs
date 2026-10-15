@@ -312,28 +312,63 @@ namespace IsoRim
 
         // ---- the pointer
 
-        // Height (cells) of the floor the pointer works on and how far its rows are from the ground's.
-        public static void PointerPlane(out float height, out int zShift)
+        // The floors the pointer works on are the shown ones, from the one viewed (PointerTop) down to the ground. The ray
+        // under a screen pixel lands on the first of them, from the top, whose floor is built where it meets that floor's
+        // plane: the open air beside a building upstairs lets it through to the floor below, the ground always catches it.
+        // Hidden floors above the viewed one are never hit. Everything that turns the pointer into a map position goes
+        // through here: UI.UIToMapPosition (MouseCell, MouseMapPosition: orders, float menus, designators, drags, labels,
+        // brackets), the 3D picking (Interaction) and the cut-away round the pointer (Dynamic).
+        public static int PointerTop
         {
-            if (!On || pointer <= 0)
+            get { return On ? pointer : 0; }
+        }
+
+        // The floor the ray under a screen pixel lands on (0 = the ground).
+        public static int PointerFloorAt(Vector2 px)
+        {
+            if (!On || pointer <= 0 || frameMap == null)
+            {
+                return 0;
+            }
+            for (int k = pointer; k >= 1; k--)
+            {
+                Vector3 p = View3D.ScreenToHeight(px, heights[k]);
+                int gz = Mathf.FloorToInt(p.z);
+                if (gz < 0 || gz >= groundRows)
+                {
+                    continue;
+                }
+                if (HasFloor(frameMap, new IntVec3(Mathf.FloorToInt(p.x), 0, gz + shifts[k])))
+                {
+                    return k;
+                }
+            }
+            return 0;
+        }
+
+        // Height (cells) of floor k and how far its rows are from the ground's (zero for the ground or without floors).
+        public static void FloorPlane(int k, out float height, out int zShift)
+        {
+            if (!On || k <= 0 || k > count)
             {
                 height = 0f;
                 zShift = 0;
                 return;
             }
-            height = heights[pointer];
-            zShift = shifts[pointer];
+            height = heights[k];
+            zShift = shifts[k];
         }
 
-        // The map position under a screen pixel: on the ground, or with floors on the floor the pointer works on.
+        // The map position under a screen pixel: on the floor the ray lands on (PointerFloorAt), else on the ground.
         public static Vector3 ScreenToMap(Vector2 px)
         {
-            if (!On || pointer <= 0)
+            int k = PointerFloorAt(px);
+            if (k <= 0)
             {
                 return View3D.ScreenToGround(px);
             }
-            Vector3 p = View3D.ScreenToHeight(px, heights[pointer]);
-            return new Vector3(p.x, 0f, p.z + shifts[pointer]);
+            Vector3 p = View3D.ScreenToHeight(px, heights[k]);
+            return new Vector3(p.x, 0f, p.z + shifts[k]);
         }
 
         // ---- the view rectangle: the ground's, and the same ground seen raised on each shown floor
@@ -998,6 +1033,26 @@ namespace IsoRim
                 Api.Floors.Floor(map, to, out h2, out zTo);
             }
             return new IntVec3(c.x, 0, c.z - z + zTo);
+        }
+
+        // Whether a cell has a floor to lie on: always on the ground (and on maps without floors), on an upper floor only
+        // where its floor is built (the open air up there has none), never between floors. Where the pointer's ray stops
+        // (PointerFloorAt), and where what lies flat on the ground beside a thing can lie (GroundShadows; in the open air
+        // it would hang across the wall below).
+        public static bool HasFloor(Map map, IntVec3 c)
+        {
+            if (GroundRowsOf(map) <= 0)
+            {
+                return true;
+            }
+            float h;
+            int z;
+            int k = ColumnFloor(map, c, out h, out z);
+            if (k <= 0)
+            {
+                return k == 0;
+            }
+            return c.InBounds(map) && !map.terrainGrid.TerrainAt(c).dontRender;
         }
 
         // The floor above a cell exists there (it is the cell's roof: the slab).
