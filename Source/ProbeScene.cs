@@ -85,6 +85,10 @@ namespace IsoRim
     //   dressed=x,z,rot,age[:Body],Def[:Stuff];...  a new drafted colonist (adults male body, or that BodyTypeDef)
     //                                wearing/holding exactly those ("-" for nothing), facing rot; items hair:<HairDef>
     //                                and beard:<BeardDef> set those styles instead; Def:Stuff:RRGGBB also dyes it that colour
+    //   bedrest=px,pz,bx,bz[,nomed]  the colonist in cell px,pz undrafted, made tired and ordered to lie down in the bed at
+    //                                bx,bz (LayDown); nomed first turns the bed's medical toggle off (hospital beds start medical)
+    //   downpawn=x,z                 the colonist in the cell hurt until downed (no bleeding wounds)
+    //   bedcheck=1                   logs each free colonist: posture, bed, job, People.Report (hat, skips)
     //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
@@ -894,6 +898,58 @@ namespace IsoRim
                         + (dp.equipment.Primary != null ? " + " + dp.equipment.Primary.def.defName : "") + "; " + People.Report(dp));
                     break;
                 }
+                case "bedrest":
+                {
+                    // bedrest=px,pz,bx,bz: the colonist in cell px,pz undrafted, made tired and ordered to lie down in the bed in cell bx,bz
+                    // (JobDefOf.LayDown, as the "rest" order); run tick= after it so they walk there and lie down.
+                    Pawn rp = map.thingGrid.ThingsListAt(new IntVec3(I(a[0]), 0, I(a[1]))).OfType<Pawn>().FirstOrDefault();
+                    Building_Bed rb = map.thingGrid.ThingsListAt(new IntVec3(I(a[2]), 0, I(a[3]))).OfType<Building_Bed>().FirstOrDefault();
+                    if (rp != null && rb != null)
+                    {
+                        if (rp.drafter != null)
+                        {
+                            rp.drafter.Drafted = false;
+                        }
+                        if (rp.needs != null && rp.needs.rest != null)
+                        {
+                            rp.needs.rest.CurLevel = 0.1f;   // tired, so they sleep on rather than get up rested
+                        }
+                        if (a.Length > 4 && a[4] == "nomed")
+                        {
+                            rb.Medical = false;   // as the player's "medical" toggle: a healthy colonist may sleep in it
+                        }
+                        bool taken = rp.jobs.TryTakeOrderedJob(JobMaker.MakeJob(JobDefOf.LayDown, rb), JobTag.Misc);
+                        Log.Message("[IsoRim probe] bedrest " + rp.LabelShort + " -> " + rb.def.defName + " " + rb.Position + ": ordered " + taken);
+                    }
+                    else
+                    {
+                        Log.Warning("[IsoRim probe] bedrest: no colonist or bed at " + a[0] + "," + a[1] + " / " + a[2] + "," + a[3]);
+                    }
+                    break;
+                }
+                case "downpawn":
+                {
+                    // downpawn=x,z: the colonist in the cell hurt until downed (HealthUtility.DamageUntilDowned, no bleeding wounds).
+                    Pawn dpn = map.thingGrid.ThingsListAt(new IntVec3(I(a[0]), 0, I(a[1]))).OfType<Pawn>().FirstOrDefault();
+                    if (dpn != null)
+                    {
+                        if (dpn.drafter != null)
+                        {
+                            dpn.drafter.Drafted = false;
+                        }
+                        HealthUtility.DamageUntilDowned(dpn, false);
+                        Log.Message("[IsoRim probe] downpawn " + dpn.LabelShort + ": downed " + dpn.Downed);
+                    }
+                    break;
+                }
+                case "bedcheck":
+                    foreach (Pawn bp in map.mapPawns.FreeColonistsSpawned.ToList())
+                    {
+                        Building_Bed bb = bp.CurrentBed();
+                        Log.Message("[IsoRim probe] bedcheck " + bp.LabelShort + " " + bp.Position + ": posture " + bp.GetPosture() + ", bed " + (bb != null ? bb.def.defName : "none")
+                            + ", job " + (bp.CurJobDef != null ? bp.CurJobDef.defName : "none") + "; " + People.Report(bp));
+                    }
+                    break;
                 case "standcheck":
                     foreach (Building_OutfitStand os in map.listerThings.AllThings.OfType<Building_OutfitStand>().ToList())
                     {
