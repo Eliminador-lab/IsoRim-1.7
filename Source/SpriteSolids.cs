@@ -49,6 +49,7 @@ namespace IsoRim
                 // turning the other way first lines the weapon up with where it points.
                 * Matrix4x4.Rotate(Quaternion.AngleAxis(-weapon.def.equippedAngleOffset, Vector3.forward))
                 * Matrix4x4.Scale(new Vector3(draw.x * Size, draw.y * Size, 1f));
+            m = Floors.InScope(m);
             IsoGlow.DrawLit(solid.sides, m, sideMat, 0);
             Graphics.DrawMesh(solid.faces, m, mat, 0);
             return true;
@@ -80,6 +81,7 @@ namespace IsoRim
                 * (flip ? Matrix4x4.Rotate(Quaternion.AngleAxis(180f, Vector3.up)) * Matrix4x4.Rotate(Quaternion.AngleAxis(angle, Vector3.forward))
                     : Matrix4x4.Rotate(Quaternion.AngleAxis(-angle, Vector3.forward)))
                 * Matrix4x4.Scale(new Vector3(draw.x * Size * scale, draw.y * Size * scale, 1f));
+            m = Floors.InScope(m);
             IsoGlow.DrawLit(solid.sides, m, sideMat, 0);
             Graphics.DrawMesh(solid.faces, m, mat, 0);
             return true;
@@ -109,6 +111,7 @@ namespace IsoRim
                 * Matrix4x4.Scale(new Vector3(1f, 1f / s, 1f))
                 * Matrix4x4.Rotate(Quaternion.AngleAxis(90f, Vector3.right))
                 * Matrix4x4.Scale(new Vector3(draw.x * scale, draw.y * scale, thick / Thickness));
+            m = Floors.InScope(m);
             IsoGlow.DrawLit(solid.sides, m, sideMat, 0);
             Graphics.DrawMesh(solid.faces, m, mat, 0);
             return true;

@@ -75,7 +75,7 @@ namespace IsoRim
             block.SetColor(colorId, col);
             float y = 0.015f / View3D.Squash;
             Matrix4x4 m = Matrix4x4.TRS(new Vector3((x0 + x1) * 0.5f, y, (z0 + z1) * 0.5f), Quaternion.identity, new Vector3(x1 - x0, 1f, z1 - z0));
-            Graphics.DrawMesh(Quad, m, mat, 0, null, 0, block);
+            Graphics.DrawMesh(Quad, Floors.ByZ(m), mat, 0, null, 0, block);
         }
 
         // How thick lines on the ground are, so they stay about two pixels wide at any zoom.
@@ -191,10 +191,14 @@ namespace IsoRim
             Vector2 mouse = Input.mousePosition;
             const float Top = 3.2f;
             const float Step = 0.08f;
+            // On stacked floors (Floors) the floor the pointer works on.
+            float floorH;
+            int floorZ;
+            Floors.PointerPlane(out floorH, out floorZ);
             for (float h = Top; h >= 0.1f; h -= Step)
             {
-                Vector3 p = View3D.ScreenToHeight(mouse, h);
-                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z));
+                Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
+                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
                 if (!c.InBounds(map))
                 {
                     continue;
@@ -295,10 +299,13 @@ namespace IsoRim
         {
             const float Top = 3.2f;
             const float Step = 0.08f;
+            float floorH;
+            int floorZ;
+            Floors.PointerPlane(out floorH, out floorZ);
             for (float h = Top; h >= 0.1f; h -= Step)
             {
-                Vector3 p = View3D.ScreenToHeight(mouse, h);
-                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z));
+                Vector3 p = View3D.ScreenToHeight(mouse, h + floorH);
+                IntVec3 c = new IntVec3(Mathf.FloorToInt(p.x), 0, Mathf.FloorToInt(p.z) + floorZ);
                 if (!c.InBounds(map))
                 {
                     continue;
@@ -330,17 +337,31 @@ namespace IsoRim
         public static bool DrawBlockBracket()
         {
             DesignatorManager dm = Find.DesignatorManager;
-            if (!View3D.Ready || dm == null || !TargetsBlocks(dm.SelectedDesignator))
+            if (!View3D.Ready || dm == null)
             {
                 return false;
             }
-            IntVec3 c = DesignatorMouseCell();
+            IntVec3 c;
+            if (TargetsBlocks(dm.SelectedDesignator))
+            {
+                c = DesignatorMouseCell();
+            }
+            else if (Floors.On && Floors.FloorOfRow(Verse.UI.MouseCell().z) > 0)
+            {
+                // Any designator on an upper floor (Floors): the game's bracket on that floor.
+                c = Verse.UI.MouseCell();
+                snapTop = 0f;
+            }
+            else
+            {
+                return false;
+            }
             if (bracketMat == null)
             {
                 bracketMat = MaterialPool.MatFrom("UI/Overlays/MouseoverBracketTex", ShaderDatabase.MetaOverlay);
             }
             Vector3 pos = c.ToVector3ShiftedWithAltitude(AltitudeLayer.MetaOverlays);
-            Graphics.DrawMesh(MeshPool.plane10, View3D.LiftMatrix(snapTop + 0.02f) * Matrix4x4.Translate(pos), bracketMat, 0);
+            Graphics.DrawMesh(MeshPool.plane10, Floors.ByZ(View3D.LiftMatrix(snapTop + 0.02f) * Matrix4x4.Translate(pos)), bracketMat, 0);
             return true;
         }
 

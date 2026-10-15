@@ -272,7 +272,12 @@ namespace IsoRim
             Text.Anchor = TextAnchor.UpperLeft;
 
             Rect toggle = new Rect(rect.xMax - 270f, rect.y + 11f, 150f, 30f);
-            if (Widgets.ButtonText(toggle, View3D.Active ? "Turn 3D view off" : "Turn 3D view on"))
+            if (View3D.LockedOn)
+            {
+                Widgets.ButtonText(toggle, "Turn 3D view off", true, false, false);
+                TooltipHandler.TipRegion(toggle, "Always on with " + View3D.LockedBy);
+            }
+            else if (Widgets.ButtonText(toggle, View3D.Active ? "Turn 3D view off" : "Turn 3D view on"))
             {
                 View3D.Active = !View3D.Active;
             }
@@ -703,6 +708,12 @@ namespace IsoRim
             {
                 View3D.Active = true;
                 Log.Message("[IsoRim] -isorim3d: 3D view starts on.");
+            }
+            // A gameplay addon that needs the 3D view locks it on (set in the addon's mod constructor, before this runs).
+            if (View3D.LockedOn)
+            {
+                View3D.Active = true;
+                ModLog.Note("[IsoRim] 3D view locked on by " + View3D.LockedBy + ".");
             }
 
             try

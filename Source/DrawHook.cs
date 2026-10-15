@@ -14,6 +14,11 @@ namespace IsoRim
         public static bool active;
         public static Matrix4x4 xform = Matrix4x4.identity;
 
+        // Stacked floors (Floors): while set, everything drawn is also moved onto the floor of the thing being drawn
+        // (applied after xform, in drawn space). Independent of active.
+        public static bool floor;
+        public static Matrix4x4 floorMatrix = Matrix4x4.identity;
+
         // While set (with active), each mesh is instead stood upright where it is, facing the
         // camera, and raised by billboardHeight cells: status icons, bubbles and designations
         // float above things instead of lying on the floor.
@@ -58,6 +63,16 @@ namespace IsoRim
                 * local;
         }
 
+        // Transform (while active) and the floor (while floor).
+        public static Matrix4x4 Final(Matrix4x4 matrix)
+        {
+            if (active)
+            {
+                matrix = Transform(matrix);
+            }
+            return floor ? floorMatrix * matrix : matrix;
+        }
+
         // While set, nothing is drawn at all: a 3D model is standing in for the sprite.
         public static bool skip;
 
@@ -73,6 +88,10 @@ namespace IsoRim
             {
                 matrix = Transform(matrix);
             }
+            if (floor)
+            {
+                matrix = floorMatrix * matrix;
+            }
 
             Graphics.DrawMesh(mesh, matrix, material, layer);
         }
@@ -83,9 +102,9 @@ namespace IsoRim
             {
                 return;
             }
-            if (active)
+            if (active || floor)
             {
-                Graphics.DrawMesh(mesh, Transform(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer);
+                Graphics.DrawMesh(mesh, Final(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer);
             }
 
             else
@@ -104,6 +123,10 @@ namespace IsoRim
             {
                 matrix = Transform(matrix);
             }
+            if (floor)
+            {
+                matrix = floorMatrix * matrix;
+            }
 
             Graphics.DrawMesh(mesh, matrix, material, layer, camera, submeshIndex, properties);
         }
@@ -114,9 +137,9 @@ namespace IsoRim
             {
                 return;
             }
-            if (active)
+            if (active || floor)
             {
-                Graphics.DrawMesh(mesh, Transform(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer, camera, submeshIndex, properties);
+                Graphics.DrawMesh(mesh, Final(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer, camera, submeshIndex, properties);
             }
 
             else
@@ -132,9 +155,9 @@ namespace IsoRim
             {
                 return;
             }
-            if (active)
+            if (active || floor)
             {
-                Graphics.DrawMesh(mesh, Transform(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer, camera, submeshIndex);
+                Graphics.DrawMesh(mesh, Final(Matrix4x4.TRS(position, rotation, Vector3.one)), material, layer, camera, submeshIndex);
             }
             else
             {
