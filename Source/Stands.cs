@@ -18,7 +18,7 @@ namespace IsoRim
     //     lifted dressRise onto the stand, so heads, hats and clothes have a colonist's sizes and places;
     //   - the stand's head model (headModel) over the colonist's head (person_head), left out as the game
     //     leaves out its head while worn apparel hides the head (renderSkipFlags Head: the burka, shown
-    //     as a hood in its colour);
+    //     as the same closed burka covering a colonist gets, person_hat_burka, in its colour);
     //   - the clothes as the same 3D parts a colonist of that body type wears (People.Dress: trousers,
     //     shirt, coat or armour, hat or helmet), in the same colours;
     //   - packs, belts and waist tools with a 3D part (WornGear) on it as on a colonist; clothing with no 3D part
@@ -280,7 +280,8 @@ namespace IsoRim
             outfit.bodyKey = Key("b");
 
             // The head: the hat on the stand's head, as the game draws headgear only while the head shows;
-            // with the head hidden by a garment that covers it (the burka), a hood in that garment's colour.
+            // with the head hidden by a garment (renderSkipFlags Head: the burka), the closed covering a colonist gets
+            // (People: person_hat_burka) in that garment's colour.
             Begin();
             if (!skipHead)
             {
@@ -290,9 +291,9 @@ namespace IsoRim
                     Add(People.Part("person_visor"), Matrix4x4.identity, Color.white);
                 }
             }
-            else if (hides != null && (People.Covers(hides.def.apparel, "FullHead") || People.Covers(hides.def.apparel, "UpperHead")))
+            else if (hides != null)
             {
-                Add(People.Part("person_hat_hood"), Matrix4x4.identity, People.ApparelColour(hides));
+                Add(People.Part("person_hat_burka"), Matrix4x4.identity, People.ApparelColour(hides));
             }
             outfit.headKey = Key("h");
             outfit.made = true;
