@@ -96,6 +96,7 @@ namespace IsoRim
                     prefix: new HarmonyMethod(typeof(Floors), nameof(ThingPhase_Prefix)), finalizer: new HarmonyMethod(typeof(Floors), nameof(ThingPhase_Finalizer)));
                 h.Patch(AccessTools.Method(typeof(SectionLayer_Terrain), nameof(SectionLayer_Terrain.Regenerate)),
                     postfix: new HarmonyMethod(typeof(Floors), nameof(TerrainRegenerate_Postfix)));
+                PatchDrawing(h);
                 ModLog.Note("[IsoRim] Floor layout registered: stacked floors are drawn.");
             }
             catch (Exception e)
@@ -114,9 +115,25 @@ namespace IsoRim
             {
                 return;
             }
+            if (RimWorld.Planet.WorldRendererUtility.WorldRendered)
+            {
+                return;   // the world map is drawn: no map rows to move
+            }
             Refresh(layout, map);
             On = count > 0;
+            int sig = On ? groundRows * 31 + pointer : -1;
+            for (int k = 1; k <= count; k++)
+            {
+                sig = sig * 31 + (shown[k] ? 1 : 0) * 17 + Mathf.RoundToInt(heights[k] * 100f);
+            }
+            if (sig != viewSig)
+            {
+                viewSig = sig;
+                ViewChanged();
+            }
         }
+
+        private static int viewSig = int.MinValue;
 
         private static void Refresh(IFloorLayout layout, Map map)
         {
@@ -200,28 +217,61 @@ namespace IsoRim
             return k > 0 ? heights[k] : 0f;
         }
 
-        // A drawn-space matrix moved onto the floor of the row its translation is in (IsoRim's own marks: brackets,
-        // drag outlines, ghosts, the designator bracket).
-        public static Matrix4x4 ByZ(Matrix4x4 m)
+        // ---- THE drawing map (design "M1c-2 coordinates"): a point or matrix in the game's world space, whose z may be a
+        // row of an upper floor, to where it is drawn: moved down by that floor's rows and up by its height. Drawn
+        // space only ever holds ground rows (z < groundRows), so mapping twice changes nothing: every draw can go
+        // through it, at the bottom (Graphics, see PatchDrawing), whatever drew it before. False: the row is between
+        // floors or on a hidden floor (nothing is drawn there).
+        public static bool Drawn(ref Matrix4x4 m)
         {
-            if (!On)
+            if (!On || m.m23 < groundRows)
             {
-                return m;
+                return true;
             }
-            int z = Mathf.FloorToInt(m.m23);
-            if (z < groundRows)
+            int k = FloorOfRow(Mathf.FloorToInt(m.m23));
+            if (k <= 0 || !shown[k])
             {
-                return m;
+                return false;
             }
-            Matrix4x4 f;
-            RowMatrix(z, out f);
-            return f * m;
+            m = matrices[k] * m;
+            return true;
         }
 
-        // The whole drawn-space offset of a thing: its cell's floor plus the layout's extra offset. False = hidden.
-        public static bool ThingMatrix(Thing t, out Matrix4x4 m)
+        public static bool Drawn(ref Vector3 p)
         {
-            bool visible = RowMatrix(t.Position.z, out m);
+            if (!On || p.z < groundRows)
+            {
+                return true;
+            }
+            int k = FloorOfRow(Mathf.FloorToInt(p.z));
+            if (k <= 0 || !shown[k])
+            {
+                return false;
+            }
+            p = new Vector3(p.x, p.y + heights[k] / View3D.Squash, p.z - shifts[k]);
+            return true;
+        }
+
+        // The same as a value (culling, lighting lookups): the matrix where it shows (unchanged when hidden).
+        public static Matrix4x4 DrawnMatrix(Matrix4x4 m)
+        {
+            Drawn(ref m);
+            return m;
+        }
+
+        // Which way from one world point to another as drawn (flat): an aim between floors points at what is seen.
+        public static Vector3 FlatDelta(Vector3 from, Vector3 to)
+        {
+            Drawn(ref from);
+            Drawn(ref to);
+            Vector3 d = to - from;
+            d.y = 0f;
+            return d;
+        }
+
+        // The layout's extra offset of one thing (a pawn on a stair step), as a drawn-space matrix; identity for most.
+        public static Matrix4x4 ExtraMatrix(Thing t)
+        {
             Vector3 extra;
             try
             {
@@ -232,17 +282,7 @@ namespace IsoRim
                 extra = Vector3.zero;
                 Log.ErrorOnce("[IsoRim] The floor layout's thing offset failed: " + e, 93611402);
             }
-            if (extra != Vector3.zero)
-            {
-                m = Matrix4x4.Translate(new Vector3(extra.x, extra.y / View3D.Squash, extra.z)) * m;
-            }
-            return visible;
-        }
-
-        // A drawn-space matrix moved onto the floor of the thing being drawn now (IsoRim draws that bypass DrawHook).
-        public static Matrix4x4 InScope(Matrix4x4 m)
-        {
-            return DrawHook.floor ? DrawHook.floorMatrix * m : m;
+            return extra == Vector3.zero ? Matrix4x4.identity : Matrix4x4.Translate(new Vector3(extra.x, extra.y / View3D.Squash, extra.z));
         }
 
         // Drawn-space offset of a thing (culling boxes, name labels); zero without floors.
@@ -391,6 +431,12 @@ namespace IsoRim
                 // darken the ground under it a second time at night. Damage: IsoRim's own marks are on the shapes.
                 return false;
             }
+            if (layer is SectionLayer_EdgeShadows || layer.GetType().Name == "SectionLayer_SunShadows")
+            {
+                // The game's shadows round walls lie flat on the ground beside them; up here that is the open air,
+                // where they would hang as a dark sheet across the wall below.
+                return false;
+            }
             if (kind == 0)
             {
                 IsoGlow.DrawLayerMarks(layer, sectionMatrix);
@@ -474,16 +520,31 @@ namespace IsoRim
             List<Color32> cols = new List<Color32>();
             List<int> tris = new List<int>();
             CellRect rect = section.CellRect;
+            float floorH, belowH;
+            int unusedShift;
+            ColumnFloor(map, section.botLeft, out floorH, out unusedShift);
+            ColumnFloor(map, Stacked(map, section.botLeft, -1), out belowH, out unusedShift);
             foreach (IntVec3 c in rect)
             {
                 if (!Floored(map, c, floor))
                 {
                     continue;
                 }
+                // The column (design section 5): a wall here standing on a wall below is one wall through both storeys and
+                // fills the cell; over a wall below, the slab's edge starts at that wall's top (no face over its face).
+                float wallHere, wallBelow;
+                bool blockBelow = FullBlock(map, Stacked(map, c, -1), out wallBelow);
+                if (blockBelow && FullBlock(map, c, out wallHere))
+                {
+                    continue;
+                }
+                float sideBottom = blockBelow ? Mathf.Min(top, Mathf.Max(bottom, (belowH + wallBelow - floorH) / s)) : bottom;
                 Color32 col = map.terrainGrid.TerrainAt(c).DrawColor;
                 col.a = 255;
                 float x0 = c.x, x1 = c.x + 1, z0 = c.z, z1 = c.z + 1;
                 Quad(verts, cols, tris, col, new Vector3(x0, top, z0), new Vector3(x0, top, z1), new Vector3(x1, top, z1), new Vector3(x1, top, z0));
+                float bottomHere = bottom;
+                bottom = sideBottom;
                 if (!Floored(map, c + IntVec3.South, floor))
                 {
                     Quad(verts, cols, tris, col, new Vector3(x0, bottom, z0), new Vector3(x0, top, z0), new Vector3(x1, top, z0), new Vector3(x1, bottom, z0));
@@ -500,6 +561,7 @@ namespace IsoRim
                 {
                     Quad(verts, cols, tris, col, new Vector3(x1, bottom, z0), new Vector3(x1, top, z0), new Vector3(x1, top, z1), new Vector3(x1, bottom, z1));
                 }
+                bottom = bottomHere;
             }
             if (verts.Count == 0)
             {
@@ -548,6 +610,8 @@ namespace IsoRim
 
         // ---- things drawn every frame
 
+        // A thing on a hidden floor is not drawn at all; a pawn on a stair step gets its rise. The floor itself is
+        // added at the bottom (Drawn), like everything else.
         public static bool ThingPhase_Prefix(Thing __instance, DrawPhase phase, out bool __state)
         {
             __state = false;
@@ -555,11 +619,12 @@ namespace IsoRim
             {
                 return true;
             }
-            Matrix4x4 m;
-            if (!ThingMatrix(__instance, out m))
+            Matrix4x4 unused;
+            if (!RowMatrix(__instance.Position.z, out unused))
             {
                 return false;
             }
+            Matrix4x4 m = ExtraMatrix(__instance);
             if (m == Matrix4x4.identity)
             {
                 return true;
@@ -579,36 +644,466 @@ namespace IsoRim
             }
         }
 
-        // Sets the floor for what is drawn next for a thing or cell of a map (status icons, designations), saving what
-        // was there; nothing happens without floors or off the current map. A hidden floor skips the drawing.
-        public static void BeginFor(Thing t, IntVec3 cell, Map map, ref Patches.DrawScope state)
+        // ---- the bottom of all drawing (design "M1c-2 coordinates", section 3). On Waylith, UnityEngine.Graphics is managed code:
+        // every DrawMesh overload ends in DrawMeshCore or in an overload that queues the draw itself, every
+        // DrawMeshInstanced in one of three overloads. Those get Drawn; lines get their two ends mapped; the game's
+        // whole-map overlays (CellBoolDrawer) their cells; screen labels the point they are pinned to.
+        private static void PatchDrawing(Harmony h)
         {
-            if (!On || map == null || map != frameMap || t != null && !t.Spawned)
+            HarmonyMethod single = new HarmonyMethod(typeof(Floors), nameof(Single_Prefix));
+            HarmonyMethod array = new HarmonyMethod(typeof(Floors), nameof(InstancedArray_Prefix));
+            HarmonyMethod list = new HarmonyMethod(typeof(Floors), nameof(InstancedList_Prefix));
+            int n = 0;
+            foreach (System.Reflection.MethodInfo m in AccessTools.GetDeclaredMethods(typeof(Graphics)))
             {
-                return;
+                if (!m.IsStatic || m.ContainsGenericParameters)
+                {
+                    continue;
+                }
+                System.Reflection.ParameterInfo[] ps = m.GetParameters();
+                bool hasMatrix = false, hasArray = false, hasList = false;
+                foreach (System.Reflection.ParameterInfo p in ps)
+                {
+                    hasMatrix |= p.Name == "matrix" && p.ParameterType == typeof(Matrix4x4);
+                    hasArray |= p.Name == "matrices" && p.ParameterType == typeof(Matrix4x4[]);
+                    hasList |= p.Name == "matrices" && p.ParameterType == typeof(List<Matrix4x4>);
+                }
+                string calls = Calls(m);
+                if ((m.Name == "DrawMesh" || m.Name == "DrawMeshCore") && hasMatrix && calls.Contains("|Enqueue|"))
+                {
+                    h.Patch(m, prefix: single);
+                    n++;
+                }
+                else if (m.Name == "DrawMeshInstanced" && calls.Contains("|EnqueueInstancedDirect|") && (hasArray || hasList))
+                {
+                    h.Patch(m, prefix: hasArray ? array : list);
+                    n++;
+                }
             }
-            Matrix4x4 m;
-            bool visible = t != null ? ThingMatrix(t, out m) : RowMatrix(cell.z, out m);
-            state.floorChanged = true;
-            state.wasFloor = DrawHook.floor;
-            state.wasFloorMatrix = DrawHook.floorMatrix;
-            state.wasSkip = DrawHook.skip;
-            DrawHook.floor = m != Matrix4x4.identity;
-            DrawHook.floorMatrix = m;
-            if (!visible)
+            h.Patch(AccessTools.Method(typeof(GenDraw), nameof(GenDraw.DrawLineBetween), new[] { typeof(Vector3), typeof(Vector3), typeof(Material), typeof(float) }),
+                prefix: new HarmonyMethod(typeof(Floors), nameof(Line_Prefix)));
+            h.Patch(AccessTools.Method(typeof(CellBoolDrawer), nameof(CellBoolDrawer.RegenerateMesh)), postfix: new HarmonyMethod(typeof(Floors), nameof(CellBool_Postfix)));
+            h.Patch(AccessTools.Method(typeof(SectionLayer_LightingOverlay), nameof(SectionLayer_LightingOverlay.Regenerate)), postfix: new HarmonyMethod(typeof(Floors), nameof(LightingOverlay_Postfix)));
+            h.Patch(AccessTools.Method(typeof(Camera), nameof(Camera.WorldToScreenPoint), new[] { typeof(Vector3) }), prefix: new HarmonyMethod(typeof(Floors), nameof(WorldToScreen_Prefix)));
+            h.Patch(AccessTools.Method(typeof(MapDrawer), nameof(MapDrawer.MapMeshDirty), new[] { typeof(IntVec3), typeof(ulong), typeof(bool), typeof(bool) }),
+                postfix: new HarmonyMethod(typeof(Floors), nameof(MapMeshDirty_Postfix)));
+            ModLog.Note("[IsoRim] Floors: " + n + " Graphics entry points mapped to the floors.");
+        }
+
+        // The names of the methods a method calls, as "|a|b|".
+        private static string Calls(System.Reflection.MethodInfo m)
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder("|");
+            try
             {
-                DrawHook.skip = true;
+                foreach (KeyValuePair<System.Reflection.Emit.OpCode, object> ins in PatchProcessor.ReadMethodBody(m))
+                {
+                    if (ins.Value is System.Reflection.MethodInfo callee)
+                    {
+                        sb.Append(callee.Name).Append('|');
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return sb.ToString();
+        }
+
+        public static bool Single_Prefix(ref Matrix4x4 matrix)
+        {
+            return !On || Drawn(ref matrix);
+        }
+
+        private static Matrix4x4[] instanceBuffer = new Matrix4x4[256];
+        private static readonly List<Matrix4x4> instanceList = new List<Matrix4x4>();
+
+        public static bool InstancedArray_Prefix(ref Matrix4x4[] matrices, ref int count)
+        {
+            if (!On || matrices == null)
+            {
+                return true;
+            }
+            int n = Mathf.Min(count, matrices.Length);
+            int i = 0;
+            while (i < n && matrices[i].m23 < groundRows)
+            {
+                i++;
+            }
+            if (i == n)
+            {
+                return true;   // all on the ground (the usual case): untouched
+            }
+            if (instanceBuffer.Length < n)
+            {
+                instanceBuffer = new Matrix4x4[Mathf.NextPowerOfTwo(n)];
+            }
+            int kept = 0;
+            for (int j = 0; j < n; j++)
+            {
+                Matrix4x4 m = matrices[j];
+                if (Drawn(ref m))
+                {
+                    instanceBuffer[kept++] = m;
+                }
+            }
+            matrices = instanceBuffer;
+            count = kept;
+            return kept > 0;
+        }
+
+        public static bool InstancedList_Prefix(ref List<Matrix4x4> matrices)
+        {
+            if (!On || matrices == null || ReferenceEquals(matrices, instanceList))
+            {
+                return true;
+            }
+            int i = 0;
+            while (i < matrices.Count && matrices[i].m23 < groundRows)
+            {
+                i++;
+            }
+            if (i == matrices.Count)
+            {
+                return true;
+            }
+            instanceList.Clear();
+            for (int j = 0; j < matrices.Count; j++)
+            {
+                Matrix4x4 m = matrices[j];
+                if (Drawn(ref m))
+                {
+                    instanceList.Add(m);
+                }
+            }
+            matrices = instanceList;
+            return instanceList.Count > 0;
+        }
+
+        // A line between two points (paths, move orders, links): each end where it shows. Between floors the line
+        // climbs, so it is laid along the slope here instead of flat at one end's height.
+        public static bool Line_Prefix(ref Vector3 A, ref Vector3 B, Material mat, float lineWidth)
+        {
+            if (!On)
+            {
+                return true;
+            }
+            if (!Drawn(ref A) || !Drawn(ref B))
+            {
+                return false;
+            }
+            if (Mathf.Abs(A.y - B.y) < 0.01f)
+            {
+                return true;
+            }
+            Vector3 d = A - B;
+            if (d.magnitude < 0.01f)
+            {
+                return false;
+            }
+            Matrix4x4 matrix = Matrix4x4.TRS((A + B) * 0.5f, Quaternion.LookRotation(d), new Vector3(lineWidth, 1f, d.magnitude));
+            Graphics.DrawMesh(MeshPool.plane10, matrix, mat, 0);
+            return false;
+        }
+
+        // The screen point of a world point on the map camera (labels, damage numbers, arrows): where it shows.
+        public static void WorldToScreen_Prefix(Camera __instance, ref Vector3 position)
+        {
+            if (On && position.z >= groundRows && ReferenceEquals(__instance, Find.Camera))
+            {
+                Drawn(ref position);
             }
         }
 
-        // Puts back what BeginFor changed (Patches.Scope_Finalizer).
-        public static void EndFor(Patches.DrawScope state)
+        // The game's lighting overlay of the block holding the ground's top rows also covers the rows between the
+        // ground and the first floor (design section 6: the map ends at the ground's edge): there it would darken
+        // the empty background past the north edge. Its cells there are left out.
+        public static void LightingOverlay_Postfix(SectionLayer_LightingOverlay __instance)
         {
-            if (state.floorChanged)
+            Section s = layerSection(__instance);
+            int rows = s != null ? GroundRowsOf(s.map) : 0;
+            if (rows <= 0 || s.botLeft.z >= rows || s.botLeft.z + 17 <= rows)
             {
-                DrawHook.floor = state.wasFloor;
-                DrawHook.floorMatrix = state.wasFloorMatrix;
-                DrawHook.skip = state.wasSkip;
+                return;
+            }
+            List<LayerSubMesh> subs = __instance.subMeshes;
+            for (int i = 0; i < subs.Count; i++)
+            {
+                LayerSubMesh sm = subs[i];
+                List<int> t = sm.tris;
+                List<Vector3> v = sm.verts;
+                if (v.Count == 0)
+                {
+                    continue;
+                }
+                int kept = 0;
+                for (int j = 0; j + 2 < t.Count; j += 3)
+                {
+                    if (v[t[j]].z > rows || v[t[j + 1]].z > rows || v[t[j + 2]].z > rows)
+                    {
+                        continue;
+                    }
+                    t[kept++] = t[j];
+                    t[kept++] = t[j + 1];
+                    t[kept++] = t[j + 2];
+                }
+                if (kept < t.Count)
+                {
+                    t.RemoveRange(kept, t.Count - kept);
+                    if (sm.mesh != null)
+                    {
+                        sm.mesh.SetTriangles(t.ToArray(), 0);
+                    }
+                }
+            }
+        }
+
+        // ---- the game's whole-map overlays (home area, roofs, beauty, temperature ...): one mesh of world-space cell
+        // quads. Each cell's quad is moved onto its floor; on hidden floors and between floors it is folded away.
+        // The drawers are remembered so a change of the view (another floor shown) remakes them.
+        private static readonly AccessTools.FieldRef<CellBoolDrawer, List<Mesh>> boolMeshes = AccessTools.FieldRefAccess<CellBoolDrawer, List<Mesh>>("meshes");
+        private static readonly List<System.WeakReference<CellBoolDrawer>> boolDrawers = new List<System.WeakReference<CellBoolDrawer>>();
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CellBoolDrawer, object> boolKnown = new System.Runtime.CompilerServices.ConditionalWeakTable<CellBoolDrawer, object>();
+
+        public static void CellBool_Postfix(CellBoolDrawer __instance)
+        {
+            object unused;
+            if (!boolKnown.TryGetValue(__instance, out unused))
+            {
+                boolKnown.Add(__instance, null);
+                boolDrawers.Add(new System.WeakReference<CellBoolDrawer>(__instance));
+            }
+            if (!On)
+            {
+                return;
+            }
+            List<Mesh> meshes = boolMeshes(__instance);
+            for (int i = 0; meshes != null && i < meshes.Count; i++)
+            {
+                Mesh mesh = meshes[i];
+                Vector3[] v = mesh.vertices;
+                bool changed = false;
+                for (int q = 0; q + 3 < v.Length; q += 4)
+                {
+                    float z = Mathf.Min(Mathf.Min(v[q].z, v[q + 1].z), Mathf.Min(v[q + 2].z, v[q + 3].z));
+                    if (z < groundRows)
+                    {
+                        continue;
+                    }
+                    changed = true;
+                    Vector3 probe = new Vector3(v[q].x, v[q].y, z + 0.5f);
+                    if (!Drawn(ref probe))
+                    {
+                        v[q + 1] = v[q + 2] = v[q + 3] = v[q];
+                        continue;
+                    }
+                    Vector3 shift = probe - new Vector3(v[q].x, v[q].y, z + 0.5f);
+                    for (int c = 0; c < 4; c++)
+                    {
+                        v[q + c] += shift;
+                    }
+                }
+                if (changed)
+                {
+                    mesh.vertices = v;
+                    mesh.RecalculateBounds();
+                }
+            }
+        }
+
+        // The view changed (floors on, another floor shown, another height): the overlays are remade.
+        private static void ViewChanged()
+        {
+            for (int i = boolDrawers.Count - 1; i >= 0; i--)
+            {
+                CellBoolDrawer d;
+                if (boolDrawers[i].TryGetTarget(out d))
+                {
+                    d.SetDirty();
+                }
+                else
+                {
+                    boolDrawers.RemoveAt(i);
+                }
+            }
+        }
+
+        // ---- the floor column (design section 5): cell (x, z + k * zShift) stands over ground cell (x, z). These read the
+        // layout itself (not this frame's state), for code that builds meshes.
+
+        // The ground rows of a map with floors, else 0.
+        public static int GroundRowsOf(Map map)
+        {
+            IFloorLayout layout = Api.Floors;
+            if (layout == null || map == null)
+            {
+                return 0;
+            }
+            try
+            {
+                int rows = layout.GroundRows(map);
+                return rows > 0 && layout.FloorCount(map) > 0 ? rows : 0;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        // The floor of a cell (0 the ground, -1 between floors or without floors), its height and its row shift.
+        public static int ColumnFloor(Map map, IntVec3 c, out float height, out int zShift)
+        {
+            height = 0f;
+            zShift = 0;
+            int rows = GroundRowsOf(map);
+            if (rows <= 0)
+            {
+                return -1;
+            }
+            if (c.z < rows)
+            {
+                return 0;
+            }
+            int n = Mathf.Min(Api.Floors.FloorCount(map), MaxFloors);
+            for (int k = 1; k <= n; k++)
+            {
+                float h;
+                int z;
+                Api.Floors.Floor(map, k, out h, out z);
+                if (c.z >= z && c.z < z + rows)
+                {
+                    height = h;
+                    zShift = z;
+                    return k;
+                }
+            }
+            return -1;
+        }
+
+        // The cell dk floors above (or below, dk < 0) a cell in its column; Invalid where there is none.
+        public static IntVec3 Stacked(Map map, IntVec3 c, int dk)
+        {
+            float h;
+            int z;
+            int k = ColumnFloor(map, c, out h, out z);
+            int to = k + dk;
+            if (k < 0 || to < 0 || to > Mathf.Min(Api.Floors.FloorCount(map), MaxFloors))
+            {
+                return IntVec3.Invalid;
+            }
+            int zTo = 0;
+            if (to > 0)
+            {
+                float h2;
+                Api.Floors.Floor(map, to, out h2, out zTo);
+            }
+            return new IntVec3(c.x, 0, c.z - z + zTo);
+        }
+
+        // The floor above a cell exists there (it is the cell's roof: the slab).
+        public static bool SlabOver(Map map, IntVec3 c)
+        {
+            IntVec3 up = Stacked(map, c, 1);
+            return up.IsValid && up.InBounds(map) && !map.terrainGrid.TerrainAt(up).dontRender;
+        }
+
+        // A full-height block (a wall) in a cell, and its height.
+        public static bool FullBlock(Map map, IntVec3 c, out float height)
+        {
+            height = 0f;
+            if (!c.IsValid || !c.InBounds(map))
+            {
+                return false;
+            }
+            Building b = c.GetEdifice(map);
+            if (b == null || WallBoxes.Fill(b.def) < 0.9f)
+            {
+                return false;
+            }
+            ThingForm f = Forms.For(b.def);
+            if (f.form != Form3D.Block)
+            {
+                return false;
+            }
+            height = f.height;
+            return true;
+        }
+
+        // A block on an upper floor standing on a block below (one wall through both storeys): how far its sides
+        // go down to meet the one below (cells), the floor's height above the ground and its row shift (so the
+        // texture runs on). False (all zero) for anything else.
+        public static bool WallColumn(Map map, IntVec3 c, out float drop, out float floorHeight, out int zShift)
+        {
+            drop = 0f;
+            int k = ColumnFloor(map, c, out floorHeight, out zShift);
+            if (k <= 0)
+            {
+                return false;
+            }
+            float below;
+            IntVec3 under = Stacked(map, c, -1);
+            if (FullBlock(map, under, out below))
+            {
+                float hb;
+                int zb;
+                ColumnFloor(map, under, out hb, out zb);
+                drop = Mathf.Max(0f, floorHeight - hb - below) + 0.004f;
+            }
+            return true;
+        }
+
+        // Something in a column changed: the cells above and below it are remade too (a wall's sides reach down,
+        // a slab is a roof below it, a roof sits on top of a column).
+        private static bool dirtying;
+
+        public static void MapMeshDirty_Postfix(MapDrawer __instance, IntVec3 loc, ulong dirtyFlags)
+        {
+            if (dirtying || Api.Floors == null || Current.ProgramState != ProgramState.Playing || drawerSections(__instance) == null)
+            {
+                return;   // (as the game: nothing to remake while the map is made)
+            }
+            ulong want = (ulong)RimWorld.MapMeshFlagDefOf.Buildings | (ulong)RimWorld.MapMeshFlagDefOf.Terrain | (ulong)RimWorld.MapMeshFlagDefOf.Roofs;
+            if ((dirtyFlags & want) == 0)
+            {
+                return;
+            }
+            Map map = mapOfDrawer(__instance);
+            if (map == null || GroundRowsOf(map) <= 0)
+            {
+                return;
+            }
+            dirtying = true;
+            try
+            {
+                ulong flags = (ulong)RimWorld.MapMeshFlagDefOf.Buildings | (ulong)RimWorld.MapMeshFlagDefOf.Roofs;
+                SlabDirty(__instance, loc);
+                for (int dk = -1; dk <= 1; dk += 2)
+                {
+                    IntVec3 o = Stacked(map, loc, dk);
+                    if (o.IsValid && o.InBounds(map))
+                    {
+                        __instance.MapMeshDirty(o, flags);
+                        SlabDirty(__instance, o);
+                    }
+                }
+            }
+            finally
+            {
+                dirtying = false;
+            }
+        }
+
+        private static readonly AccessTools.FieldRef<MapDrawer, Map> mapOfDrawer = AccessTools.FieldRefAccess<MapDrawer, Map>("map");
+        private static readonly AccessTools.FieldRef<MapDrawer, Section[,]> drawerSections = AccessTools.FieldRefAccess<MapDrawer, Section[,]>("sections");
+
+        // The slab of the block holding a cell is built again (it leaves out cells with a wall through both storeys).
+        private static void SlabDirty(MapDrawer drawer, IntVec3 c)
+        {
+            Section s = c.InBounds(mapOfDrawer(drawer)) ? drawer.SectionAt(c) : null;
+            Slab slab;
+            if (s != null && slabs.TryGetValue(s, out slab))
+            {
+                slab.dirty = true;
             }
         }
     }

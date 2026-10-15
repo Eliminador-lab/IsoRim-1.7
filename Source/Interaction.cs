@@ -75,7 +75,7 @@ namespace IsoRim
             block.SetColor(colorId, col);
             float y = 0.015f / View3D.Squash;
             Matrix4x4 m = Matrix4x4.TRS(new Vector3((x0 + x1) * 0.5f, y, (z0 + z1) * 0.5f), Quaternion.identity, new Vector3(x1 - x0, 1f, z1 - z0));
-            Graphics.DrawMesh(Quad, Floors.ByZ(m), mat, 0, null, 0, block);
+            Graphics.DrawMesh(Quad, m, mat, 0, null, 0, block);
         }
 
         // How thick lines on the ground are, so they stay about two pixels wide at any zoom.
@@ -361,7 +361,7 @@ namespace IsoRim
                 bracketMat = MaterialPool.MatFrom("UI/Overlays/MouseoverBracketTex", ShaderDatabase.MetaOverlay);
             }
             Vector3 pos = c.ToVector3ShiftedWithAltitude(AltitudeLayer.MetaOverlays);
-            Graphics.DrawMesh(MeshPool.plane10, Floors.ByZ(View3D.LiftMatrix(snapTop + 0.02f) * Matrix4x4.Translate(pos)), bracketMat, 0);
+            Graphics.DrawMesh(MeshPool.plane10, View3D.LiftMatrix(snapTop + 0.02f) * Matrix4x4.Translate(pos), bracketMat, 0);
             return true;
         }
 

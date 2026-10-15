@@ -199,7 +199,7 @@ namespace IsoRim
                 colorId = Shader.PropertyToID("_Color");
             }
             block.SetColor(colorId, col);
-            Graphics.DrawMesh(mesh, Floors.ByZ(matrix), R3DMaterials.Ghost, 0, null, 0, block);
+            Graphics.DrawMesh(mesh, matrix, R3DMaterials.Ghost, 0, null, 0, block);
         }
 
         // The model as one white mesh, shaded a little by which way each face looks; the

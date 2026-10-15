@@ -274,7 +274,7 @@ namespace IsoRim
             {
                 Sweep();
             }
-            matrix = Floors.InScope(matrix);   // a thing on an upper floor: before culling, tested where it shows
+            matrix = Floors.DrawnMatrix(matrix);   // a thing on an upper floor: before culling, tested where it shows
             bool outlines = IsoRimMod.Settings.outlines;
             for (int i = 0; i < parts.Count; i++)
             {

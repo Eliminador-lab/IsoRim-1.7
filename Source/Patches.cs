@@ -1598,8 +1598,7 @@ namespace IsoRim
             Stance_Busy busy = pawn.stances != null ? pawn.stances.curStance as Stance_Busy : null;
             if (busy != null && busy.focusTarg.IsValid)
             {
-                Vector3 to = busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted();
-                to -= pawn.DrawPos;
+                Vector3 to = Floors.FlatDelta(pawn.DrawPos, busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted());   // as drawn: between floors too
                 if (to.x * to.x + to.z * to.z > 0.001f)
                 {
                     aim = to.AngleFlat();
@@ -2281,10 +2280,6 @@ namespace IsoRim
         // What DrawHook was doing before a scope started, so it can be put back afterwards.
         public struct DrawScope
         {
-            public bool floorChanged;   // Floors.BeginFor: the floor and skip below were saved
-            public bool wasFloor;
-            public Matrix4x4 wasFloorMatrix;
-            public bool wasSkip;
             public bool changed;
             public bool wasActive;
             public Matrix4x4 wasXform;
@@ -2370,7 +2365,6 @@ namespace IsoRim
                 DrawScope scope = default(DrawScope);
                 Vector3 at = __0.TrueCenter();
                 BeginBillboard(ref scope, Interaction.PickHeight(__0) + IconGap, true, at);
-                Floors.BeginFor(__0, __0.Position, __0.Map, ref scope);
                 DrawHook.DrawMesh(MeshPool.plane05, Matrix4x4.TRS(new Vector3(at.x, AltitudeLayer.MetaOverlays.AltitudeFor(), at.z), Quaternion.identity, Vector3.one), forbiddenMat, 0);
                 Scope_Finalizer(scope);
                 return false;
@@ -2439,7 +2433,6 @@ namespace IsoRim
                 }
                 Vector3 anchor = target.HasThing ? target.Thing.TrueCenter() : target.Cell.ToVector3Shifted();
                 BeginBillboard(ref __state, h + IconGap, true, anchor);
-                Floors.BeginFor(target.HasThing && target.Thing.Spawned ? target.Thing : null, target.Cell, map, ref __state);
             }
             catch (Exception e)
             {
@@ -2486,12 +2479,10 @@ namespace IsoRim
                 Log.ErrorOnce("[IsoRim] Finding the height for a status icon failed: " + e, 93611191);
             }
             BeginBillboard(ref __state, h + IconGap, true, __0.TrueCenter());
-            Floors.BeginFor(__0, __0.Position, __0.Map, ref __state);
         }
 
         public static void Scope_Finalizer(DrawScope __state)
         {
-            Floors.EndFor(__state);
             if (__state.changed)
             {
                 DrawHook.active = __state.wasActive;
