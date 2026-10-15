@@ -52,6 +52,8 @@ namespace IsoRim
         public bool layFlat = false;        // the model is built as held; on the ground it is tipped onto its side
         public float scatter = 0f;          // move each thing up to this far (in cells) off the middle of its cell
         public bool spriteTint = false;     // colour "stuff" parts from the thing's own sprite instead of its material
+        public bool paintedHull = false;    // a paintable building made of no stuff: its "stuff" parts are the paint,
+                                            // white while unpainted and the paint colour once painted, on the Metal swatch
         public string fallback;             // "SmallPlants": every plant that is not a tree and has no other entry
 
         public bool wallMounted = false;    // fixed to the wall the thing faces (wall lamps)
@@ -2027,13 +2029,31 @@ namespace IsoRim
         // needs most of, as if it were built of that, instead of coming out white.
         public static Color ModelTint(Thing t)
         {
+            if (PaintedHull(t))
+            {
+                Building b = t as Building;
+                return b != null && b.PaintColorDef != null ? b.PaintColorDef.color : Color.white;
+            }
             ThingDef cost = t.Stuff == null ? CostStuffIfWhite(t.def, t.DrawColor) : null;
             return cost != null ? t.def.GetColorForStuff(cost) : t.DrawColor;
         }
 
         public static string ModelSwatch(Thing t)
         {
+            if (PaintedHull(t))
+            {
+                return "Metal";
+            }
             return SwatchOf(t.Stuff ?? CostStuffIfWhite(t.def, t.DrawColor));
+        }
+
+        // A building whose binding says its "stuff" parts are its paint (ModelDef.paintedHull, the
+        // passenger shuttle): unpainted it stays the white of its sprite instead of taking the colour
+        // of the steel in its cost list, painted it takes the paint as the game's sprite does.
+        private static bool PaintedHull(Thing t)
+        {
+            ModelEntry entry;
+            return t != null && t.Stuff == null && t.def != null && ModelLibrary.TryGet(t.def, out entry) && entry.def.paintedHull;
         }
 
         // Harness colour sweep: the same for a def made of stuff (null = none), unspawned.
@@ -2043,6 +2063,11 @@ namespace IsoRim
             {
                 return def.GetColorForStuff(stuff);
             }
+            ModelEntry painted;
+            if (def != null && ModelLibrary.TryGet(def, out painted) && painted.def.paintedHull)
+            {
+                return Color.white;
+            }
             Color c = def.graphicData != null ? def.graphicData.color : Color.white;
             ThingDef cost = CostStuffIfWhite(def, c);
             return cost != null ? def.GetColorForStuff(cost) : c;
@@ -2050,6 +2075,11 @@ namespace IsoRim
 
         public static string SwatchFor(ThingDef def, ThingDef stuff)
         {
+            ModelEntry painted;
+            if (stuff == null && def != null && ModelLibrary.TryGet(def, out painted) && painted.def.paintedHull)
+            {
+                return "Metal";
+            }
             return SwatchOf(stuff ?? CostStuffIfWhite(def, def.graphicData != null ? def.graphicData.color : Color.white));
         }
 

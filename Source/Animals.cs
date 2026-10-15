@@ -12,7 +12,7 @@ namespace IsoRim
     // entries in Defs/Models.xml). Unlike a sprite, which only has four facings, the model
     // turns to face the way the animal is actually walking, and its legs swing in step with
     // the ground it covers. Asleep it settles onto its belly with its legs folded away; downed
-    // or dead it lies on its side.
+    // or dead it lies on its side. Flying (birds) it rises over its cell with its legs tucked away.
     public static class Animals
     {
         // What has to be remembered about one animal from frame to frame.
@@ -51,6 +51,7 @@ namespace IsoRim
             bool lying = dead || pawn.GetPosture() != PawnPosture.Standing;
             bool onSide = dead || pawn.Downed;
             float lift = Carried.LiftOf(pawn, ref drawLoc);   // carried by a 3D pawn
+            float flight = FlightOf(pawn, ref drawLoc);       // in the air (before the facing: taking off is not a step north)
 
             float yaw;
             float phase = 0f;
@@ -90,7 +91,7 @@ namespace IsoRim
                     }
                 }
             }
-            ground += lift;
+            ground += lift + flight;
             Vector3 position = new Vector3(drawLoc.x, ground, drawLoc.z);
             Matrix4x4 sized = Matrix4x4.Scale(new Vector3(size, size, size));
 
@@ -112,6 +113,13 @@ namespace IsoRim
                 bodyPose = Matrix4x4.Translate(new Vector3(0f, -def.legLength * size * 0.78f, 0f));
                 drawLegs = false;
             }
+            else if (flight > 0f)
+            {
+                // In the air: no stepping; the legs are tucked away once it is off the ground.
+                bodyPose = Matrix4x4.identity;
+                drawLegs = flight < FlightHeight * 0.25f;
+                gait = 0f;
+            }
             else
             {
                 // A slight rise and fall with each step.
@@ -120,8 +128,9 @@ namespace IsoRim
             }
 
             DynamicModels.DrawLocal(body, position, yaw, bodyPose * sized, Color.white, null);
-            if (ground <= 0f)
+            if (ground - flight <= 0f)
             {
+                // On the ground, or flying: the shadow stays on the ground (the blob is drawn at ground height).
                 GroundShadows.Blob(position, yaw, def.bodyHalfWidth * size * 1.5f, def.bodyHalfLength * size * 1.25f);
             }
 
@@ -171,6 +180,29 @@ namespace IsoRim
             phase = st.phase;
             gait = st.gait;
             travel = st.travel;
+        }
+
+        // How high a flying animal is drawn above the ground at full flight (cells). The game draws a flier
+        // 0.6 cells up the screen (Pawn_DrawTracker.FlyingOffset) and a little bigger; from the 3D camera's
+        // pitch a lift of this much looks about that high.
+        internal const float FlightHeight = 0.75f;
+
+        // An animal in the air (Pawn_FlightTracker, 1.7 birds: taking off, flying, landing). Takes the game's
+        // screen offset back out of drawLoc, so the model stays over its cell, and gives the height instead,
+        // eased in and out by the game's own take-off and landing curves (PositionOffsetFactor 0..1).
+        private static float FlightOf(Pawn pawn, ref Vector3 drawLoc)
+        {
+            if (pawn.flight == null || pawn.Dead)
+            {
+                return 0f;
+            }
+            float f = pawn.flight.PositionOffsetFactor;
+            if (f <= 0f)
+            {
+                return 0f;
+            }
+            drawLoc.z -= 0.6f * f;   // Pawn_DrawTracker.FlyingOffset
+            return FlightHeight * f;
         }
 
         // Young animals are smaller. The game's own measure of body size shrinks much faster

@@ -151,7 +151,7 @@ namespace IsoRim
 
             float stuffFrac = total > 0f ? stuffArea / total : 0f;
             bool whiteTint = tint.r > 0.97f && tint.g > 0.97f && tint.b > 0.97f;
-            if (stuff == null && stuffFrac > 0.05f && whiteTint && !entry.def.spriteTint)
+            if (stuff == null && stuffFrac > 0.05f && whiteTint && !entry.def.spriteTint && !entry.def.paintedHull)
             {
                 flags.Add("STUFFLESS_WHITE");
             }
