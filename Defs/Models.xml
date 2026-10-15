@@ -1628,7 +1628,7 @@
     <thingDef>ElectricCrematorium</thingDef>
     <model>Models/crematorium.obj</model>
     <surfaceHeight>0.00</surfaceHeight>
-    <builtFor>(2, 2)</builtFor>
+    <builtFor>(3, 2)</builtFor>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -1636,7 +1636,7 @@
     <thingDef>HiTechResearchBench</thingDef>
     <model>Models/bench_hitech_research.obj</model>
     <surfaceHeight>0.62</surfaceHeight>
-    <builtFor>(3, 2)</builtFor>
+    <builtFor>(3, 2.5)</builtFor> <!-- 3x2 model on 5x2: full width, depth x0.8, height x1.15 (drawn 1.52; was (3, 2): x1.29, 1.70) -->
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -5161,7 +5161,7 @@
     <builtFor>(3, 2)</builtFor>
     <glassModel>Models/mech_gestator_glass.obj</glassModel>
     <surfaceHeight>0.32</surfaceHeight>
-    <contentTop>1.5</contentTop>
+    <contentTop>1.44</contentTop> <!-- chamber 0.20 shorter (glass top 1.39): 1.44 still fits the 1x1 forming mech at full size at its highest bob; its visible top stays under 1.35 -->
     <barHeight>0.31</barHeight>
   </IsoRim.ModelDef>
   <IsoRim.ModelDef>
