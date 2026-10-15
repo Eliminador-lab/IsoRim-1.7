@@ -199,6 +199,10 @@ namespace IsoRim
 
             Diagnostics();
 
+            // Crash trail (log only): a modal window opened while the 3D view is on gets one line in the
+            // player's log, so a log that ends in a graphics crash shows whether a dialog had just opened.
+            Patch("crash trail", AccessTools.Method(typeof(WindowStack), nameof(WindowStack.Add)), postfix: nameof(WindowStackAdd_Postfix));
+
             // The game's flat outlines of things seen through walls are made from the sprite work
             // skipped above, and do not fit 3D figures anyway, so they are left out in 3D.
             MethodInfo silhouettes = FindMethod(typeof(DynamicDrawManager), "DrawSilhouettes");
@@ -1519,6 +1523,18 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Picking a 3D shape under the pointer failed: " + e, 93611162);
             }
+        }
+
+        private static int windowsLogged;
+
+        public static void WindowStackAdd_Postfix(Window window)
+        {
+            if (!View3D.Active || window == null || !(window.forcePause || window.absorbInputAroundWindow) || windowsLogged >= 40)
+            {
+                return;
+            }
+            windowsLogged++;
+            Log.Message("[IsoRim] window opened in 3D: " + window.GetType().Name + " (frame " + Time.frameCount + ")");
         }
 
         // With the -isorimdiag switch (see ModLog.Diag), writes what the 3D view depends on to the
