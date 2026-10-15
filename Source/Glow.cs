@@ -168,6 +168,7 @@ namespace IsoRim
         private static readonly int skyId = Shader.PropertyToID("_IsoSky");
         private static readonly int mapId = Shader.PropertyToID("_IsoGlowMap");
         private static readonly int texId = Shader.PropertyToID("_IsoGlowTex");
+        private static readonly int floorsId = Shader.PropertyToID("_IsoFloorGlow");   // stacked floors: Floors.GlowFloors
         private static readonly int glowModeId = Shader.PropertyToID("_GlowMode");
         private static readonly int colorId = Shader.PropertyToID("_Color");
         private static readonly int mainTexStId = Shader.PropertyToID("_MainTex_ST");
@@ -346,6 +347,7 @@ namespace IsoRim
             Shader.SetGlobalVector(mapId, new Vector4(g.origin.x, g.origin.y, 1f / g.width, 1f / g.height));
             Color sky = SkyFor(map);
             Shader.SetGlobalVector(skyId, new Vector4(sky.r, sky.g, sky.b, 1f));
+            Shader.SetGlobalVector(floorsId, Floors.GlowFloors());
         }
 
         // No glow, no roof cover, white sky: light 1 (also the state before the first frame, so
@@ -367,6 +369,7 @@ namespace IsoRim
             Shader.SetGlobalTexture(texId, neutral);
             Shader.SetGlobalVector(mapId, new Vector4(0f, 0f, 1f, 1f));
             Shader.SetGlobalVector(skyId, new Vector4(1f, 1f, 1f, 1f));
+            Shader.SetGlobalVector(floorsId, Vector4.zero);
         }
 
         // ---- the copy from the game's overlay

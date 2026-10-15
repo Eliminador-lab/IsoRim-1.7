@@ -42,6 +42,7 @@ layout(set = 2, binding = 0) uniform MaterialUniforms
     float _OutlinePush; // @default = 0.0   vertex stage only (IsoRim.vert.glsl): moving outlines
     vec4 _IsoCellMap; // global, no default: (origin x, origin z, W, H) of the cell texture (IsoCellMap)
     vec4 _IsoLevel;   // global, no default: x = the map's ground height in cells, y = what is left of a cut wall
+    vec4 _IsoFloorGlow; // global, no default: stacked floors (Floors.GlowFloors): x = floors above the ground, y = storey height (true cells), z = rows from one floor to the next; 0 without floors
 } uMaterial;
 
 layout(set = 2, binding = 1) uniform sampler2D _MainTex;
@@ -150,6 +151,14 @@ void main()
             vec2 xz = vWorldPos.xz;
             if (squash > 0.0 && abs(faceNormal.y) < 0.92)
                 xz += faceNormal.xz * 0.1;
+            // Stacked floors (Floors.GlowFloors): an upper floor is drawn over the ground rows, but its cells and
+            // their light are rows further north. What is at or above floor k's height takes the light of floor k's
+            // cell over that spot (the ground's walls end 0.02 below the first floor; nothing reaches through a floor).
+            vec4 fg = uMaterial._IsoFloorGlow;
+            if (fg.x > 0.5 && fg.y > 0.0)
+            {
+                xz.y += clamp(floor((p.y + 0.01) / fg.y), 0.0, fg.x) * fg.z;
+            }
             vec4 gm = uMaterial._IsoGlowMap;
             vec2 uv = vec2((xz.x - gm.x + 0.5) * gm.z, 1.0 - (xz.y - gm.y + 0.5) * gm.w);
             g = textureLod(_IsoGlowTex, uv, 0.0);
