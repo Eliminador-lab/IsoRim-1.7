@@ -1,0 +1,57 @@
+# IsoRim medicine colours (tools/make_medicine.py), from the vanilla sprites; fixed (no stuff)
+
+newmtl medicine_ind_case
+Kd 0.400 0.580 0.600
+
+newmtl medicine_ind_side
+Kd 0.330 0.480 0.500
+
+newmtl medicine_ind_seam
+Kd 0.140 0.200 0.210
+
+newmtl medicine_ind_line
+Kd 0.310 0.390 0.400
+
+newmtl medicine_ind_cross
+Kd 0.620 0.740 0.740
+
+newmtl medicine_ult_case
+Kd 0.660 0.660 0.660
+
+newmtl medicine_ult_frame
+Kd 0.470 0.470 0.480
+
+newmtl medicine_ult_side
+Kd 0.420 0.420 0.430
+
+newmtl medicine_ult_seam
+Kd 0.160 0.160 0.170
+
+newmtl medicine_ult_line
+Kd 0.310 0.390 0.400
+
+newmtl medicine_ult_cross
+Kd 0.640 0.760 0.760
+
+newmtl medicine_herb_band
+Kd 0.360 0.290 0.190
+
+newmtl medicine_herb_side
+Kd 0.300 0.240 0.160
+
+newmtl medicine_herb_tie
+Kd 0.200 0.160 0.100
+
+newmtl medicine_herb_line
+Kd 0.090 0.110 0.090
+
+newmtl medicine_herb_cross
+Kd 0.450 0.580 0.440
+
+newmtl medicine_herb_leaf
+Kd 0.260 0.350 0.160
+map_Kd IsoRim/Swatches/Leaf
+
+newmtl medicine_herb_leaf2
+Kd 0.200 0.270 0.120
+map_Kd IsoRim/Swatches/Leaf
