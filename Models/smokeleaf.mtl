@@ -1,0 +1,13 @@
+# IsoRim smokeleaf (GPT delivery 20261014-1814): fixed leaf colours
+newmtl smoke26_leaf
+Kd 0.34 0.42 0.27
+
+newmtl smoke26_light
+Kd 0.4 0.48 0.31
+
+newmtl smoke26_dark
+Kd 0.25 0.33 0.2
+
+newmtl smoke26_stem
+Kd 0.28 0.36 0.2
+

@@ -20,6 +20,7 @@ namespace IsoRim
     //   snow=<depth>,x0,z0,x1,z1     snow over a rectangle
     //   terrain=<Def>,x0,z0,x1,z1    terrain over a rectangle
     //   spawn=<Def>,x,z[,<Stuff>|-[,<count>]]  a thing (the player's), optionally a stack
+    //   grow=x0,z0,x1,z1,<0-1>       every plant in the rectangle set to that growth (map mesh redrawn)
     //   roof=0|1,x0,z0,x1,z1         built roof off or on over a rectangle
     //   active=0|1                   the 3D view off or on
     //   fog=x0,z0,x1,z1              fog of war over a rectangle
@@ -228,6 +229,31 @@ namespace IsoRim
                             map.terrainGrid.SetTerrain(c, def);
                         }
                     }
+                    break;
+                }
+                case "grow":
+                {
+                    // grow=x0,z0,x1,z1,<growth>: plants shown at a set growth stage (crop size checks).
+                    float growth = float.Parse(a[4], CultureInfo.InvariantCulture);
+                    int grown = 0;
+                    foreach (IntVec3 c in Rect(a, 0))
+                    {
+                        if (!c.InBounds(map))
+                        {
+                            continue;
+                        }
+                        foreach (Thing t in c.GetThingList(map).ToList())
+                        {
+                            Plant plant = t as Plant;
+                            if (plant != null)
+                            {
+                                plant.Growth = growth;
+                                plant.DirtyMapMesh(map);
+                                grown++;
+                            }
+                        }
+                    }
+                    Log.Message("[IsoRim probe] grow: " + grown + " plants at " + growth.ToString("0.00"));
                     break;
                 }
                 case "spawn":

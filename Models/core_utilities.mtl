@@ -1,0 +1,33 @@
+# IsoRim core utilities (GPT delivery 20261014-1733, adapted by Claude): fixed colours from the vanilla sprites; utility_ renamed coreutil_; stuff_plain/stuff_plain_dark come from isorim.mtl
+newmtl coreutil_base
+Kd 0.3 0.31 0.3
+
+newmtl coreutil_edge
+Kd 0.43 0.44 0.41
+
+newmtl coreutil_green
+Kd 0.43 0.47 0.39
+
+newmtl coreutil_green_dark
+Kd 0.32 0.36 0.29
+
+newmtl coreutil_metal
+Kd 0.53 0.55 0.54
+
+newmtl coreutil_dark
+Kd 0.17 0.19 0.18
+
+newmtl coreutil_red
+Kd 0.43 0.21 0.2
+
+newmtl coreutil_blue
+Kd 0.3 0.41 0.46
+
+newmtl coreutil_screen
+Kd 0.12 0.19 0.17
+
+newmtl coreutil_indicator
+Kd 0.36 0.66 0.34
+
+newmtl coreutil_bedding
+Kd 0.61 0.61 0.56

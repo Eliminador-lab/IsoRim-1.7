@@ -394,6 +394,7 @@
     <thingDef>WoodFiredGenerator</thingDef>
     <model>Models/wood_fired_generator.obj</model>
     <surfaceHeight>0.00</surfaceHeight>
+    <builtFor>(2, 2)</builtFor>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -1439,8 +1440,8 @@
   <IsoRim.ModelDef>
     <defName>R3D_AnimalSleepingBox</defName>
     <thingDef>AnimalSleepingBox</thingDef>
-    <model>Models/animal_bed.obj</model>
-    <surfaceHeight>0.12</surfaceHeight>
+    <model>Models/animal_sleeping_box.obj</model>
+    <surfaceHeight>0.145</surfaceHeight>
     <builtFor>(1, 1)</builtFor>
   </IsoRim.ModelDef>
 
@@ -1659,7 +1660,7 @@
     <thingDef>GroundPenetratingScanner</thingDef>
     <model>Models/gp_scanner.obj</model>
     <surfaceHeight>0.00</surfaceHeight>
-    <builtFor>(2, 2)</builtFor>
+    <builtFor>(3, 3)</builtFor>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>

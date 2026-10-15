@@ -1,0 +1,3 @@
+# IsoRim flak jacket (GPT delivery 20261014-1831, adapted by Claude): body uses stuff_plain* from isorim.mtl (follows apparel colour/dye), collar binding fixed dark like the flak vest straps
+newmtl flakjacket26_binding
+Kd 0.10 0.11 0.12

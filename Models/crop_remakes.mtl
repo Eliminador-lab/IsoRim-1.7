@@ -1,0 +1,40 @@
+# IsoRim crop remakes (GPT delivery 20261014-1802): fixed crop colours
+newmtl crop26_heal_dark
+Kd 0.14 0.27 0.2
+
+newmtl crop26_heal_green
+Kd 0.23 0.36 0.27
+
+newmtl crop26_heal_ridge
+Kd 0.27 0.41 0.31
+
+newmtl crop26_heal_teal
+Kd 0.22 0.43 0.44
+
+newmtl crop26_heal_teal_light
+Kd 0.29 0.5 0.5
+
+newmtl crop26_stem
+Kd 0.26 0.39 0.18
+
+newmtl crop26_potato
+Kd 0.27 0.43 0.14
+
+newmtl crop26_potato_light
+Kd 0.33 0.49 0.18
+
+newmtl crop26_potato_dark
+Kd 0.21 0.34 0.11
+
+newmtl crop26_rice
+Kd 0.27 0.51 0.23
+
+newmtl crop26_rice_light
+Kd 0.36 0.59 0.27
+
+newmtl crop26_rice_dark
+Kd 0.24 0.43 0.2
+
+newmtl crop26_panicle
+Kd 0.5 0.61 0.27
+
