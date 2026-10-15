@@ -1,0 +1,12 @@
+# IsoRim coats, robes, suits and straps (Claude, tools/make_coats.py)
+# stuff_coat_under: dark suit / straps that still take the apparel colour (vanilla draws dark grey x colour)
+newmtl stuff_coat_under
+Kd 0.300 0.300 0.300
+# stuff_coat_brown(_dark): the heavy bandolier's painted brown leather x stuff colour
+newmtl stuff_coat_brown
+Kd 0.560 0.400 0.270
+newmtl stuff_coat_brown_dark
+Kd 0.400 0.285 0.195
+# coat_trim: buttons; fixed dark
+newmtl coat_trim
+Kd 0.100 0.110 0.120

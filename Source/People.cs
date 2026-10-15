@@ -17,6 +17,9 @@ namespace IsoRim
     //   - skin colour; hair in the person's own colour and roughly their own cut; a beard;
     //   - what they are wearing: trousers and shirt colour the lower and upper body, a jacket or
     //     a long coat goes over them, armour adds plates, and a hat, helmet or hood goes on top.
+    //     Coats, robes, suits and straps the mod has a shape for (CoatShapes) get it; a flak vest under one that is
+    //     open at the front shows its front plate in the opening, and under a strap it shows whole with the strap
+    //     made to go over it, as the game's sprites do.
     // Because all of it is read from the person, anyone the game makes up gets a figure to match.
     // Like the animals, a figure turns to face the way it is really walking.
     // Anomaly: a ghoul gets its own head (by its forced head type), its own hair, the ridged ghoulskin over the
@@ -39,6 +42,7 @@ namespace IsoRim
             public Model lower;
             public Model upper;
             public Model coat;
+            public Model underCoat;   // a flak vest under the coat: its front plate in an open coat's front (no outline), or whole under a strap
             public Model hair;
             public Model hairTop;     // a hairstyle's separate part (topbun_tail's bun), drawn with the hair
             public bool hairShown;    // the game draws hair now (no headgear hides it)
@@ -56,6 +60,7 @@ namespace IsoRim
             public Color upperColor = Color.white;
             public Color lowerColor = Color.white;
             public Color coatColor = Color.white;
+            public Color underCoatColor = Color.white;
             public Color hatColor = Color.white;
             public Color legArmourColor = Color.white;
             public Model ownHead;     // replaces head and face (ghoul heads), already as wide as the head type
@@ -109,7 +114,7 @@ namespace IsoRim
             public bool SameAs(Look o)
             {
                 return o != null && size == o.size && headWide == o.headWide && shoulders == o.shoulders && bodyScale == o.bodyScale && lower == o.lower && upper == o.upper
-                    && coat == o.coat && hair == o.hair && hairTop == o.hairTop && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
+                    && coat == o.coat && underCoat == o.underCoat && underCoatColor == o.underCoatColor && hair == o.hair && hairTop == o.hairTop && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
                     && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden && headHidden == o.headHidden
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
                     && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
@@ -192,6 +197,7 @@ namespace IsoRim
                 AddPart(look.barbs, bodyPlace, Color.white);
                 AddPart(look.plating, bodyPlace, Color.white);
                 AddPart(look.legArmour, bodyPlace, look.legArmourColor);
+                AddPart(look.underCoat, bodyPlace, look.underCoatColor);
                 AddPart(look.coat, bodyPlace, look.coatColor);
                 for (int i = 0; i < look.gear.Count; i++)
                 {
@@ -840,6 +846,8 @@ namespace IsoRim
             int lowerLayer = -1;
             string hatKind = null;
             string coatKind = null;
+            string coatFallback = null;
+            Under coatUnder = Under.Hidden;
             string legArmourKind = null;
             string vestKind = null;
             string shellArmourKind = null;
@@ -913,9 +921,23 @@ namespace IsoRim
                     if (layer == 2 && torso)
                     {
                         bool longCoat = legs || Has(name, "Duster") || Has(name, "Parka") || Has(name, "Robe") || Has(name, "Cape") || Has(name, "Coat");
-                        coatKind = longCoat && !armour ? "coat_long" : "coat_short";
-                        look.coatColor = colour;
-                        look.pads |= armour;
+                        coatFallback = longCoat && !armour ? "coat_long" : "coat_short";
+                        CoatShape shape;
+                        if (CoatShapes.TryGetValue(name, out shape))
+                        {
+                            // Its own shape paints its own light and dark zones: the item's colour, white when undyed
+                            // (not the sprite's mean, which would grey a painted suit). Its own shoulders: no pads.
+                            coatKind = shape.file;
+                            coatUnder = shape.under;
+                            look.coatColor = a.DrawColor;
+                        }
+                        else
+                        {
+                            coatKind = coatFallback;
+                            coatUnder = Under.Hidden;
+                            look.coatColor = colour;
+                            look.pads |= armour;
+                        }
                         if (armour && legs && layer > lowerLayer)
                         {
                             look.lowerColor = colour;   // armour that reaches the legs
@@ -937,7 +959,8 @@ namespace IsoRim
                 }
             }
             // Armour the mod has a shape for takes the place of a coat (it is worn on the same
-            // outer layer); a flak vest shows only when nothing is worn over it.
+            // outer layer); a flak vest shows whole when nothing is worn over it or only a strap, and
+            // its front plate in the opening of a coat that is open at the front.
             if (shellArmourKind != null)
             {
                 look.coat = Part("person_" + build + "_armor_" + shellArmourKind);
@@ -946,7 +969,21 @@ namespace IsoRim
             }
             else if (coatKind != null)
             {
-                look.coat = Part("person_" + build + "_" + coatKind);
+                Model overVest = vestKind != null && coatUnder == Under.Whole ? Part("person_" + build + "_" + coatKind + "_overvest") : null;
+                look.coat = overVest ?? Part("person_" + build + "_" + coatKind) ?? Part("person_" + build + "_" + coatFallback);
+                if (vestKind != null && coatUnder == Under.FrontPlate)
+                {
+                    // The game draws the vest under the coat, so its plate shows in the open front; only that plate,
+                    // seated inside the coat, and with no outline (its edge would draw over the coat).
+                    look.underCoat = NoOutline(Part("person_" + build + "_armor_" + vestKind + "_front"));
+                    look.underCoatColor = vestColour;
+                }
+                else if (overVest != null)
+                {
+                    // A strap over a vest: the whole vest, the strap made to go round it (<shape>_overvest).
+                    look.underCoat = Part("person_" + build + "_armor_" + vestKind);
+                    look.underCoatColor = vestColour;
+                }
             }
             else if (vestKind != null)
             {
@@ -993,6 +1030,59 @@ namespace IsoRim
                 look.gearAnchor.Add(anchor);
             }
             return hatKind;
+        }
+
+        // Outer clothing with its own worn shape (Models/person_<build>_<file>.obj, materials in coats.mtl), and how
+        // a flak vest worn under it shows, by vanilla's sprites: in the open front of the duster, lab coat, jacket,
+        // royal robe, psyfocus robe and cape (its front plate); whole around the straps (the strap's _overvest shape
+        // goes over it); not at all under the parka, robe and burka. The suits and the locust armour take the middle
+        // layer, so no vest goes under them. Anything else on the shell layer gets the generic coat_long or coat_short.
+        internal enum Under { Hidden, FrontPlate, Whole }
+
+        internal struct CoatShape
+        {
+            public string file;
+            public Under under;
+
+            public CoatShape(string file, Under under)
+            {
+                this.file = file;
+                this.under = under;
+            }
+        }
+
+        internal static readonly Dictionary<string, CoatShape> CoatShapes = new Dictionary<string, CoatShape>
+        {
+            { "Apparel_Duster", new CoatShape("duster", Under.FrontPlate) },
+            { "Apparel_LabCoat", new CoatShape("labcoat", Under.FrontPlate) },
+            { "Apparel_Jacket", new CoatShape("jacket", Under.FrontPlate) },
+            { "Apparel_Parka", new CoatShape("parka", Under.Hidden) },
+            { "Apparel_Robe", new CoatShape("robe", Under.Hidden) },
+            { "Apparel_RobeRoyal", new CoatShape("robe_royal", Under.FrontPlate) },
+            { "Apparel_PsyfocusRobe", new CoatShape("robe_psy", Under.FrontPlate) },
+            { "Apparel_Burka", new CoatShape("burka_body", Under.Hidden) },
+            { "Apparel_Cape", new CoatShape("cape", Under.FrontPlate) },
+            { "Apparel_MechlordSuit", new CoatShape("mechlord", Under.Hidden) },
+            { "Apparel_Vacsuit", new CoatShape("vacsuit", Under.Hidden) },
+            { "Apparel_VacsuitChildren", new CoatShape("vacsuit", Under.Hidden) },
+            { "Apparel_ArmorLocust", new CoatShape("locust", Under.Hidden) },
+            { "Apparel_Bandolier", new CoatShape("bandolier", Under.Whole) },
+            { "Apparel_BodyStrap", new CoatShape("bodystrap", Under.Whole) },
+        };
+
+        // A part drawn with no outline at all (marks every vertex once; the part is shared).
+        internal static Model NoOutline(Model m)
+        {
+            if (m != null && m.noOutline == null)
+            {
+                bool[] none = new bool[m.positions.Length];
+                for (int i = 0; i < none.Length; i++)
+                {
+                    none[i] = true;
+                }
+                m.noOutline = none;
+            }
+            return m;
         }
 
         internal static bool Covers(ApparelProperties props, string group)
