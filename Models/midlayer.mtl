@@ -1,0 +1,4 @@
+# IsoRim middle / on-skin layer (Claude, tools/make_midlayer.py); also uses stuff_plain(_dark) from isorim.mtl
+# stuff_mid_shade: the sprites' painted dark zones (eltex panels and wedges, lacing, buttons) x apparel colour
+newmtl stuff_mid_shade
+Kd 0.480 0.480 0.480

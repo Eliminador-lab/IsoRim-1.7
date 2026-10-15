@@ -19,7 +19,8 @@ namespace IsoRim
     //     a long coat goes over them, armour adds plates, and a hat, helmet or hood goes on top.
     //     Coats, robes, suits and straps the mod has a shape for (CoatShapes) get it; a flak vest under one that is
     //     open at the front shows its front plate in the opening, and under a strap it shows whole with the strap
-    //     made to go over it, as the game's sprites do.
+    //     made to go over it, as the game's sprites do. A corset, vest, sash or a shirt with a collar or panels
+    //     (MidShapes) adds a thin over-shape on the shirt, shown alone, in an open coat's front and under a strap.
     // Because all of it is read from the person, anyone the game makes up gets a figure to match.
     // Like the animals, a figure turns to face the way it is really walking.
     // Anomaly: a ghoul gets its own head (by its forced head type), its own hair, the ridged ghoulskin over the
@@ -43,6 +44,10 @@ namespace IsoRim
             public Model upper;
             public Model coat;
             public Model underCoat;   // a flak vest under the coat: its front plate in an open coat's front (no outline), or whole under a strap
+            public Model mid;         // a Middle-layer garment's thin over-shape on the shirt (corset, vest, sash; MidShapes)
+            public Model shirtWear;   // an on-skin garment's over-shape (ruffle collar and jabot, eltex shirt wedges), under mid
+            public Color midColor = Color.white;
+            public Color shirtWearColor = Color.white;
             public Model hair;
             public Model hairTop;     // a hairstyle's separate part (topbun_tail's bun), drawn with the hair
             public bool hairShown;    // the game draws hair now (no headgear hides it)
@@ -127,7 +132,8 @@ namespace IsoRim
                     && eyeRight == o.eyeRight && scars == o.scars && skinOverlay == o.skinOverlay && barbs == o.barbs && plating == o.plating
                     && ownHair == o.ownHair && faceTint == o.faceTint && SameGear(o)
                     && mouthWear == o.mouthWear && eyeWear == o.eyeWear && neckWear == o.neckWear
-                    && mouthColor == o.mouthColor && eyeColor == o.eyeColor && neckColor == o.neckColor;
+                    && mouthColor == o.mouthColor && eyeColor == o.eyeColor && neckColor == o.neckColor
+                    && mid == o.mid && shirtWear == o.shirtWear && midColor == o.midColor && shirtWearColor == o.shirtWearColor;
             }
 
             public void Forget()
@@ -203,6 +209,8 @@ namespace IsoRim
                 Matrix4x4 bodyPlace = Matrix4x4.Scale(look.bodyScale);
                 AddPart(look.lower, bodyPlace, look.lowerColor);
                 AddPart(look.upper, bodyPlace, look.upperColor);
+                AddPart(look.shirtWear, bodyPlace, look.shirtWearColor);
+                AddPart(look.mid, bodyPlace, look.midColor);
                 AddPart(look.skinOverlay, bodyPlace, Color.white);
                 AddPart(look.barbs, bodyPlace, Color.white);
                 AddPart(look.plating, bodyPlace, Color.white);
@@ -870,9 +878,17 @@ namespace IsoRim
             Color vestColour = Color.white;
             Color shellArmourColour = Color.white;
             List<Apparel> gearWorn = null;
+            string midShape = null;
+            string skinShape = null;
+            Color midShapeColour = Color.white;
+            Color skinShapeColour = Color.white;
+            Color skinShapeTint = Color.white;
+            bool skinUnder = false;
             look.mouthWear = null;
             look.eyeWear = null;
             look.neckWear = null;
+            look.mid = null;
+            look.shirtWear = null;
             if (worn != null)
             {
                 for (int i = 0; i < worn.Count; i++)
@@ -954,6 +970,33 @@ namespace IsoRim
                         continue;
                     }
 
+                    MidShape mid;
+                    if (MidShapes.TryGetValue(name, out mid))
+                    {
+                        // Its own thin over-shape on the shirt (Models/person_<build>_<file>.obj, painted zones: the item's
+                        // colour, white when undyed). A Middle garment leaves the shirt its own colour; a shirt still colours
+                        // the shirt part (below; the ruffle shirt, which lists only Arms and Neck, after the loop).
+                        if (mid.onSkin)
+                        {
+                            skinShape = mid.file;
+                            skinShapeColour = a.DrawColor;
+                            skinShapeTint = colour;
+                            skinUnder = mid.under;
+                        }
+                        else
+                        {
+                            midShape = mid.file;
+                            midShapeColour = a.DrawColor;
+                            continue;
+                        }
+                    }
+                    else if (!legs && props.wornGraphicPath.NullOrEmpty() && !OnLayer(props, "Shell"))
+                    {
+                        // Drawn as nothing by the game (no worn graphic: the heavy shield unit), so it colours nothing.
+                        unshown?.Add(a);
+                        continue;
+                    }
+
                     int layer = OnLayer(props, "Shell") ? 2 : (OnLayer(props, "Middle") ? 1 : (OnLayer(props, "OnSkin") ? 0 : -1));
                     if (layer < 0)
                     {
@@ -1000,6 +1043,33 @@ namespace IsoRim
                     }
                 }
             }
+            // The game draws a shirt with an over-shape as a whole shirt, also the ruffle shirt (no Torso group): it colours
+            // the shirt part when nothing else on the skin layer does.
+            if (skinShape != null && upperLayer < 0)
+            {
+                look.upperColor = skinShapeTint;
+                upperLayer = 0;
+            }
+            // Middle and on-skin over-shapes show where the game shows those layers: with nothing over them, in the
+            // open front of a coat (Under.FrontPlate) and under a strap (Under.Whole); they are thin enough to sit
+            // inside every coat and strap. A closed coat, a generic stand-in coat or armour hides them. The ruffle
+            // shirt's standing collar and full jabot only show with nothing over it (else its flat _under jabot).
+            bool layersHidden = shellArmourKind != null || (coatKind != null && coatUnder == Under.Hidden);
+            if (!layersHidden)
+            {
+                if (midShape != null)
+                {
+                    look.mid = Part("person_" + build + "_" + midShape);
+                    look.midColor = midShapeColour;
+                }
+                if (skinShape != null)
+                {
+                    bool covered = coatKind != null || vestKind != null || midShape != null;
+                    look.shirtWear = Part("person_" + build + "_" + skinShape + (covered && skinUnder ? "_under" : ""));
+                    look.shirtWearColor = skinShapeColour;
+                }
+            }
+
             // Armour the mod has a shape for takes the place of a coat (it is worn on the same
             // outer layer); a flak vest shows whole when nothing is worn over it or only a strap, and
             // its front plate in the opening of a coat that is open at the front.
@@ -1112,6 +1182,36 @@ namespace IsoRim
             { "Apparel_ArmorLocust", new CoatShape("locust", Under.Hidden) },
             { "Apparel_Bandolier", new CoatShape("bandolier", Under.Whole) },
             { "Apparel_BodyStrap", new CoatShape("bodystrap", Under.Whole) },
+        };
+
+        // Middle and on-skin garments with a thin over-shape of their own (Models/person_<build>_<file>.obj, midlayer.mtl,
+        // tools/make_midlayer.py), drawn on the shirt part. A Middle one (corset, royal vest, eltex vest, sash) leaves the
+        // shirt its own colour; an on-skin one (eltex shirt, ruffle shirt) is the shirt: it colours the shirt part and adds
+        // its collar, jabot or dark wedges. under: it also has a flat <file>_under shape for under a coat, strap or vest.
+        // Shown alone, in an open coat's front and under a strap; hidden under closed coats and armour (Dress).
+        // Adult-only items, so no kid shapes; the kid shirt, pants, romper and tribalwear keep the tint (plain sprites).
+        internal struct MidShape
+        {
+            public string file;
+            public bool onSkin;
+            public bool under;
+
+            public MidShape(string file, bool onSkin, bool under = false)
+            {
+                this.file = file;
+                this.onSkin = onSkin;
+                this.under = under;
+            }
+        }
+
+        internal static readonly Dictionary<string, MidShape> MidShapes = new Dictionary<string, MidShape>
+        {
+            { "Apparel_Corset", new MidShape("corset", false) },
+            { "Apparel_VestRoyal", new MidShape("vest_royal", false) },
+            { "Apparel_PsyfocusVest", new MidShape("vest_psy", false) },
+            { "Apparel_Sash", new MidShape("sash", false) },
+            { "Apparel_PsyfocusShirt", new MidShape("shirt_psy", true) },
+            { "Apparel_ShirtRuffle", new MidShape("shirt_ruffle", true, true) },
         };
 
         // A part drawn with no outline at all (marks every vertex once; the part is shared).

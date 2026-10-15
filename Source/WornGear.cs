@@ -99,7 +99,7 @@ namespace IsoRim
         {
             rigid = def.mount != "belt";
             anchor = Vector3.zero;
-            Model[] body = { look.lower, look.upper, look.coat, look.legArmour };
+            Model[] body = { look.lower, look.upper, look.mid, look.coat, look.legArmour };
             if (def.mount == "pack")
             {
                 float back = 0f;
