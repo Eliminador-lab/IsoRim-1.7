@@ -2306,14 +2306,38 @@ namespace IsoRim
             {
                 Log.ErrorOnce("[IsoRim] Checking whether a building was emptied failed: " + e, 93611211);
             }
-            // Speech bubbles and icons over people's heads stand up and float above them.
             Mote mote = __instance as Mote;
+            if (mote != null && mote.def == ThingDefOf.Mote_TempRoof)
+            {
+                // The game's "roof just built here" tile (MoteMaker.PlaceTempRoof) is a roof, not an icon: it lies flat
+                // over its cell at the top of the walls, as the game draws it over the cell. Stood up like the icons
+                // below, it showed as striped boards round anyone building a roof.
+                BeginFlat(ref __state, View3D.WallHeight + RoofTileLift);
+                return;
+            }
+            // Speech bubbles and icons over people's heads stand up and float above them.
             if (mote != null && (mote.def.altitudeLayer == AltitudeLayer.MetaOverlays || mote.def.altitudeLayer == AltitudeLayer.MoteOverhead))
             {
                 BeginBillboard(ref __state, OverheadHeight, false, Vector3.zero);
                 return;
             }
             BeginLift(__instance, ref __state);
+        }
+
+        private const float RoofTileLift = 0.03f;     // the temporary roof tile just over the wall tops
+
+        // Lays every mesh drawn until the scope ends flat at this height (cells), whatever drawing layer the game used.
+        private static void BeginFlat(ref DrawScope state, float height)
+        {
+            if (DrawHook.active)
+            {
+                return;
+            }
+            state.changed = true;
+            state.wasActive = DrawHook.active;
+            state.wasXform = DrawHook.xform;
+            DrawHook.xform = View3D.LiftMatrix(height) * Matrix4x4.Scale(new Vector3(1f, 0f, 1f));
+            DrawHook.active = true;
         }
 
         private const float OverheadHeight = 1.45f;   // above a standing colonist's head, in cells

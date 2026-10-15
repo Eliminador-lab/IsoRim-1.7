@@ -33,6 +33,10 @@ namespace IsoRim
         public static bool LockedOn;
         public static string LockedBy = "another mod";
 
+        // Set by a gameplay addon whose rules depend on the wall height (IsoRim ProjectZ: storeys stand on the walls):
+        // the wall height is fixed at this value (cells) and the option is greyed out. 0 = the option decides.
+        public static float LockedWallHeight;
+
         // Changes whenever a setting that affects the shape of things changes.
         public static int Stamp;
 
@@ -156,7 +160,7 @@ namespace IsoRim
 
         public static float WallHeight
         {
-            get { return Mathf.Clamp(IsoRimMod.Settings.wallHeight, 0.5f, 4f); }
+            get { return Mathf.Clamp(LockedWallHeight > 0f ? LockedWallHeight : IsoRimMod.Settings.wallHeight, 0.5f, 4f); }
         }
 
         // Called once per frame from the map camera's update.

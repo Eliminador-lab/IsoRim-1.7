@@ -577,6 +577,41 @@ namespace IsoRim
                 return HasModel ? variants[0].maxY * def.scale : 0f;
             }
         }
+
+        // How tall a thing of this kind is drawn, in cells: the top of its tallest model (variants, per-stuff and
+        // per-style models, a turret's gun on its pivot) times the scale and the footprint fit, plus the offset.
+        public float DrawnHeight(ThingDef thing)
+        {
+            if (!HasModel)
+            {
+                return 0f;
+            }
+            float tallest = 0f;
+            for (int i = 0; i < variants.Length; i++)
+            {
+                tallest = Mathf.Max(tallest, variants[i] != null ? variants[i].maxY : 0f);
+            }
+            if (byAppearance != null)
+            {
+                foreach (Model m in byAppearance.Values)
+                {
+                    tallest = Mathf.Max(tallest, m != null ? m.maxY : 0f);
+                }
+            }
+            if (byStyle != null)
+            {
+                foreach (Model m in byStyle.Values)
+                {
+                    tallest = Mathf.Max(tallest, m != null ? m.maxY : 0f);
+                }
+            }
+            float h = tallest * def.scale * Fit(thing).y;
+            if (this.top != null)
+            {
+                h = Mathf.Max(h, def.topHeight + this.top.maxY * def.scale);
+            }
+            return Mathf.Max(0f, h + def.offset.y);
+        }
     }
 
     public static class ModelLibrary
