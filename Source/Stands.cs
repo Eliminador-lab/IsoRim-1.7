@@ -260,6 +260,7 @@ namespace IsoRim
             Add(look.legArmour, Matrix4x4.identity, look.legArmourColor);
             Add(look.underCoat, Matrix4x4.identity, look.underCoatColor);   // a flak vest under an open coat (its front plate) or a strap
             Add(look.coat, Matrix4x4.identity, look.coatColor);
+            Add(look.neckWear, Matrix4x4.identity, look.neckColor);
             for (int i = 0; i < look.gear.Count; i++)
             {
                 // The stand's body has no body-type scale: the gear as on a colonist of that build before it.
@@ -286,6 +287,8 @@ namespace IsoRim
             Begin();
             if (!skipHead)
             {
+                Add(look.eyeWear, Matrix4x4.identity, look.eyeColor);
+                Add(look.mouthWear, Matrix4x4.identity, look.mouthColor);
                 Add(look.hat, Matrix4x4.identity, look.hatColor);
                 if (look.hat != null && look.visor)
                 {

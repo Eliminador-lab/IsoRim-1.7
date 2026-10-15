@@ -63,6 +63,12 @@ namespace IsoRim
             public Color underCoatColor = Color.white;
             public Color hatColor = Color.white;
             public Color legArmourColor = Color.white;
+            public Model mouthWear;   // a mouth-only item (cloth mask), head space
+            public Model eyeWear;     // an eye cover (blindfold), head space
+            public Model neckWear;    // a neck-only item (slave collar), body space
+            public Color mouthColor = Color.white;
+            public Color eyeColor = Color.white;
+            public Color neckColor = Color.white;
             public Model ownHead;     // replaces head and face (ghoul heads), already as wide as the head type
             public Model ownFace;     // replaces the face (creepjoiner faces), tinted faceTint
             public Model eyeLeft;     // the creepjoiner face's separate eyes (cult escapee), left out when missing
@@ -119,7 +125,9 @@ namespace IsoRim
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
                     && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
                     && eyeRight == o.eyeRight && scars == o.scars && skinOverlay == o.skinOverlay && barbs == o.barbs && plating == o.plating
-                    && ownHair == o.ownHair && faceTint == o.faceTint && SameGear(o);
+                    && ownHair == o.ownHair && faceTint == o.faceTint && SameGear(o)
+                    && mouthWear == o.mouthWear && eyeWear == o.eyeWear && neckWear == o.neckWear
+                    && mouthColor == o.mouthColor && eyeColor == o.eyeColor && neckColor == o.neckColor;
             }
 
             public void Forget()
@@ -182,6 +190,8 @@ namespace IsoRim
                     AddPart(look.hairTop, headPlace, look.hairColor);
                 }
                 AddPart(look.beard, headPlace, look.hairColor);
+                AddPart(look.eyeWear, headPlace, look.eyeColor);
+                AddPart(look.mouthWear, headPlace, look.mouthColor);
                 AddPart(look.hat, headPlace, look.hatColor);
                 if (look.hat != null && look.visor)
                 {
@@ -199,6 +209,7 @@ namespace IsoRim
                 AddPart(look.legArmour, bodyPlace, look.legArmourColor);
                 AddPart(look.underCoat, bodyPlace, look.underCoatColor);
                 AddPart(look.coat, bodyPlace, look.coatColor);
+                AddPart(look.neckWear, bodyPlace, look.neckColor);
                 for (int i = 0; i < look.gear.Count; i++)
                 {
                     AddPart(look.gear[i], look.GearOnBody(i), look.gearTint[i]);
@@ -578,6 +589,9 @@ namespace IsoRim
                 hatKind = null;
                 look.hat = null;
                 look.visor = false;
+                look.mouthWear = null;
+                look.eyeWear = null;
+                look.neckWear = null;
             }
             ulong skip = VanillaSkips(pawn, parms);
             // A garment that hides the whole head (skip flag Head: the burka): no head, a closed covering in its colour.
@@ -588,6 +602,8 @@ namespace IsoRim
                 look.hat = Part("person_hat_burka");
                 look.hatColor = ApparelColour(hidesHead);
                 look.visor = false;
+                look.mouthWear = null;
+                look.eyeWear = null;
                 hatKind = "burka";
             }
             look.hatKind = hatKind;
@@ -854,6 +870,9 @@ namespace IsoRim
             Color vestColour = Color.white;
             Color shellArmourColour = Color.white;
             List<Apparel> gearWorn = null;
+            look.mouthWear = null;
+            look.eyeWear = null;
+            look.neckWear = null;
             if (worn != null)
             {
                 for (int i = 0; i < worn.Count; i++)
@@ -876,6 +895,29 @@ namespace IsoRim
                     bool onHead = Covers(props, "FullHead") || Covers(props, "UpperHead");
                     bool armour = Has(name, "Armor") || Has(name, "Armour") || Has(name, "Flak") || Has(name, "Plate") || Has(name, "Cataphract")
                         || Has(name, "Marine") || Has(name, "Recon") || Has(name, "Phoenix") || Has(name, "Prestige");
+
+                    string faceFile;
+                    if (!onHead && !torso && !legs && OwnFaceWear.TryGetValue(name, out faceFile))
+                    {
+                        // A face, eye or neck item with its own model: its own slot, so it shows with a hat.
+                        Model m = Part("person_hat_" + faceFile);
+                        if (OnLayer(props, "EyeCover") || Covers(props, "Eyes"))
+                        {
+                            look.eyeWear = m;
+                            look.eyeColor = colour;
+                        }
+                        else if (Covers(props, "Neck"))
+                        {
+                            look.neckWear = m;
+                            look.neckColor = colour;
+                        }
+                        else
+                        {
+                            look.mouthWear = m;
+                            look.mouthColor = colour;
+                        }
+                        continue;
+                    }
 
                     string armourKind = onHead && !torso && !legs ? null : ArmourKind(name);
                     if (armourKind == "flakpants")
@@ -1195,6 +1237,33 @@ namespace IsoRim
             { "Apparel_Tailcap", "tailcap" },
             { "Apparel_Headwrap", "headwrap" },
             { "Apparel_CrownStellic", "crown_stellic" },
+            // Masks, veils, headsets and helmets (apparel step 3, tools/make_masks.py)
+            { "Apparel_WarMask", "war_mask" },
+            { "Apparel_VisageMask", "visage_mask" },
+            { "Apparel_GasMask", "gas_mask" },
+            { "Apparel_CultistMask", "cultist_mask" },
+            { "Apparel_CeremonialCultistMask", "whisperer_hood" },
+            { "Apparel_WarVeil", "war_veil" },
+            { "Apparel_Broadwrap", "broadwrap" },
+            { "Apparel_AirwireHeadset", "airwire_headset" },
+            { "Apparel_ArrayHeadset", "array_headset" },
+            { "Apparel_IntegratorHeadset", "integrator_headset" },
+            { "Apparel_Gunlink", "gunlink" },
+            { "Apparel_PsychicFoilHelmet", "psychic_foil_helmet" },
+            { "Apparel_PsyfocusHelmet", "psyfocus_helmet" },
+            { "Apparel_KidHelmet", "kid_helmet" },
+            { "Apparel_VacsuitHelmet", "vacsuit_helmet" },
+            { "Apparel_ArmorHelmetMechCommander", "mechcommander_helmet" },
+            { "Apparel_ArmorHelmetMechlordHelmet", "mechlord_helmet" },
+        };
+
+        // Face, eye and neck items with their own model (Models/person_hat_<file>.obj), by exact defName. The game lets
+        // them be worn with a hat (another layer or other body parts), so each has its own slot instead of the hat's.
+        internal static readonly Dictionary<string, string> OwnFaceWear = new Dictionary<string, string>
+        {
+            { "Apparel_ClothMask", "cloth_mask" },
+            { "Apparel_Blindfold", "blindfold" },
+            { "Apparel_Collar", "collar" },
         };
 
         private static string HatKind(string name, bool fullHead)

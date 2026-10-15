@@ -1,0 +1,28 @@
+# IsoRim masks, headsets and helmets (Claude, tools/make_masks.py)
+# stuff_mask_dark: eye holes, slits and dark cores vanilla paints near-black in the same tinted sprite (still tinted)
+newmtl stuff_mask_dark
+Kd 0.200 0.200 0.200
+# stuff_hat_band: same as hats.mtl (bands, rods, earpieces), repeated so these files need only masks.mtl
+newmtl stuff_hat_band
+Kd 0.420 0.420 0.420
+# fixed colours, for items vanilla draws untinted (no stuff, no colour generator: gas mask, vacsuit helmet) and the
+# whisperer mask's black face
+newmtl gas_rubber
+Kd 0.300 0.305 0.310
+newmtl gas_filter
+Kd 0.500 0.505 0.515
+newmtl gas_band
+Kd 0.480 0.400 0.260
+newmtl gas_rim
+Kd 0.120 0.120 0.125
+newmtl vac_white
+Kd 0.930 0.930 0.940
+newmtl vac_grey
+Kd 0.620 0.630 0.650
+newmtl vac_dark
+Kd 0.220 0.230 0.250
+newmtl cult_black
+Kd 0.100 0.090 0.090
+# whisperer skull: the sprite's untinted face (its colour mask leaves it out of the fabric tint)
+newmtl cult_mask
+Kd 0.380 0.340 0.340
