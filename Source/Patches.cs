@@ -342,6 +342,10 @@ namespace IsoRim
             Patch("3D turret guns", turretTop == null || turretParent == null || turretRotation == null ? null : FindMethod(turretTop, "DrawTurret"),
                 prefix: nameof(DrawTurret_Prefix));
 
+            // Bullets and shells fly from the muzzle to the height of their target, not along the ground (Projectiles).
+            Patch("projectiles at muzzle height", AccessTools.DeclaredMethod(typeof(Projectile), "DrawAt", new[] { typeof(Vector3), typeof(bool) }),
+                prefix: nameof(ProjectileDrawAt_Prefix));
+
             // The buttons in the bottom right corner of the map view.
             Patch("buttons for the 3D view and roofs", AccessTools.Method(typeof(PlaySettings), "DoPlaySettingsGlobalControls"),
                 postfix: nameof(PlaySettings_Postfix));
@@ -1644,6 +1648,20 @@ namespace IsoRim
             catch (Exception e)
             {
                 Log.ErrorOnce("[IsoRim] Drawing a held weapon failed: " + e, 93611016);
+                return true;
+            }
+        }
+
+        // A projectile drawn at its height in 3D (Projectiles). __0 is where the game would draw it.
+        public static bool ProjectileDrawAt_Prefix(Projectile __instance, Vector3 __0)
+        {
+            try
+            {
+                return Projectiles.DrawAt(__instance, __0);
+            }
+            catch (Exception e)
+            {
+                Log.ErrorOnce("[IsoRim] Drawing a projectile in 3D failed: " + e, 93611502);
                 return true;
             }
         }

@@ -98,7 +98,8 @@ namespace IsoRim
     //   enter=x,z[,<Xenotype>]       the nearest free colonist (made that xenotype) is sent into the enterable building (as its select button)
     //   entercheck=1                 logs each enterable building: working, chosen person, people inside
     //   faction=x,z,<FactionDef>     the building in the cell given to that faction (e.g. Mechanoid)
-    //   shoot=x0,z0,x1,z1            a colonist's revolver bullet launched from one cell at the other
+    //   shoot=x0,z0,x1,z1[,<Def>]    a revolver bullet (or that projectile) launched from one cell at the other, by the
+    //                                pawn in the first cell (else the first colonist), at the pawn in the second if any
     //   bars=1                       progress bars are drawn in the shots (the game leaves them out in screenshot mode)
     //   halfdone=x,z                 the gene extractor in the cell half way through (its progress bar half full)
     //   emitcheck=1                  logs the smoke emitters and how many puffs are in the air
@@ -673,11 +674,15 @@ namespace IsoRim
                 }
                 case "shoot":
                 {
-                    // shoot=x0,z0,x1,z1: a colonist's revolver bullet flies from the first cell at the second.
-                    Pawn shooter = map.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+                    // shoot=x0,z0,x1,z1[,<projectile def>]: a colonist's revolver bullet (or that projectile) flies from the
+                    // first cell at the second; fired by the pawn standing in the first cell, else the first colonist; aimed
+                    // at the pawn in the second cell if there is one.
                     IntVec3 from = new IntVec3(I(a[0]), 0, I(a[1])), to = new IntVec3(I(a[2]), 0, I(a[3]));
-                    Projectile bullet = (Projectile)GenSpawn.Spawn(DefDatabase<ThingDef>.GetNamed("Bullet_Revolver"), from, map);
-                    bullet.Launch(shooter, from.ToVector3Shifted(), to, to, ProjectileHitFlags.IntendedTarget);
+                    Pawn shooter = from.GetFirstPawn(map) ?? map.mapPawns.FreeColonistsSpawned.FirstOrDefault();
+                    Pawn aimed = to.GetFirstPawn(map);
+                    LocalTargetInfo targ = aimed != null ? new LocalTargetInfo(aimed) : new LocalTargetInfo(to);
+                    Projectile bullet = (Projectile)GenSpawn.Spawn(DefDatabase<ThingDef>.GetNamed(a.Length > 4 ? a[4] : "Bullet_Revolver"), from, map);
+                    bullet.Launch(shooter, from.ToVector3Shifted(), targ, targ, ProjectileHitFlags.IntendedTarget);
                     break;
                 }
                 case "bars":
