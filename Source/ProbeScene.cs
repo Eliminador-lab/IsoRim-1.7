@@ -81,7 +81,7 @@ namespace IsoRim
     //   portalcheck=1                logs each map portal: enterable (and why not), hacked, form
     //   dressed=x,z,rot,age[:Body],Def[:Stuff];...  a new drafted colonist (adults male body, or that BodyTypeDef)
     //                                wearing/holding exactly those ("-" for nothing), facing rot; items hair:<HairDef>
-    //                                and beard:<BeardDef> set those styles instead
+    //                                and beard:<BeardDef> set those styles instead; Def:Stuff:RRGGBB also dyes it that colour
     //   standcheck=1                 logs each outfit stand: apparel, weapon, head hidden, side seen, drawn as its model
     //   workcheck=1                  logs each building with platform cables: work panel running or idle, cables drawn in 3D
     //   glasscheck=1                 logs each building drawn with glass (Glass.cs): its contents state and floor height
@@ -822,6 +822,11 @@ namespace IsoRim
                         ThingDef dd = DefDatabase<ThingDef>.GetNamed(ds[0]);
                         ThingDef dstuff = ds.Length > 1 && ds[1] != "-" ? DefDatabase<ThingDef>.GetNamed(ds[1]) : (dd.MadeFromStuff ? GenStuff.DefaultStuffFor(dd) : null);
                         Thing dt = ThingMaker.MakeThing(dd, dstuff);
+                        Color ddye;
+                        if (ds.Length > 2 && ColorUtility.TryParseHtmlString("#" + ds[2], out ddye))
+                        {
+                            dt.SetColor(ddye);   // as dyed at a styling station (CompColorable)
+                        }
                         if (dt is Apparel dap)
                         {
                             dp.apparel.Wear(dap, false, true);

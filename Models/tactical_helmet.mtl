@@ -1,0 +1,11 @@
+# IsoRim tactical (flak) helmet (GPT delivery 20261014-1621, approved 16:23): shell stuff_plain follows the helmet's stuff/dye colour, attachments fixed dark
+newmtl tactical_rail
+Kd 0.23 0.24 0.24
+newmtl tactical_slot
+Kd 0.105 0.115 0.12
+newmtl tactical_patch
+Kd 0.29 0.3 0.3
+newmtl tactical_bolt
+Kd 0.45 0.46 0.46
+newmtl helmet_rim
+Kd 0.16 0.17 0.18

@@ -554,7 +554,7 @@ namespace IsoRim
 
             // Hair shows unless a helmet or hood covers the whole head; under a hat only hair that
             // hangs below it shows.
-            bool covered = hatKind == "helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
+            bool covered = hatKind == "helmet" || hatKind == "simple_helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
             if (hairKind != null && !covered && (hatKind == null || HairParts.Hangs(hairKind)))
             {
                 look.hair = Part("person_hair_" + hairKind);
@@ -835,7 +835,7 @@ namespace IsoRim
             {
                 look.hat = Part("person_hat_" + hatKind);
                 look.visor = hatKind == "fullhelm";
-                look.faceHidden = SealedHelmet(hatKind) || hatKind == "combat";
+                look.faceHidden = SealedHelmet(hatKind);
             }
             look.upperWorn = upperLayer >= 0;
             look.lowerWorn = lowerLayer >= 0;
@@ -960,6 +960,10 @@ namespace IsoRim
 
         private static string HatKind(string name, bool fullHead)
         {
+            if (name == "Apparel_SimpleHelmet")
+            {
+                return "simple_helmet";   // its own model; other helmets keep the generic one
+            }
             if (Has(name, "Helmet") || Has(name, "Helm"))
             {
                 if (Has(name, "Cataphract"))
