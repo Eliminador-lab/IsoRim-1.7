@@ -22,7 +22,7 @@ namespace IsoRim
         // Until a part's file exists, this one is drawn in its place (null: nothing).
         private static readonly Dictionary<string, string> hairStandIn = new Dictionary<string, string>
         {
-            { "buzz", null }, { "topknot", "mohawk" }, { "shoulder", "long" }, { "bob", "medium" },
+            { "buzz", null }, { "topknot", "mohawk" }, { "crest", "mohawk" }, { "shoulder", "long" }, { "bob", "medium" },
             { "twintails", "ponytail" }, { "sidebuns", "bun" }, { "balding", "short" }, { "topbun_tail", "bun" },
         };
         private static readonly Dictionary<string, string> beardStandIn = new Dictionary<string, string>
@@ -35,8 +35,8 @@ namespace IsoRim
         {
             { "Bald", null },
             { "Shaved", "buzz" }, { "RoughShave", "buzz" }, { "PatchyShave", "buzz" },
-            { "ScorpionTail", "topknot" }, { "Primal", "topknot" }, { "Tuft", "topknot" }, { "Rookie", "topknot" },
-            { "ShaveTopBraid", "topknot" }, { "DoubleTuft", "topknot" },
+            { "ScorpionTail", "topknot" }, { "ShaveTopBraid", "topknot" },
+            { "Rookie", "crest" }, { "Tuft", "crest" }, { "DoubleTuft", "crest" }, { "Primal", "crest" },
             { "Snazzy", "shoulder" }, { "Sticky", "shoulder" }, { "Scrapper", "shoulder" }, { "Locks", "shoulder" },
             { "Rockstar", "shoulder" }, { "Savage", "shoulder" }, { "Junkie", "shoulder" },
             { "Curly", "bob" }, { "Flowy", "bob" }, { "Frozen", "bob" }, { "Keeper", "bob" }, { "Cleopatra", "bob" },
