@@ -1037,6 +1037,7 @@ namespace IsoRim
         // royal robe, psyfocus robe and cape (its front plate); whole around the straps (the strap's _overvest shape
         // goes over it); not at all under the parka, robe and burka. The suits and the locust armour take the middle
         // layer, so no vest goes under them. Anything else on the shell layer gets the generic coat_long or coat_short.
+        // Children wear the thin shapes (BuildOf), unscaled; the kid parka and kid vacsuit share the adult shapes.
         internal enum Under { Hidden, FrontPlate, Whole }
 
         internal struct CoatShape
@@ -1057,6 +1058,7 @@ namespace IsoRim
             { "Apparel_LabCoat", new CoatShape("labcoat", Under.FrontPlate) },
             { "Apparel_Jacket", new CoatShape("jacket", Under.FrontPlate) },
             { "Apparel_Parka", new CoatShape("parka", Under.Hidden) },
+            { "Apparel_KidParka", new CoatShape("parka", Under.Hidden) },
             { "Apparel_Robe", new CoatShape("robe", Under.Hidden) },
             { "Apparel_RobeRoyal", new CoatShape("robe_royal", Under.FrontPlate) },
             { "Apparel_PsyfocusRobe", new CoatShape("robe_psy", Under.FrontPlate) },
