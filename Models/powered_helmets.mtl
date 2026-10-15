@@ -1,0 +1,5 @@
+# IsoRim marine + cataphract helmets (GPT 20261014-1645 marine, 1704 cataphract): shell stuff_plain/stuff_plain_dark follows the helmet's colour (vanilla greys, dye); trim and visor fixed dark
+newmtl sealed_trim
+Kd 0.1 0.11 0.12
+newmtl marine_window
+Kd 0.14 0.18 0.21
