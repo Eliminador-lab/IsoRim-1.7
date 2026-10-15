@@ -258,6 +258,7 @@ namespace IsoRim
                 Add(look.upper, Matrix4x4.identity, look.upperColor);
             }
             Add(look.legArmour, Matrix4x4.identity, look.legArmourColor);
+            Add(look.underCoat, Matrix4x4.identity, look.underCoatColor);   // a flak vest under an open coat (its front plate) or a strap
             Add(look.coat, Matrix4x4.identity, look.coatColor);
             for (int i = 0; i < look.gear.Count; i++)
             {
