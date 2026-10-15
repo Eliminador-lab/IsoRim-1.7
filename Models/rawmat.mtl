@@ -1,0 +1,65 @@
+# IsoRim raw-material colours (tools/make_rawmat.py); load after isorim.mtl
+
+newmtl rawmat_steel
+Kd 0.620 0.610 0.590
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_rust
+Kd 0.660 0.380 0.200
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_uranium
+Kd 0.500 0.510 0.520
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_jade
+Kd 0.340 0.580 0.280
+map_Kd IsoRim/Swatches/Stone
+
+newmtl rawmat_silver
+Kd 0.800 0.780 0.720
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_plasteel
+Kd 0.420 0.620 0.640
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_bark
+Kd 0.450 0.330 0.180
+map_Kd IsoRim/Swatches/Bark
+
+newmtl rawmat_red
+Kd 0.740 0.200 0.170
+
+newmtl rawmat_comp
+Kd 0.560 0.480 0.340
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_comp_green
+Kd 0.720 0.760 0.600
+
+newmtl rawmat_spacer
+Kd 0.400 0.340 0.380
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_spacer_disc
+Kd 0.800 0.800 0.820
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_neutro
+Kd 0.400 0.700 0.760
+
+newmtl rawmat_bottle
+Kd 0.820 0.860 0.880
+
+newmtl rawmat_gravlite
+Kd 0.660 0.700 0.700
+map_Kd IsoRim/Swatches/Metal
+
+newmtl rawmat_obsidian
+Kd 0.300 0.290 0.310
+map_Kd IsoRim/Swatches/Rock
+
+newmtl rawmat_bioferrite
+Kd 0.400 0.300 0.290
+map_Kd IsoRim/Swatches/Rock

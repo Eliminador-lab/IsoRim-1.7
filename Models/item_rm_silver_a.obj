@@ -1,0 +1,31 @@
+# IsoRim model: silver a (Silver) (Claude, tools/make_rawmat.py)
+# One unit = one map cell, +Y up, -Z = north (as tools/make_models.py). Closed shells.
+mtllib isorim.mtl
+mtllib rawmat.mtl
+v 0.2043 0.0000 -0.0000
+v 0.0519 0.0000 -0.1250
+v -0.1547 0.0000 -0.0919
+v -0.1555 0.0000 0.0878
+v 0.0596 0.0000 0.1425
+v 0.1267 0.1252 -0.0000
+v 0.0322 0.1158 -0.0775
+v -0.0959 0.1100 -0.0570
+v -0.0964 0.1201 0.0544
+v 0.0370 0.1170 0.0883
+usemtl rawmat_silver
+f 1 7 2
+f 1 6 7
+f 2 8 3
+f 2 7 8
+f 3 9 4
+f 3 8 9
+f 4 10 5
+f 4 9 10
+f 5 6 1
+f 5 10 6
+f 5 3 4
+f 5 2 3
+f 5 1 2
+f 6 8 7
+f 6 9 8
+f 6 10 9

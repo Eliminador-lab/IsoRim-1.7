@@ -2275,67 +2275,149 @@
   <IsoRim.ModelDef>
     <defName>R3D_Steel</defName>
     <thingDef>Steel</thingDef>
-    <model>Models/item_steel.obj</model>
+    <stackModels>
+      <li>Models/item_rm_steel_a.obj</li>
+      <li>Models/item_rm_steel_b.obj</li>
+      <li>Models/item_rm_steel_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Plasteel</defName>
     <thingDef>Plasteel</thingDef>
-    <model>Models/item_plasteel.obj</model>
+    <stackModels>
+      <li>Models/item_rm_plasteel_a.obj</li>
+      <li>Models/item_rm_plasteel_b.obj</li>
+      <li>Models/item_rm_plasteel_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Uranium</defName>
     <thingDef>Uranium</thingDef>
-    <model>Models/item_uranium.obj</model>
+    <stackModels>
+      <li>Models/item_rm_uranium_a.obj</li>
+      <li>Models/item_rm_uranium_b.obj</li>
+      <li>Models/item_rm_uranium_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Gold</defName>
     <thingDef>Gold</thingDef>
-    <model>Models/item_gold.obj</model>
+    <stackModels>
+      <li>Models/item_rm_gold_a.obj</li>
+      <li>Models/item_rm_gold_b.obj</li>
+      <li>Models/item_rm_gold_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Silver</defName>
     <thingDef>Silver</thingDef>
-    <model>Models/item_silver.obj</model>
+    <stackModels>
+      <li>Models/item_rm_silver_a.obj</li>
+      <li>Models/item_rm_silver_b.obj</li>
+      <li>Models/item_rm_silver_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Jade</defName>
     <thingDef>Jade</thingDef>
-    <model>Models/item_jade.obj</model>
+    <stackModels>
+      <li>Models/item_rm_jade_a.obj</li>
+      <li>Models/item_rm_jade_b.obj</li>
+      <li>Models/item_rm_jade_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_WoodLog</defName>
     <thingDef>WoodLog</thingDef>
-    <model>Models/item_wood.obj</model>
+    <stackModels>
+      <li>Models/item_rm_logs_a.obj</li>
+      <li>Models/item_rm_logs_b.obj</li>
+      <li>Models/item_rm_logs_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_ComponentIndustrial</defName>
     <thingDef>ComponentIndustrial</thingDef>
-    <model>Models/item_component.obj</model>
+    <stackModels>
+      <li>Models/item_rm_component_a.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_ComponentSpacer</defName>
     <thingDef>ComponentSpacer</thingDef>
-    <model>Models/item_component_spacer.obj</model>
+    <stackModels>
+      <li>Models/item_rm_component_spacer_a.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Chemfuel</defName>
     <thingDef>Chemfuel</thingDef>
-    <model>Models/item_chemfuel.obj</model>
+    <stackModels>
+      <li>Models/item_rm_chemfuel_a.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Neutroamine</defName>
     <thingDef>Neutroamine</thingDef>
-    <model>Models/item_neutroamine.obj</model>
+    <stackModels>
+      <li>Models/item_rm_neutroamine_a.obj</li>
+      <li>Models/item_rm_neutroamine_b.obj</li>
+      <li>Models/item_rm_neutroamine_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Bioferrite</defName>
+    <thingDef>Bioferrite</thingDef>
+    <stackModels>
+      <li>Models/item_rm_bioferrite_a.obj</li>
+      <li>Models/item_rm_bioferrite_b.obj</li>
+      <li>Models/item_rm_bioferrite_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_GravlitePanel</defName>
+    <thingDef>GravlitePanel</thingDef>
+    <stackModels>
+      <li>Models/item_rm_gravlite_a.obj</li>
+      <li>Models/item_rm_gravlite_b.obj</li>
+      <li>Models/item_rm_gravlite_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+  </IsoRim.ModelDef>
+
+  <IsoRim.ModelDef>
+    <defName>R3D_Obsidian</defName>
+    <thingDef>Obsidian</thingDef>
+    <stackModels>
+      <li>Models/item_rm_obsidian_a.obj</li>
+      <li>Models/item_rm_obsidian_b.obj</li>
+      <li>Models/item_rm_obsidian_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -2359,31 +2441,59 @@
   <IsoRim.ModelDef>
     <defName>R3D_Category_StoneBlocks</defName>
     <thingCategory>StoneBlocks</thingCategory>
-    <model>Models/item_blocks.obj</model>
+    <stackModels>
+      <li>Models/item_rm_blocks_a.obj</li>
+      <li>Models/item_rm_blocks_b.obj</li>
+      <li>Models/item_rm_blocks_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Cloth</defName>
     <thingDef>Cloth</thingDef>
-    <model>Models/item_cloth.obj</model>
+    <stackModels>
+      <li>Models/item_rm_textile_a.obj</li>
+      <li>Models/item_rm_textile_b.obj</li>
+      <li>Models/item_rm_textile_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Synthread</defName>
     <thingDef>Synthread</thingDef>
-    <model>Models/item_cloth.obj</model>
+    <stackModels>
+      <li>Models/item_rm_textile_a.obj</li>
+      <li>Models/item_rm_textile_b.obj</li>
+      <li>Models/item_rm_textile_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+    <spriteTint>true</spriteTint>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_DevilstrandCloth</defName>
     <thingDef>DevilstrandCloth</thingDef>
-    <model>Models/item_cloth.obj</model>
+    <stackModels>
+      <li>Models/item_rm_textile_a.obj</li>
+      <li>Models/item_rm_textile_b.obj</li>
+      <li>Models/item_rm_textile_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+    <spriteTint>true</spriteTint>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Hyperweave</defName>
     <thingDef>Hyperweave</thingDef>
-    <model>Models/item_cloth.obj</model>
+    <stackModels>
+      <li>Models/item_rm_textile_a.obj</li>
+      <li>Models/item_rm_textile_b.obj</li>
+      <li>Models/item_rm_textile_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
+    <spriteTint>true</spriteTint>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
@@ -2395,13 +2505,20 @@
   <IsoRim.ModelDef>
     <defName>R3D_Category_Leathers</defName>
     <thingCategory>Leathers</thingCategory>
-    <model>Models/item_leather.obj</model>
+    <stackModels>
+      <li>Models/item_rm_leather_a.obj</li>
+      <li>Models/item_rm_leather_b.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_Category_Wools</defName>
     <thingCategory>Wools</thingCategory>
-    <model>Models/item_wool.obj</model>
+    <stackModels>
+      <li>Models/item_rm_wool_a.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
