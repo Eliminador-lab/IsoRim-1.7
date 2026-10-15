@@ -359,6 +359,15 @@ namespace IsoRim
             {
                 return 0;
             }
+            // With a designator in hand (build, floor, zone, order) the pointer stays on the viewed floor: it places on
+            // that floor, open air included (a new upper floor is laid on the open air there). Orders and selection
+            // without one fall through to the floor below.
+            if (Find.DesignatorManager?.SelectedDesignator != null)
+            {
+                Vector3 v = View3D.ScreenToHeight(px, heights[pointer]);
+                int vz = Mathf.FloorToInt(v.z);
+                return vz >= 0 && vz < groundRows ? pointer : 0;
+            }
             for (int k = pointer; k >= 1; k--)
             {
                 Vector3 p = View3D.ScreenToHeight(px, heights[k]);
