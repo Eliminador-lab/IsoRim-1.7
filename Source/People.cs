@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using HarmonyLib;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -38,13 +40,15 @@ namespace IsoRim
             public Model upper;
             public Model coat;
             public Model hair;
-            public Model hairTop;     // the part of a hairstyle that a hat hides (topbun_tail's bun), when bareheaded
+            public Model hairTop;     // a hairstyle's separate part (topbun_tail's bun), drawn with the hair
+            public bool hairShown;    // the game draws hair now (no headgear hides it)
+            public string hatKind;    // for Report
             public Model beard;
             public Model hat;
             public Model legArmour;
             public bool pads;
             public bool visor;
-            public bool faceHidden;
+            public bool faceHidden;   // the game leaves out the eyes (skip flag Eyes): no face, eyes or scars
             public Color skin = Color.white;
             public Color hairColor = Color.white;
             public Color upperColor = Color.white;
@@ -149,7 +153,7 @@ namespace IsoRim
                 else
                 {
                     AddPart(head, headPlace, skin);
-                    if (!look.visor && !look.faceHidden)
+                    if (!look.faceHidden)
                     {
                         AddPart(look.ownFace ?? face, headPlace, look.ownFace != null ? look.faceTint : Color.white);
                         AddPart(look.eyeLeft, headPlace, Color.white);
@@ -435,7 +439,7 @@ namespace IsoRim
                 + (pawn.style != null ? HairParts.Beard(pawn.style.beardDef) ?? "none" : "none") + (l.beard != null ? "" : " (not drawn)") + ", body " + (pawn.story.bodyType != null ? pawn.story.bodyType.defName : "?")
                 + ", ownHead " + (l.ownHead != null) + ", ownFace " + (l.ownFace != null) + ", eyes " + (l.eyeLeft != null) + "/" + (l.eyeRight != null)
                 + ", scars " + (l.scars != null) + ", overlay " + (l.skinOverlay != null) + ", barbs " + (l.barbs != null) + ", plating " + (l.plating != null)
-                + ", ownHair " + l.ownHair + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
+                + ", ownHair " + l.ownHair + ", hat " + (l.hatKind ?? "-") + ", faceHidden " + l.faceHidden + ", skips " + SkipNames(VanillaSkips(pawn)) + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
         }
 
         // The races drawn as figures: people, and creepjoiners (people in all but race).
@@ -552,23 +556,80 @@ namespace IsoRim
 
             string hatKind = Dress(look, build, pawn.apparel != null ? pawn.apparel.WornApparel : null, look.skin, null);
 
-            // Hair shows unless a helmet or hood covers the whole head; under a hat only hair that
-            // hangs below it shows.
-            bool covered = hatKind == "helmet" || hatKind == "simple_helmet" || hatKind == "hood" || hatKind == "combat" || SealedHelmet(hatKind);
-            if (hairKind != null && !covered && (hatKind == null || HairParts.Hangs(hairKind)))
+            // Hair, beard and eyes show under headgear exactly when the game draws them (its own skip flags).
+            look.hatKind = hatKind;
+            ulong skip = VanillaSkips(pawn);
+            look.hairShown = !Skips(skip, RenderSkipFlagDefOf.Hair);
+            if (hairKind != null && look.hairShown)
             {
                 look.hair = Part("person_hair_" + hairKind);
-                if (hatKind == null && HairParts.Exists("person_hair_" + hairKind + "_bun"))
+                if (HairParts.Exists("person_hair_" + hairKind + "_bun"))
                 {
                     look.hairTop = Part("person_hair_" + hairKind + "_bun");
                 }
             }
-            if (beardKind != null && !SealedHelmet(hatKind))
+            if (beardKind != null && !Skips(skip, RenderSkipFlagDefOf.Beard))
             {
                 look.beard = Part("person_beard_" + beardKind);
             }
+            look.faceHidden = (skip & RenderSkipFlagDefOf.Eyes) != 0;
             Anomaly(pawn, look, build, headName);
             return look;
+        }
+
+        // The game's own choice of what to leave out of a person's head (PawnRenderTree.AdjustParms: each worn
+        // apparel's renderSkipFlags, or for apparel without them Hair under an UpperHead piece and Hair, Beard and
+        // Eyes under a FullHead piece, the eyes put back for facings in forceEyesVisibleForRotations), as the
+        // person stands on the map facing south (the side the figure's face is on). Patches to it apply too.
+        private delegate void AdjustParmsCall(PawnRenderTree tree, ref PawnDrawParms parms);
+        private static AdjustParmsCall adjustParms;
+        private static bool adjustParmsLooked;
+
+        internal static ulong VanillaSkips(Pawn pawn)
+        {
+            if (!adjustParmsLooked)
+            {
+                adjustParmsLooked = true;
+                MethodInfo m = AccessTools.Method(typeof(PawnRenderTree), "AdjustParms");
+                try
+                {
+                    adjustParms = m != null ? (AdjustParmsCall)Delegate.CreateDelegate(typeof(AdjustParmsCall), null, m) : null;
+                }
+                catch (Exception e)
+                {
+                    Log.ErrorOnce("[IsoRim] Can't use the game's headgear rule: " + e.Message, 93611091);
+                }
+            }
+            PawnRenderTree tree = pawn.Drawer != null && pawn.Drawer.renderer != null ? pawn.Drawer.renderer.renderTree : null;
+            if (adjustParms == null || tree == null)
+            {
+                return 0;
+            }
+            PawnDrawParms parms = PawnDrawParms.Default;
+            parms.pawn = pawn;
+            parms.dead = pawn.Dead;
+            adjustParms(tree, ref parms);
+            return parms.skipFlags;
+        }
+
+        // For Report: the names of the set skip flags.
+        private static string SkipNames(ulong skip)
+        {
+            List<string> names = new List<string>();
+            foreach (RenderSkipFlagDef f in DefDatabase<RenderSkipFlagDef>.AllDefsListForReading)
+            {
+                if (f != RenderSkipFlagDefOf.None && (skip & f) != 0)
+                {
+                    names.Add(f.defName);
+                }
+            }
+            return names.Count > 0 ? string.Join("+", names) : "none";
+        }
+
+        // Hair or beard is left out when its own flag is set, or Head (both hang under the head).
+        private static bool Skips(ulong skip, RenderSkipFlagDef flag)
+        {
+            return (skip & flag) != 0 || (skip & RenderSkipFlagDefOf.Head) != 0;
         }
 
         // Ghoul, shambler and creepjoiner parts (Anomaly), on top of what Work found.
@@ -585,7 +646,7 @@ namespace IsoRim
                 if (look.ownHead != null)
                 {
                     string hairName = pawn.story.hairDef != null ? (pawn.story.hairDef.defName ?? "") : "";
-                    Model hair = hairName.StartsWith("Ghoul_") ? Part("hairs_" + hairName.Substring(6).ToLowerInvariant() + "_" + headKind) : null;
+                    Model hair = hairName.StartsWith("Ghoul_") && look.hairShown ? Part("hairs_" + hairName.Substring(6).ToLowerInvariant() + "_" + headKind) : null;
                     if (hair != null)
                     {
                         look.hair = hair;
@@ -835,7 +896,6 @@ namespace IsoRim
             {
                 look.hat = Part("person_hat_" + hatKind);
                 look.visor = hatKind == "fullhelm";
-                look.faceHidden = SealedHelmet(hatKind);
             }
             look.upperWorn = upperLayer >= 0;
             look.lowerWorn = lowerLayer >= 0;
@@ -898,11 +958,6 @@ namespace IsoRim
                 }
             }
             return false;
-        }
-
-        private static bool SealedHelmet(string hatKind)
-        {
-            return hatKind == "fullhelm" || hatKind == "marine_helm" || hatKind == "cataphract_helm" || hatKind == "recon_helm";
         }
 
         // Armour the mod has a worn shape for, by the game's names for it (and the names the

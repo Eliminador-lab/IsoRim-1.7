@@ -13,12 +13,6 @@ namespace IsoRim
     // Styles from other mods go by their style tags, and by their name only when no tag helps.
     internal static class HairParts
     {
-        // Hair kinds that hang below a hat's brim: drawn under a hat (a helmet or hood still hides them).
-        private static readonly HashSet<string> hangs = new HashSet<string>
-        {
-            "short", "medium", "long", "ponytail", "shoulder", "bob", "twintails", "topbun_tail"
-        };
-
         // Until a part's file exists, this one is drawn in its place (null: nothing).
         private static readonly Dictionary<string, string> hairStandIn = new Dictionary<string, string>
         {
@@ -107,11 +101,6 @@ namespace IsoRim
                 kind = HasTag(def.styleTags, "MoustacheOnly") ? "moustache" : BeardByName(def.defName ?? "");
             }
             return Drawn("person_beard_", kind, beardStandIn);
-        }
-
-        public static bool Hangs(string hairKind)
-        {
-            return hairKind != null && hangs.Contains(hairKind);
         }
 
         // The kind itself if its file is there, else its stand-in (and so on).
