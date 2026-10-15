@@ -63,6 +63,7 @@ namespace IsoRim
                 mesh.SetUVs(0, uvs);
                 mesh.SetTriangles(tris, 0);
                 mesh.RecalculateBounds();
+                MeshGuard.Check(mesh, "moving model");
                 return mesh;
             }
         }
@@ -1771,6 +1772,7 @@ namespace IsoRim
             m.SetColors(c);
             m.SetTriangles(tris, 0);
             m.RecalculateBounds();
+            MeshGuard.Check(m, "glint");
             return m;
         }
 

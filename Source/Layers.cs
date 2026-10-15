@@ -116,6 +116,7 @@ namespace IsoRim
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
+            MeshGuard.Check(mesh, "water layer");
             return mesh;
         }
 

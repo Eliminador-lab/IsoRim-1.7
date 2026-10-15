@@ -35,7 +35,7 @@ namespace IsoRim
         public Vector2 origin;        // where corner (0, 0) is in the world (0 today; per-map placement later)
         public float baseY;           // the map's ground height (0 today; reserved for stacked maps)
         private readonly Color32[] corners;
-        private Texture2D tex;
+        private LiveTexture tex;
         private bool dirty;
         private int uploads;
 
@@ -93,7 +93,7 @@ namespace IsoRim
         {
             if (tex != null)
             {
-                UnityEngine.Object.Destroy(tex);
+                tex.Destroy();
                 tex = null;
             }
         }
@@ -144,13 +144,9 @@ namespace IsoRim
             Stopwatch watch = uploads < 3 && ModLog.Diag ? Stopwatch.StartNew() : null;
             if (tex == null)
             {
-                tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
-                tex.name = "IsoRim_Glow";
-                tex.filterMode = FilterMode.Bilinear;
-                tex.wrapMode = TextureWrapMode.Clamp;
+                tex = new LiveTexture(width, height, "IsoRim_Glow", FilterMode.Bilinear);
             }
-            tex.SetPixels32(corners);
-            tex.Apply(false);
+            tex.Upload(corners);
             dirty = false;
             uploads++;
             if (watch != null)
@@ -159,9 +155,10 @@ namespace IsoRim
             }
         }
 
+        // The texture to bind this frame (see LiveTexture.Use).
         public Texture2D Texture
         {
-            get { return tex; }
+            get { return tex != null ? tex.Use() : null; }
         }
     }
 

@@ -144,7 +144,7 @@ namespace IsoRim
         private static Material material;
         private static Mesh quad;
 
-        private static Texture2D built;
+        private static LiveTexture built;
         private static Color32[] builtPixels;
         private static string builtKey;
         private static int rebuilds;
@@ -232,6 +232,7 @@ namespace IsoRim
             quad.vertices = new Vector3[] { new Vector3(-1f, -1f, 0f), new Vector3(-1f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f) };
             quad.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
             quad.RecalculateBounds();
+            MeshGuard.Check(quad, "screen quad");
         }
 
         // The table of a look, rebuilt only when the look (with its sliders) changes.
@@ -240,26 +241,22 @@ namespace IsoRim
             string key = Key(p);
             if (built != null && key == builtKey)
             {
-                return built;
+                return built.Use();
             }
             Stopwatch watch = Stopwatch.StartNew();
             builtPixels = LookMath.Strip(p, Size, builtPixels);
             if (built == null)
             {
-                built = new Texture2D(Size * Size, Size, TextureFormat.RGBA32, false, true);
-                built.name = "IsoRim_GradeLut";
-                built.filterMode = FilterMode.Bilinear;
-                built.wrapMode = TextureWrapMode.Clamp;
+                built = new LiveTexture(Size * Size, Size, "IsoRim_GradeLut", FilterMode.Bilinear);
             }
-            built.SetPixels32(builtPixels);
-            built.Apply(false);
+            built.Upload(builtPixels);
             builtKey = key;
             rebuilds++;
             if (rebuilds <= 5)
             {
                 ModLog.Note("[IsoRim] Grade table for " + p.name + " built in " + watch.Elapsed.TotalMilliseconds.ToString("0.000") + " ms");
             }
-            return built;
+            return built.Use();
         }
 
         private static string Key(LookPreset p)

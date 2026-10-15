@@ -24,6 +24,7 @@
     <Reference Include="Assembly-CSharp"><HintPath>..\..\..\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityStubs"><HintPath>..\..\..\UnityStubs.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Waylith"><HintPath>..\..\..\Waylith.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Brutal.Vulkan"><HintPath>..\..\..\Brutal.Vulkan.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="0Harmony"><HintPath>..\..\..\..\..\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 </Project>

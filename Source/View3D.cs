@@ -474,9 +474,9 @@ namespace IsoRim
                 // Crash trail (log only): what the 3D view runs with, for graphics crash reports.
                 IsoRimSettings ts = IsoRimMod.Settings;
                 Map tm = Find.CurrentMap;
-                Log.Message("[IsoRim] 3D view " + (Active ? "on" : "off") + ": grade " + ts.grade + ", shader cut " + ShaderCut.On
+                CrashTrail.Note("3D view " + (Active ? "on" : "off") + ": grade " + ts.grade + ", shader cut " + ShaderCut.On
                     + ", fog lid " + ts.fogLid + ", screen " + Screen.width + "x" + Screen.height
-                    + ", map " + (tm != null ? tm.Size.x + "x" + tm.Size.z : "none") + " (frame " + Time.frameCount + ")");
+                    + ", map " + (tm != null ? tm.Size.x + "x" + tm.Size.z : "none"));
             }
 
             if (sig == appliedSig)

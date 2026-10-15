@@ -37,7 +37,7 @@ namespace IsoRim
         private readonly List<int> dirtyList = new List<int>();
         private bool all = true;      // everything is to be worked out (new, or after a full rebuild)
         private bool changed;
-        private Texture2D tex;
+        private LiveTexture tex;
 
         // Heights are stored in steps of 1/4096 cell as a 16-bit number (red high byte, green low byte):
         // up to 16 cells, far below a pixel at any zoom.
@@ -112,7 +112,7 @@ namespace IsoRim
         {
             if (tex != null)
             {
-                UnityEngine.Object.Destroy(tex);
+                tex.Destroy();
                 tex = null;
             }
         }
@@ -301,13 +301,9 @@ namespace IsoRim
             }
             if (tex == null)
             {
-                tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
-                tex.name = "IsoRim_Cells";
-                tex.filterMode = FilterMode.Point;
-                tex.wrapMode = TextureWrapMode.Clamp;
+                tex = new LiveTexture(width, height, "IsoRim_Cells", FilterMode.Point);
             }
-            tex.SetPixels32(cells);
-            tex.Apply(false);
+            tex.Upload(cells);
             int top = 0;
             for (int i = 0; i < cells.Length; i++)
             {
@@ -322,9 +318,15 @@ namespace IsoRim
             }
         }
 
+        // The texture to bind this frame (see LiveTexture.Use).
         public Texture2D Texture
         {
-            get { return tex; }
+            get { return tex != null ? tex.Use() : null; }
+        }
+
+        public bool Uploaded
+        {
+            get { return tex != null && tex.Ready; }
         }
 
         // ---- per frame

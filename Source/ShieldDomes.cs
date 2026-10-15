@@ -83,6 +83,7 @@ namespace IsoRim
             dome.SetUVs(0, uvs);
             dome.SetTriangles(tris, 0);
             dome.RecalculateBounds();
+            MeshGuard.Check(dome, "shield dome");
             dome.bounds = new Bounds(Vector3.zero, Vector3.one * 2f);
             return dome;
         }
