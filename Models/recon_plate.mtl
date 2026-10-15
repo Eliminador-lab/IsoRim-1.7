@@ -1,0 +1,7 @@
+# IsoRim recon + plate armour and recon helmet (Claude, tools/make_recon_plate.py)
+# stuff_rp_under: dark under-layer that still takes the apparel colour (vanilla draws the dark suit x colour)
+newmtl stuff_rp_under
+Kd 0.320 0.320 0.320
+# rp_strap: belts, straps, headset; fixed dark like the flak vest straps
+newmtl rp_strap
+Kd 0.100 0.110 0.120
