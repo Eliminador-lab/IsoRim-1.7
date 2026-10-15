@@ -19,6 +19,8 @@ namespace IsoRim
         {
             public float start;   // cells above the ground at the muzzle
             public float end;     // cells above the ground at the target
+            public int launcherRow;   // map rows of the shooter and the target (their floors, Floors)
+            public int targetRow;
         }
 
         private static readonly ConditionalWeakTable<Projectile, Flight> flights = new ConditionalWeakTable<Projectile, Flight>();
@@ -37,29 +39,56 @@ namespace IsoRim
             {
                 return true;
             }
+            // Stacked floors (Floors): the projectile is drawn over the ground cell of its row, its height counted from the
+            // ground (a shot between floors blends from the shooter's floor to the target's); hidden with its floor.
+            Vector3 row = Vector3.zero;
+            if (Floors.On)
+            {
+                Matrix4x4 unused;
+                if (!Floors.RowMatrix(p.Position.z, out unused))
+                {
+                    return false;
+                }
+                row = Floors.RowOffset(p.Position.z);
+            }
             float arc = arcHeight(p) * GenMath.InverseParabola(arcFraction(p));
             float h = Height(p, drawLoc) + arc;
-            if (p.def.projectile.shadowSize > 0f)
+            bool wasFloor = DrawHook.floor;
+            DrawHook.floor = false;   // the floor is in the position already (the graphic's draw goes through DrawHook)
+            try
             {
-                DrawShadow(p, drawLoc, arc);
+                if (p.def.projectile.shadowSize > 0f)
+                {
+                    DrawShadow(p, drawLoc + new Vector3(0f, row.y / View3D.Squash, row.z), arc);
+                }
+                Vector3 at = drawLoc + new Vector3(0f, h / View3D.Squash, row.z);
+                Quaternion rotation = p.ExactRotation;
+                if (p.def.projectile.spinRate != 0f)
+                {
+                    float period = 60f / p.def.projectile.spinRate;
+                    rotation = Quaternion.AngleAxis(Find.TickManager.TicksGame % period / period * 360f, Vector3.up);
+                }
+                if (p.def.projectile.useGraphicClass)
+                {
+                    p.Graphic.Draw(at, p.Rotation, p, rotation.eulerAngles.y);
+                }
+                else
+                {
+                    Graphics.DrawMesh(MeshPool.GridPlane(p.def.graphicData.drawSize), at, rotation, p.DrawMat, 0);
+                }
+                postDraw(p);
             }
-            Vector3 at = drawLoc + new Vector3(0f, h / View3D.Squash, 0f);
-            Quaternion rotation = p.ExactRotation;
-            if (p.def.projectile.spinRate != 0f)
+            finally
             {
-                float period = 60f / p.def.projectile.spinRate;
-                rotation = Quaternion.AngleAxis(Find.TickManager.TicksGame % period / period * 360f, Vector3.up);
+                DrawHook.floor = wasFloor;
             }
-            if (p.def.projectile.useGraphicClass)
-            {
-                p.Graphic.Draw(at, p.Rotation, p, rotation.eulerAngles.y);
-            }
-            else
-            {
-                Graphics.DrawMesh(MeshPool.GridPlane(p.def.graphicData.drawSize), at, rotation, p.DrawMat, 0);
-            }
-            postDraw(p);
             return false;
+        }
+
+        // Height of the floor a row is on (cells), zero on the ground and without floors.
+        private static float FloorHeight(int z)
+        {
+            return Floors.On ? Floors.RowHeight(z) : 0f;
         }
 
         // Height above the ground (cells) at this point of the flight: muzzle to target, by the share of the way flown.
@@ -71,7 +100,7 @@ namespace IsoRim
             float total = new Vector2(d.x - o.x, d.z - o.z).magnitude;
             float done = new Vector2(at.x - o.x, at.z - o.z).magnitude;
             float t = total > 0.001f ? Mathf.Clamp01(done / total) : 1f;
-            return Mathf.Lerp(f.start, f.end, t);
+            return Mathf.Lerp(f.start + FloorHeight(f.launcherRow), f.end + FloorHeight(f.targetRow), t);
         }
 
         private static Flight Begin(Projectile p)
@@ -81,6 +110,8 @@ namespace IsoRim
             {
                 f.start = MuzzleHeight(p.Launcher);
                 f.end = AimHeight(p);
+                f.launcherRow = p.Launcher != null && p.Launcher.Spawned ? p.Launcher.Position.z : p.Position.z;
+                f.targetRow = Mathf.FloorToInt(destinationRef(p).z);   // where it comes down (a gameplay addon may move it)
             }
             catch (Exception e)
             {
