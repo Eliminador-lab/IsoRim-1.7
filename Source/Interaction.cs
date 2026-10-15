@@ -54,6 +54,7 @@ namespace IsoRim
                     quad.SetColors(new List<Color32> { w, w, w, w });
                     quad.SetTriangles(new[] { 0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2 }, 0);
                     quad.RecalculateBounds();
+                    MeshGuard.Check(quad, "interaction quad");
                 }
                 return quad;
             }

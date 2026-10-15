@@ -235,6 +235,7 @@ namespace IsoRim
             mesh.SetColors(c);
             mesh.SetTriangles(t, 0);
             mesh.RecalculateBounds();
+            MeshGuard.Check(mesh, "ghost");
             meshes[m.id] = mesh;
             return mesh;
         }
@@ -271,6 +272,7 @@ namespace IsoRim
             mesh.SetColors(c);
             mesh.SetTriangles(t, 0);
             mesh.RecalculateBounds();
+            MeshGuard.Check(mesh, "ghost part");
             return mesh;
         }
     }

@@ -177,6 +177,7 @@ namespace IsoRim
             faces.SetColors(fc);
             faces.SetTriangles(ft, 0);
             faces.RecalculateBounds();
+            MeshGuard.Check(faces, "sprite solid faces");
 
             // The edges, coloured from the sprite just inside each one: lit from above, darker below.
             Color tint = mat.HasProperty("_Color") ? mat.color : Color.white;
@@ -232,6 +233,7 @@ namespace IsoRim
             sides.SetColors(sc);
             sides.SetTriangles(st, 0);
             sides.RecalculateBounds();
+            MeshGuard.Check(sides, "sprite solid sides");
 
             Solid solid = new Solid();
             solid.faces = faces;

@@ -77,6 +77,7 @@ namespace IsoRim
             mesh.colors32 = colors;
             mesh.triangles = tris;
             mesh.RecalculateBounds();
+            MeshGuard.Check(mesh, "glass");
             meshes[m.id] = mesh;
             return mesh;
         }

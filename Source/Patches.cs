@@ -421,8 +421,12 @@ namespace IsoRim
             return Cull.DrawMapMeshTranspiler(instructions);
         }
 
-        public static void CullFinalizeMesh_Postfix(MeshParts __0)
+        public static void CullFinalizeMesh_Postfix(LayerSubMesh __instance, MeshParts __0)
         {
+            if ((__0 & (MeshParts.Verts | MeshParts.Tris)) != MeshParts.None)
+            {
+                MeshGuard.CheckLayer(__instance);
+            }
             Cull.MeshFinalized(__0);
         }
 
@@ -1529,12 +1533,12 @@ namespace IsoRim
 
         public static void WindowStackAdd_Postfix(Window window)
         {
-            if (!View3D.Active || window == null || !(window.forcePause || window.absorbInputAroundWindow) || windowsLogged >= 40)
+            if (!View3D.Active || window == null || !(window.forcePause || window.absorbInputAroundWindow))
             {
                 return;
             }
             windowsLogged++;
-            Log.Message("[IsoRim] window opened in 3D: " + window.GetType().Name + " (frame " + Time.frameCount + ")");
+            CrashTrail.Note("window opened in 3D: " + window.GetType().Name, windowsLogged <= 40);   // the crash report keeps the latest
         }
 
         // With the -isorimdiag switch (see ModLog.Diag), writes what the 3D view depends on to the

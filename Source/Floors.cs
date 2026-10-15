@@ -644,6 +644,7 @@ namespace IsoRim
             slab.mesh.SetColors(cols);
             slab.mesh.SetTriangles(tris, 0);
             slab.mesh.RecalculateBounds();
+            MeshGuard.Check(slab.mesh, "floor slab");
         }
 
         // A quad drawn from both sides (the shader turns each face toward the camera).
@@ -917,6 +918,7 @@ namespace IsoRim
                     if (sm.mesh != null)
                     {
                         sm.mesh.SetTriangles(t.ToArray(), 0);
+                        MeshGuard.Check(sm.mesh, "upper floor overlay");
                     }
                 }
             }
@@ -970,6 +972,7 @@ namespace IsoRim
                 if (changed)
                 {
                     mesh.vertices = v;
+                    MeshGuard.Check(mesh, "upper floor overlay cells");
                     mesh.RecalculateBounds();
                 }
             }

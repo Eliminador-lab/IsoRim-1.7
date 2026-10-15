@@ -384,7 +384,7 @@ namespace IsoRim
         private static float FogLift(Map map)
         {
             IsoCellMap c = IsoCellMap.Existing(map);
-            float top = c != null && c.Texture != null ? c.MaxTop : 16f;
+            float top = c != null && c.Uploaded ? c.MaxTop : 16f;
             return (c != null ? c.baseY : 0f) + top + 0.012f + 0.05f;
         }
 

@@ -2644,6 +2644,7 @@ namespace IsoRim
                 blob.SetColors(colors);
                 blob.SetTriangles(tris, 0);
                 blob.RecalculateBounds();
+                MeshGuard.Check(blob, "blob");
             }
             Matrix4x4 matrix = Matrix4x4.TRS(new Vector3(position.x, Height, position.z), Quaternion.AngleAxis(yaw, Vector3.up),
                 new Vector3(Mathf.Max(0.05f, halfWidth), 1f, Mathf.Max(0.05f, halfLength)));
