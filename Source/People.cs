@@ -1170,8 +1170,38 @@ namespace IsoRim
             return SpriteColors.MeanFor(a);
         }
 
+        // Hats with their own model (Models/person_hat_<file>.obj), by exact defName; one line per hat.
+        // Others fall through to the keyword rules below (modded hats, masks, helmets).
+        internal static readonly Dictionary<string, string> OwnHats = new Dictionary<string, string>
+        {
+            { "Apparel_Tuque", "tuque" },
+            { "Apparel_Beret", "beret" },
+            { "Apparel_AuthorityCap", "authority_cap" },
+            { "Apparel_Flophat", "flophat" },
+            { "Apparel_HatTop", "top_hat" },
+            { "Apparel_EltexSkullcap", "eltex_skullcap" },
+            { "Apparel_CowboyHat", "cowboy_hat" },
+            { "Apparel_Shadecone", "shadecone" },
+            { "Apparel_BowlerHat", "bowler_hat" },
+            { "Apparel_HatLadies", "ladies_hat" },
+            { "Apparel_Crown", "crown" },
+            { "Apparel_Coronet", "coronet" },
+            { "Apparel_TortureCrown", "torture_crown" },
+            { "Apparel_HatHood", "cloth_hood" },
+            { "Apparel_Slicecap", "slicecap" },
+            { "Apparel_TribalHeaddress", "tribal_headdress" },
+            { "Apparel_Tailcap", "tailcap" },
+            { "Apparel_Headwrap", "headwrap" },
+            { "Apparel_CrownStellic", "crown_stellic" },
+        };
+
         private static string HatKind(string name, bool fullHead)
         {
+            string own;
+            if (OwnHats.TryGetValue(name, out own))
+            {
+                return own;
+            }
             if (name == "Apparel_SimpleHelmet")
             {
                 return "simple_helmet";   // its own model; other helmets keep the generic one
