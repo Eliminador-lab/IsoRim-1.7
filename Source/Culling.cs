@@ -230,6 +230,7 @@ namespace IsoRim
         {
             float s = squash;
             Vector3 min, max;
+            Vector3 lift = Floors.DrawnOffset(t);   // on an upper floor (Floors): where it shows
             if (t is Pawn)
             {
                 Pawn pawn = (Pawn)t;
@@ -252,7 +253,7 @@ namespace IsoRim
                 min = new Vector3(r.minX - 1f, -1f / s, r.minZ - 1f);
                 max = new Vector3(r.maxX + 2f, (View3D.WallHeight + 1.5f) / s, r.maxZ + 2f);
             }
-            return BoxVisible(min, max);
+            return BoxVisible(min + lift, max + lift);
         }
 
         // ---- sections
@@ -296,6 +297,12 @@ namespace IsoRim
         // Replaces "view.Overlaps(section.Bounds)" in MapDrawer.DrawMapMesh.
         public static bool SectionOverlaps(ref CellRect view, Section section)
         {
+            // A block of an upper floor (Floors) is drawn moved over the ground: tested where it shows.
+            Vector3 shift;
+            if (!Floors.SectionDrawShift(section, out shift))
+            {
+                return false;
+            }
             bool overlaps = view.Overlaps(section.Bounds);
             if (!overlaps || !On)
             {
@@ -304,7 +311,7 @@ namespace IsoRim
             sectionsTested++;
             try
             {
-                if (SectionVisible(section))
+                if (SectionVisible(section, shift))
                 {
                     return true;
                 }
@@ -318,7 +325,7 @@ namespace IsoRim
             }
         }
 
-        private static bool SectionVisible(Section section)
+        private static bool SectionVisible(Section section, Vector3 shift)
         {
             if (anyDirtyOf(section))
             {
@@ -337,7 +344,7 @@ namespace IsoRim
                 sectionsUnknown++;
                 return true;
             }
-            if (box.any && BoxVisible(box.min, box.max))
+            if (box.any && BoxVisible(box.min + shift, box.max + shift))
             {
                 return true;
             }
@@ -345,7 +352,7 @@ namespace IsoRim
             {
                 // Lifted onto the tallest top of any cell (IsoRimFog.vert: (base + top + 0.012) / squash).
                 float lift = FogLift(section.map) / squash;
-                if (BoxVisible(box.fogMin, new Vector3(box.fogMax.x, box.fogMax.y + lift, box.fogMax.z)))
+                if (BoxVisible(box.fogMin + shift, new Vector3(box.fogMax.x, box.fogMax.y + lift, box.fogMax.z) + shift))
                 {
                     return true;
                 }
@@ -359,8 +366,8 @@ namespace IsoRim
                     return true;
                 }
                 Vector3 v = new Vector3(cast.x, cast.y, cast.z);
-                Vector3 lo = Vector3.Min(box.shadowMin, box.shadowMin + v);
-                Vector3 hi = Vector3.Max(box.shadowMax, box.shadowMax + v);
+                Vector3 lo = Vector3.Min(box.shadowMin, box.shadowMin + v) + shift;
+                Vector3 hi = Vector3.Max(box.shadowMax, box.shadowMax + v) + shift;
                 if (BoxVisible(lo - Vector3.one * 0.05f, hi + Vector3.one * 0.05f))
                 {
                     return true;

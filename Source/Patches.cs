@@ -34,6 +34,9 @@ namespace IsoRim
         private const float HandReach = 0.2f;     // how far in front of the pawn the weapon is held
         private static readonly Dictionary<Type, int> layerKinds = new Dictionary<Type, int>();
 
+        // Set once ApplyAll has run (a floor layout registered later hooks its own drawing then, Floors).
+        public static bool Ready;
+
         public static void ApplyAll()
         {
             harmony = new Harmony("isorim.core");
@@ -384,6 +387,10 @@ namespace IsoRim
 
             RedirectDrawCalls();
 
+            // Stacked floors (Floors): only when a gameplay addon has registered a floor layout.
+            Ready = true;
+            Floors.ApplyPatches();
+
             // 1.7 port: one dev-mode line listing which hooks went in and which did not.
             ModLog.Note("[IsoRim] Hooks applied (" + hooked.Count + "): " + string.Join("; ", hooked));
             if (missed.Count > 0)
@@ -604,11 +611,18 @@ namespace IsoRim
             }
             try
             {
-                bool view = View3D.Active;
-                row.ToggleableIcon(ref view, R3DIcons.View3D, "IsoRim: 3D view (" + KeyLabel(R3DKeyDefOf.R3D_ToggleView) + ")", SoundDefOf.Mouseover_ButtonToggle);
-                if (view != View3D.Active)
+                if (View3D.LockedOn)
                 {
-                    View3D.Active = view;
+                    row.Icon(R3DIcons.View3D, "IsoRim: 3D view (always on with " + View3D.LockedBy + ")");
+                }
+                else
+                {
+                    bool view = View3D.Active;
+                    row.ToggleableIcon(ref view, R3DIcons.View3D, "IsoRim: 3D view (" + KeyLabel(R3DKeyDefOf.R3D_ToggleView) + ")", SoundDefOf.Mouseover_ButtonToggle);
+                    if (view != View3D.Active)
+                    {
+                        View3D.Active = view;
+                    }
                 }
                 if (View3D.Active)
                 {
@@ -946,13 +960,14 @@ namespace IsoRim
         // which is "below" only while north is up. __1 is that distance (negative).
         public static bool LabelDrawPosFor_Prefix(Thing __0, float __1, ref Vector2 __result)
         {
-            if (!View3D.Ready || View3D.Yaw == 0f || __0 == null)
+            Vector3 lift = Floors.DrawnOffset(__0);   // on an upper floor (Floors)
+            if (!View3D.Ready || __0 == null || View3D.Yaw == 0f && lift == Vector3.zero)
             {
                 return true;
             }
             try
             {
-                Vector3 onScreen = Find.Camera.WorldToScreenPoint(__0.DrawPos + View3D.GroundForward * __1);
+                Vector3 onScreen = Find.Camera.WorldToScreenPoint(__0.DrawPos + lift + View3D.GroundForward * __1);
                 float scale = Prefs.UIScale;
                 __result = new Vector2(onScreen.x / scale, Verse.UI.screenHeight - onScreen.y / scale);
                 return false;
@@ -971,7 +986,7 @@ namespace IsoRim
             {
                 return true;
             }
-            __result = View3D.ScreenToGround(__0 * Prefs.UIScale);
+            __result = Floors.ScreenToMap(__0 * Prefs.UIScale);
             return false;
         }
 
@@ -980,7 +995,7 @@ namespace IsoRim
         {
             if (View3D.Ready)
             {
-                __result = View3D.GroundRect();
+                __result = Floors.WidenView(View3D.GroundRect());
             }
         }
 
@@ -1154,6 +1169,10 @@ namespace IsoRim
                 layerKinds[type] = kind;
             }
             IsoRimSettings st = IsoRimMod.Settings;
+            if (Floors.sectionLifted)
+            {
+                return Floors.DrawLayer(__instance, kind);   // a block of an upper floor
+            }
 
             // The fog lies on the tops of the rock and walls under it: the game's mesh drawn with
             // the lid material, whose shader lifts it. Flat (the game's own drawing) with the 3D
@@ -1579,8 +1598,7 @@ namespace IsoRim
             Stance_Busy busy = pawn.stances != null ? pawn.stances.curStance as Stance_Busy : null;
             if (busy != null && busy.focusTarg.IsValid)
             {
-                Vector3 to = busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted();
-                to -= pawn.DrawPos;
+                Vector3 to = Floors.FlatDelta(pawn.DrawPos, busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted());   // as drawn: between floors too
                 if (to.x * to.x + to.z * to.z > 0.001f)
                 {
                     aim = to.AngleFlat();
@@ -2430,7 +2448,7 @@ namespace IsoRim
                 __1 = Emitters.Stand(__1);   // a puff from a model's nozzle (any thread)
                 return true;
             }
-            if (!DrawHook.active)
+            if (!DrawHook.active && !DrawHook.floor)
             {
                 return true;
             }
@@ -2438,7 +2456,7 @@ namespace IsoRim
             {
                 return false;
             }
-            __1 = DrawHook.Transform(__1);
+            __1 = DrawHook.Final(__1);
             return true;
         }
 

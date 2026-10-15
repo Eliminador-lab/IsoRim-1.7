@@ -274,6 +274,7 @@ namespace IsoRim
             {
                 Sweep();
             }
+            matrix = Floors.DrawnMatrix(matrix);   // a thing on an upper floor: before culling, tested where it shows
             bool outlines = IsoRimMod.Settings.outlines;
             for (int i = 0; i < parts.Count; i++)
             {
@@ -990,7 +991,7 @@ namespace IsoRim
 
             Vector3 mouse = Input.mousePosition;
             bool pointer = !PointerOnInterface();
-            Vector3 ground = View3D.ScreenToGround(new Vector2(mouse.x, mouse.y));
+            Vector3 ground = Floors.ScreenToMap(new Vector2(mouse.x, mouse.y));   // (stacked floors: on the floor the pointer hits)
             if (Probe.On && Probe.HasCutPointer)
             {
                 pointer = true;   // harness: a virtual pointer (ProbeCut.cs)

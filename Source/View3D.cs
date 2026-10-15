@@ -28,6 +28,11 @@ namespace IsoRim
 
         public static bool Active;
 
+        // Set by a gameplay addon that needs the 3D view (IsoRim ProjectZ): the view starts on and the 0 key, the
+        // corner button and the options button no longer turn it off. LockedBy names the addon in the tooltip.
+        public static bool LockedOn;
+        public static string LockedBy = "another mod";
+
         // Changes whenever a setting that affects the shape of things changes.
         public static int Stamp;
 
@@ -202,6 +207,7 @@ namespace IsoRim
             {
                 ResetCamera();
             }
+            Floors.BeginFrame();
             Probe.Lap(1);
 
             RegenerateIfStateChanged();
@@ -240,8 +246,15 @@ namespace IsoRim
 
             if (!typing && R3DKeyDefOf.R3D_ToggleView != null && R3DKeyDefOf.R3D_ToggleView.JustPressed)
             {
-                Active = !Active;
-                Messages.Message(Active ? "IsoRim: 3D view on" : "IsoRim: 3D view off", MessageTypeDefOf.SilentInput, false);
+                if (LockedOn)
+                {
+                    Messages.Message("IsoRim: 3D view is always on with " + LockedBy, MessageTypeDefOf.SilentInput, false);
+                }
+                else
+                {
+                    Active = !Active;
+                    Messages.Message(Active ? "IsoRim: 3D view on" : "IsoRim: 3D view off", MessageTypeDefOf.SilentInput, false);
+                }
             }
 
             if (!typing && R3DKeyDefOf.R3D_Isometric != null && R3DKeyDefOf.R3D_Isometric.JustPressed)

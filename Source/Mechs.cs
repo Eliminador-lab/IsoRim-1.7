@@ -446,7 +446,7 @@ namespace IsoRim
             Stance_Busy busy = pawn.stances != null ? pawn.stances.curStance as Stance_Busy : null;
             if (busy != null && !busy.neverAimWeapon && busy.focusTarg.IsValid)
             {
-                Vector3 to = (busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted()) - pawn.DrawPos;
+                Vector3 to = Floors.FlatDelta(pawn.DrawPos, busy.focusTarg.HasThing ? busy.focusTarg.Thing.DrawPos : busy.focusTarg.Cell.ToVector3Shifted());
                 if (to.x * to.x + to.z * to.z > 0.001f)
                 {
                     aim = to.AngleFlat();

@@ -670,6 +670,14 @@ namespace IsoRim
             float z0 = c.z;
             float x1 = x0 + 1f;
             float z1 = z0 + 1f;
+            // Stacked floors (Floors, design section 5): a wall standing on a wall on the floor below is one wall through both
+            // storeys: its sides reach down to the top of the one below, with no line along the bottom, and its texture
+            // runs on from it (along the ground row, up from the ground).
+            float drop, floorH;
+            int zShift;
+            Floors.WallColumn(map, c, out drop, out floorH, out zShift);
+            float baseY = -drop / squash;
+            float vBase = (floorH - drop) / SideCellsHigh;
             float topY = height / squash;
             float rimY = topY + 0.002f / squash;
             Color32 lineColor = R3DMaterials.Shaded(tint, LineShade);
@@ -690,7 +698,7 @@ namespace IsoRim
                     R3DMaterials.Shaded(tint, 0.9f));
             }
 
-            Vector3 centre = new Vector3(x0 + 0.5f, 0f, z0 + 0.5f);
+            Vector3 centre = new Vector3(x0 + 0.5f, baseY, z0 + 0.5f);
             for (int f = 0; f < 4; f++)
             {
                 int cond = 0;
@@ -716,13 +724,14 @@ namespace IsoRim
                 if (textured)
                 {
                     // Texture position follows the map, not the block, so a run of wall reads as one surface.
-                    float along = Vector3.Dot(p0, right);
+                    float along = Vector3.Dot(p0 - new Vector3(0f, 0f, zShift), right);
                     float u0 = along * 0.5f;
                     float u1 = (along + 1f) * 0.5f;
-                    float v1 = height / SideCellsHigh;
+                    float v0 = vBase;
+                    float v1 = vBase + (height + drop) / SideCellsHigh;
                     int sideMark = CutTags.Mark(layer);
                     MeshWriter.TexturedQuad(side, p0, Raised(p0, topY), Raised(p1, topY), p1,
-                        new Vector2(u0, 0f), new Vector2(u0, v1), new Vector2(u1, v1), new Vector2(u1, 0f), White);
+                        new Vector2(u0, v0), new Vector2(u0, v1), new Vector2(u1, v1), new Vector2(u1, v0), White);
                     CutTags.Apply(layer, sideMark, c, own | cond | ShaderCut.TexSide);
                 }
                 if (!room)
@@ -744,7 +753,10 @@ namespace IsoRim
                 Vector3 q0 = p0 + outward * Gap;
                 Vector3 q1 = q0 + right;
                 float lineTop = OutlineWidth * 0.7f / squash;
-                MeshWriter.Quad(solid, q0, Raised(q0, lineTop), Raised(q1, lineTop), q1, lineColor);
+                if (drop <= 0f)
+                {
+                    MeshWriter.Quad(solid, q0, Raised(q0, lineTop), Raised(q1, lineTop), q1, lineColor);
+                }
                 EndLines(solid, map, c, f, q0, right, topY, height, lineColor, layer, cond == 0 ? own : -1);
                 CutTags.Apply(layer, faceMark, c, own | cond);
             }
@@ -2571,7 +2583,8 @@ namespace IsoRim
         }
 
         // Whether the ground in cell c, beside the block in cell from, is open (a gravship hull corner
-        // piece standing against that block covers it, see HullCorners).
+        // piece standing against that block covers it, see HullCorners) and is there at all (stacked floors: an upper
+        // floor's open air has no ground for the band to lie on, Floors.HasFloor).
         private static bool Open(Map map, IntVec3 from, IntVec3 c)
         {
             if (!c.InBounds(map))
@@ -2579,7 +2592,8 @@ namespace IsoRim
                 return false;
             }
             Building b = c.GetEdifice(map);
-            return (b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block)) && !HullCorners.Covers(map, c, from, 0f);
+            return (b == null || (!(b is Building_Door) && Forms.For(b.def).form != Form3D.Block)) && !HullCorners.Covers(map, c, from, 0f)
+                && Floors.HasFloor(map, c);   // (stacked floors) no band over the open air beside a wall upstairs
         }
 
         // Under something that moves (an animal): a soft oval, drawn afresh every frame.

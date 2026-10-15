@@ -260,6 +260,12 @@ namespace IsoRim
         // The marks for the section layers' own-cell-lit sub-meshes (drawn by the game at identity).
         public static void DrawLayerMarks(SectionLayer layer)
         {
+            DrawLayerMarks(layer, Matrix4x4.identity);
+        }
+
+        // The same with the matrix the layer is drawn with (a block of an upper floor, Floors).
+        public static void DrawLayerMarks(SectionLayer layer, Matrix4x4 matrix)
+        {
             List<LayerSubMesh> subs = layer.subMeshes;
             for (int i = 0; i < subs.Count; i++)
             {
@@ -269,7 +275,7 @@ namespace IsoRim
                     Material mark = MarkFor(sm.material);
                     if (mark != null)
                     {
-                        Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, mark, sm.renderLayer);
+                        Graphics.DrawMesh(sm.mesh, matrix, mark, sm.renderLayer);
                     }
                 }
             }

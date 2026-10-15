@@ -813,6 +813,9 @@ namespace IsoRim
         // colour in the material (the shader adds the sun on the slope, _LightMode 3); the plain
         // parts are coloured per corner. The game's own DrawLayer draws them.
 
+        // 4 (FloorLid): a stacked floor stands over this cell (Floors): its slab is the roof.
+        private const int FloorLid = 4;
+
         // 0: no lid here. 1: a built roof (or a wall under the edge of one). 2: a natural rock roof over open ground.
         // 3 (ShipRoofs.Kind): a built roof over a gravship, or a wall standing on Substructure under its edge (Gravship.cs).
         private static int LidKind(Map map, IntVec3 c)
@@ -820,6 +823,12 @@ namespace IsoRim
             if (!c.InBounds(map) || (!CutTags.Enabled && Cutaway.RoofOpen(map, c)))
             {
                 return 0;
+            }
+            if (Floors.SlabOver(map, c))
+            {
+                // Stacked floors (Floors, design section 5): the floor above is this cell's roof. It is drawn as that
+                // floor's slab; here only as a flat lid inside the slab, which shows while that floor is hidden.
+                return FloorLid;
             }
             RoofDef roof = map.roofGrid.RoofAt(c);
             Building b = c.GetEdifice(map);
@@ -848,7 +857,7 @@ namespace IsoRim
                 if (n.InBounds(map))
                 {
                     RoofDef r = map.roofGrid.RoofAt(n);
-                    if (r != null && !r.isNatural)
+                    if (r != null && !r.isNatural && !Floors.SlabOver(map, n))   // a floor above is no roof to carry
                     {
                         bool shipRoof = ShipRoofs.IsShip(map, n);
                         if (shipWall && shipRoof)
@@ -1018,6 +1027,17 @@ namespace IsoRim
                     open[f] = KindAt(c.x + Side[f].x, c.z + Side[f].z) != kind;
                 }
 
+                if (kind == FloorLid)
+                {
+                    // Under a floor: a flat lid coloured like that floor, just under the tops of the walls, so it
+                    // lies inside the floor's slab while that floor is drawn.
+                    IntVec3 up = Floors.Stacked(map, c, 1);
+                    Color lidCol = up.IsValid && up.InBounds(map) ? map.terrainGrid.TerrainAt(up).DrawColor : Stone;
+                    float ly = (wall - 0.03f) / squash;
+                    MeshWriter.Quad(sm, new Vector3(c.x, ly, c.z), new Vector3(c.x, ly, c.z + 1), new Vector3(c.x + 1, ly, c.z + 1), new Vector3(c.x + 1, ly, c.z),
+                        R3DMaterials.Shaded(lidCol, 0.9f));
+                    continue;
+                }
                 if (kind == 2)
                 {
                     // A rock roof over a cave: a plain stone lid level with the rock round it.
@@ -1421,6 +1441,18 @@ namespace IsoRim
                 CellRect r = section.CellRect;
                 int w = map.Size.x;
                 int h = map.Size.z;
+                int ground = Floors.GroundRowsOf(map);
+                if (ground > 0)
+                {
+                    // Stacked floors (Floors): the earth is under the ground only; floors have no edge of their own.
+                    if (r.minZ >= ground)
+                    {
+                        FinalizeMesh(MeshParts.All);
+                        return;
+                    }
+                    h = ground;
+                    r.maxZ = Mathf.Min(r.maxZ, ground - 1);
+                }
                 float squash = View3D.Squash;
                 float top = -0.002f / squash;
                 float bottom = -Depth / squash;
