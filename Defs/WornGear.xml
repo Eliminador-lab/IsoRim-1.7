@@ -125,4 +125,23 @@
     <model>Models/person_tool_tornado.obj</model>
     <mount>hip</mount>
   </IsoRim.WornGearDef>
+  <!-- coverage batch 1 (2026-10-15): Anomaly lances, tools/make_coverage_b1.py -->
+  <IsoRim.WornGearDef>
+    <defName>R3DGear_Apparel_ShardPsychicShockLance</defName>
+    <apparel>Apparel_ShardPsychicShockLance</apparel>
+    <model>Models/person_tool_shard_shock.obj</model>
+    <mount>hip</mount>
+  </IsoRim.WornGearDef>
+  <IsoRim.WornGearDef>
+    <defName>R3DGear_Apparel_ShardPsychicInsanityLance</defName>
+    <apparel>Apparel_ShardPsychicInsanityLance</apparel>
+    <model>Models/person_tool_shard_insanity.obj</model>
+    <mount>hip</mount>
+  </IsoRim.WornGearDef>
+  <IsoRim.WornGearDef>
+    <defName>R3DGear_Apparel_BiomutationLance</defName>
+    <apparel>Apparel_BiomutationLance</apparel>
+    <model>Models/person_tool_biomutation.obj</model>
+    <mount>hip</mount>
+  </IsoRim.WornGearDef>
 </Defs>

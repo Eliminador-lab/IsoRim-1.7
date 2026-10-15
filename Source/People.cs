@@ -875,6 +875,7 @@ namespace IsoRim
             string legArmourKind = null;
             string vestKind = null;
             string shellArmourKind = null;
+            string shellArmourFile = null;
             Color vestColour = Color.white;
             Color shellArmourColour = Color.white;
             List<Apparel> gearWorn = null;
@@ -884,6 +885,7 @@ namespace IsoRim
             Color skinShapeColour = Color.white;
             Color skinShapeTint = Color.white;
             bool skinUnder = false;
+            bool skinBare = false;
             look.mouthWear = null;
             look.eyeWear = null;
             look.neckWear = null;
@@ -906,6 +908,10 @@ namespace IsoRim
                         continue;
                     }
                     Color colour = ApparelColour(a);
+                    if (PaintedZones(name))
+                    {
+                        colour = a.DrawColor;   // its own model paints its fixed zones (gold): the item's colour, white when undyed
+                    }
                     bool torso = Covers(props, "Torso");
                     bool legs = Covers(props, "Legs");
                     bool onHead = Covers(props, "FullHead") || Covers(props, "UpperHead");
@@ -951,6 +957,7 @@ namespace IsoRim
                     if (armourKind != null && torso)
                     {
                         shellArmourKind = armourKind;
+                        shellArmourFile = ArmourVariants.TryGetValue(name, out string variant) ? variant : armourKind;
                         shellArmourColour = colour;
                         if (legs && (armourKind == "marine" || armourKind == "cataphract" || armourKind == "recon"))
                         {
@@ -982,6 +989,7 @@ namespace IsoRim
                             skinShapeColour = a.DrawColor;
                             skinShapeTint = colour;
                             skinUnder = mid.under;
+                            skinBare = mid.bare;
                         }
                         else
                         {
@@ -1030,7 +1038,7 @@ namespace IsoRim
                         }
                         continue;
                     }
-                    if (torso && layer > upperLayer)
+                    if (torso && layer > upperLayer && !(mid.onSkin && mid.bare))   // a bare-shouldered tunic leaves the shirt part bare
                     {
                         look.upperColor = colour;
                         upperLayer = layer;
@@ -1045,7 +1053,7 @@ namespace IsoRim
             }
             // The game draws a shirt with an over-shape as a whole shirt, also the ruffle shirt (no Torso group): it colours
             // the shirt part when nothing else on the skin layer does.
-            if (skinShape != null && upperLayer < 0)
+            if (skinShape != null && upperLayer < 0 && !skinBare)
             {
                 look.upperColor = skinShapeTint;
                 upperLayer = 0;
@@ -1075,7 +1083,7 @@ namespace IsoRim
             // its front plate in the opening of a coat that is open at the front.
             if (shellArmourKind != null)
             {
-                look.coat = Part("person_" + build + "_armor_" + shellArmourKind);
+                look.coat = Part("person_" + build + "_armor_" + shellArmourFile) ?? Part("person_" + build + "_armor_" + shellArmourKind);
                 look.coatColor = shellArmourColour;
                 look.pads = false;
             }
@@ -1189,18 +1197,22 @@ namespace IsoRim
         // shirt its own colour; an on-skin one (eltex shirt, ruffle shirt) is the shirt: it colours the shirt part and adds
         // its collar, jabot or dark wedges. under: it also has a flat <file>_under shape for under a coat, strap or vest.
         // Shown alone, in an open coat's front and under a strap; hidden under closed coats and armour (Dress).
-        // Adult-only items, so no kid shapes; the kid shirt, pants, romper and tribalwear keep the tint (plain sprites).
+        // bare: the shape is the whole garment and the shirt part stays bare (the tribal tunics' bare left shoulder).
+        // Kid items are made on the thin model (children's build, unscaled); the kid shirt and the pants keep the tint
+        // (plain sprite / no worn sprite), as do the basic shirt and pants.
         internal struct MidShape
         {
             public string file;
             public bool onSkin;
             public bool under;
+            public bool bare;
 
-            public MidShape(string file, bool onSkin, bool under = false)
+            public MidShape(string file, bool onSkin, bool under = false, bool bare = false)
             {
                 this.file = file;
                 this.onSkin = onSkin;
                 this.under = under;
+                this.bare = bare;
             }
         }
 
@@ -1212,7 +1224,35 @@ namespace IsoRim
             { "Apparel_Sash", new MidShape("sash", false) },
             { "Apparel_PsyfocusShirt", new MidShape("shirt_psy", true) },
             { "Apparel_ShirtRuffle", new MidShape("shirt_ruffle", true, true) },
+            { "Apparel_CollarShirt", new MidShape("shirt_collar", true, true) },   // coverage batch 1: collar + placket
+            // coverage batch 2 (tools/make_coverage_b2.py)
+            { "Apparel_TribalA", new MidShape("tribal", true, false, true) },        // one-shoulder tunic, ragged hem, seam
+            { "Apparel_KidTribal", new MidShape("kid_tribal", true, false, true) },  // the same on the child
+            { "Apparel_KidRomper", new MidShape("kid_romper", true) },               // ribbed hip band + front seam
         };
+
+        // Armour variants with their own worn shape (Models/person_<build>_armor_<file>.obj, tools/make_coverage_b1.py):
+        // the family's shape plus the variant's own parts. The family (ArmourKind) still decides everything else.
+        internal static readonly Dictionary<string, string> ArmourVariants = new Dictionary<string, string>
+        {
+            { "Apparel_ArmorMarineGrenadier", "grenadier" },
+            { "Apparel_ArmorMarinePrestige", "marine_prestige" },
+            { "Apparel_ArmorCataphractPhoenix", "phoenix" },
+            { "Apparel_ArmorCataphractPrestige", "cataphract_prestige" },
+            { "Apparel_ArmorReconPrestige", "recon_prestige" },
+        };
+
+        // Items whose own model paints its fixed-colour zones (the prestige gold) and leaves the rest to the item's colour:
+        // they take DrawColor (white when undyed), like the CoatShapes, not the sprite's mean, which the gold would turn beige.
+        internal static readonly HashSet<string> PaintedHats = new HashSet<string>
+        {
+            "Apparel_ArmorMarineHelmetPrestige", "Apparel_ArmorHelmetCataphractPrestige", "Apparel_ArmorHelmetReconPrestige",
+        };
+
+        internal static bool PaintedZones(string name)
+        {
+            return ArmourVariants.ContainsKey(name) || PaintedHats.Contains(name);
+        }
 
         // A part drawn with no outline at all (marks every vertex once; the part is shared).
         internal static Model NoOutline(Model m)
@@ -1355,6 +1395,10 @@ namespace IsoRim
             { "Apparel_VacsuitHelmet", "vacsuit_helmet" },
             { "Apparel_ArmorHelmetMechCommander", "mechcommander_helmet" },
             { "Apparel_ArmorHelmetMechlordHelmet", "mechlord_helmet" },
+            // Prestige helmets: the family helmet + gold parts (coverage batch 1, tools/make_coverage_b1.py)
+            { "Apparel_ArmorMarineHelmetPrestige", "marine_helm_prestige" },
+            { "Apparel_ArmorHelmetCataphractPrestige", "cataphract_helm_prestige" },
+            { "Apparel_ArmorHelmetReconPrestige", "recon_helm_prestige" },
         };
 
         // Face, eye and neck items with their own model (Models/person_hat_<file>.obj), by exact defName. The game lets
