@@ -94,6 +94,8 @@ namespace IsoRim
                     prefix: new HarmonyMethod(typeof(Floors), nameof(DrawDynamicSections_Prefix)), finalizer: new HarmonyMethod(typeof(Floors), nameof(Section_Finalizer)));
                 h.Patch(AccessTools.Method(typeof(Thing), nameof(Thing.DynamicDrawPhase)),
                     prefix: new HarmonyMethod(typeof(Floors), nameof(ThingPhase_Prefix)), finalizer: new HarmonyMethod(typeof(Floors), nameof(ThingPhase_Finalizer)));
+                h.Patch(AccessTools.Method(typeof(SectionLayer_Terrain), nameof(SectionLayer_Terrain.Regenerate)),
+                    postfix: new HarmonyMethod(typeof(Floors), nameof(TerrainRegenerate_Postfix)));
                 ModLog.Note("[IsoRim] Floor layout registered: stacked floors are drawn.");
             }
             catch (Exception e)
@@ -392,6 +394,10 @@ namespace IsoRim
             if (kind == 0)
             {
                 IsoGlow.DrawLayerMarks(layer, sectionMatrix);
+                if (layer is SectionLayer_Terrain)
+                {
+                    DrawSlab(layer);
+                }
             }
             bool fogLid = kind == 2 && st.fogLid;
             List<LayerSubMesh> subs = layer.subMeshes;
@@ -405,6 +411,139 @@ namespace IsoRim
                 }
             }
             return false;
+        }
+
+        // ---- floor slabs: the game's terrain does not write depth, so an upper floor drawn as terrain alone would not
+        // hide what is below it. Every drawn cell of an upper floor gets a solid slab (top at the floor, a little thick,
+        // sides where the floor ends), coloured like its terrain, lit like IsoRim's models.
+        private sealed class Slab
+        {
+            public Mesh mesh;
+            public bool dirty = true;
+            public int stamp;
+        }
+
+        private const float SlabThickness = 0.12f;
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Section, Slab> slabs = new System.Runtime.CompilerServices.ConditionalWeakTable<Section, Slab>();
+        private static readonly AccessTools.FieldRef<SectionLayer, Section> layerSection = AccessTools.FieldRefAccess<SectionLayer, Section>("section");
+
+        public static void TerrainRegenerate_Postfix(SectionLayer_Terrain __instance)
+        {
+            Section s = layerSection(__instance);
+            Slab slab;
+            if (s != null && slabs.TryGetValue(s, out slab))
+            {
+                slab.dirty = true;
+            }
+        }
+
+        private static void DrawSlab(SectionLayer layer)
+        {
+            Section section = layerSection(layer);
+            if (section == null || section.botLeft.z < groundRows)
+            {
+                return;
+            }
+            Slab slab = slabs.GetValue(section, s => new Slab());
+            if (slab.dirty || slab.stamp != View3D.Stamp)
+            {
+                slab.dirty = false;
+                slab.stamp = View3D.Stamp;
+                BuildSlab(section, slab);
+            }
+            Material mat = R3DMaterials.LitModel;
+            if (slab.mesh != null && mat != null)
+            {
+                IsoGlow.DrawLit(slab.mesh, sectionMatrix, mat, 0);
+            }
+        }
+
+        private static bool Floored(Map map, IntVec3 c, int floor)
+        {
+            return c.InBounds(map) && FloorOfRow(c.z) == floor && !map.terrainGrid.TerrainAt(c).dontRender;
+        }
+
+        private static void BuildSlab(Section section, Slab slab)
+        {
+            Map map = section.map;
+            int floor = FloorOfRow(section.botLeft.z);
+            float s = View3D.Squash;
+            float top = 0f;
+            float bottom = -SlabThickness / s;
+            List<Vector3> verts = new List<Vector3>();
+            List<Color32> cols = new List<Color32>();
+            List<int> tris = new List<int>();
+            CellRect rect = section.CellRect;
+            foreach (IntVec3 c in rect)
+            {
+                if (!Floored(map, c, floor))
+                {
+                    continue;
+                }
+                Color32 col = map.terrainGrid.TerrainAt(c).DrawColor;
+                col.a = 255;
+                float x0 = c.x, x1 = c.x + 1, z0 = c.z, z1 = c.z + 1;
+                Quad(verts, cols, tris, col, new Vector3(x0, top, z0), new Vector3(x0, top, z1), new Vector3(x1, top, z1), new Vector3(x1, top, z0));
+                if (!Floored(map, c + IntVec3.South, floor))
+                {
+                    Quad(verts, cols, tris, col, new Vector3(x0, bottom, z0), new Vector3(x0, top, z0), new Vector3(x1, top, z0), new Vector3(x1, bottom, z0));
+                }
+                if (!Floored(map, c + IntVec3.North, floor))
+                {
+                    Quad(verts, cols, tris, col, new Vector3(x0, bottom, z1), new Vector3(x0, top, z1), new Vector3(x1, top, z1), new Vector3(x1, bottom, z1));
+                }
+                if (!Floored(map, c + IntVec3.West, floor))
+                {
+                    Quad(verts, cols, tris, col, new Vector3(x0, bottom, z0), new Vector3(x0, top, z0), new Vector3(x0, top, z1), new Vector3(x0, bottom, z1));
+                }
+                if (!Floored(map, c + IntVec3.East, floor))
+                {
+                    Quad(verts, cols, tris, col, new Vector3(x1, bottom, z0), new Vector3(x1, top, z0), new Vector3(x1, top, z1), new Vector3(x1, bottom, z1));
+                }
+            }
+            if (verts.Count == 0)
+            {
+                slab.mesh = null;
+                return;
+            }
+            if (slab.mesh == null)
+            {
+                slab.mesh = new Mesh();
+            }
+            else
+            {
+                slab.mesh.Clear();
+            }
+            slab.mesh.SetVertices(verts);
+            slab.mesh.SetColors(cols);
+            slab.mesh.SetTriangles(tris, 0);
+            slab.mesh.RecalculateBounds();
+        }
+
+        // A quad drawn from both sides (the shader turns each face toward the camera).
+        private static void Quad(List<Vector3> verts, List<Color32> cols, List<int> tris, Color32 col, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        {
+            int i = verts.Count;
+            verts.Add(a);
+            verts.Add(b);
+            verts.Add(c);
+            verts.Add(d);
+            cols.Add(col);
+            cols.Add(col);
+            cols.Add(col);
+            cols.Add(col);
+            tris.Add(i);
+            tris.Add(i + 1);
+            tris.Add(i + 2);
+            tris.Add(i);
+            tris.Add(i + 2);
+            tris.Add(i + 3);
+            tris.Add(i);
+            tris.Add(i + 2);
+            tris.Add(i + 1);
+            tris.Add(i);
+            tris.Add(i + 3);
+            tris.Add(i + 2);
         }
 
         // ---- things drawn every frame
