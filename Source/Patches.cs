@@ -956,17 +956,8 @@ namespace IsoRim
         // which is "below" only while north is up. __1 is that distance (negative).
         public static bool LabelDrawPosFor_Prefix(Thing __0, float __1, ref Vector2 __result)
         {
-            if (!View3D.Ready || __0 == null)
-            {
-                return true;
-            }
-            Vector3 lift = Vector3.zero;
-            if (Floors.On && __0.Spawned)
-            {
-                Vector3 o = Floors.ThingOffset(__0);
-                lift = new Vector3(o.x, o.y / View3D.Squash, o.z);
-            }
-            if (View3D.Yaw == 0f && lift == Vector3.zero)
+            Vector3 lift = Floors.DrawnOffset(__0);   // on an upper floor (Floors)
+            if (!View3D.Ready || __0 == null || View3D.Yaw == 0f && lift == Vector3.zero)
             {
                 return true;
             }
@@ -991,17 +982,7 @@ namespace IsoRim
             {
                 return true;
             }
-            if (Floors.On)
-            {
-                // The floor the pointer works on: the line of sight at its height, in its rows.
-                float h;
-                int zShift;
-                Floors.PointerPlane(out h, out zShift);
-                Vector3 p = View3D.ScreenToHeight(__0 * Prefs.UIScale, h);
-                __result = new Vector3(p.x, 0f, p.z + zShift);
-                return false;
-            }
-            __result = View3D.ScreenToGround(__0 * Prefs.UIScale);
+            __result = Floors.ScreenToMap(__0 * Prefs.UIScale);
             return false;
         }
 
@@ -1184,15 +1165,17 @@ namespace IsoRim
                 layerKinds[type] = kind;
             }
             IsoRimSettings st = IsoRimMod.Settings;
+            if (Floors.sectionLifted)
+            {
+                return Floors.DrawLayer(__instance, kind);   // a block of an upper floor
+            }
 
             // The fog lies on the tops of the rock and walls under it: the game's mesh drawn with
             // the lid material, whose shader lifts it. Flat (the game's own drawing) with the 3D
             // view or the setting off.
-            // A block of an upper floor (Floors): everything drawn with the floor's matrix.
-            bool lifted = Floors.sectionLifted;
             if (kind == 2 && (!View3D.Ready || !st.fogLid))
             {
-                return lifted ? DrawLifted(__instance) : true;
+                return true;
             }
             if (!View3D.Ready)
             {
@@ -1204,17 +1187,13 @@ namespace IsoRim
                 // the pulled overlay below skips them.
                 if (__instance.Visible)
                 {
-                    IsoGlow.DrawLayerMarks(__instance, lifted ? Floors.sectionMatrix : Matrix4x4.identity);
+                    IsoGlow.DrawLayerMarks(__instance);
                 }
-                return lifted ? DrawLifted(__instance) : true;
+                return true;
             }
             if (kind == 3)
             {
-                if (st.damage3D)
-                {
-                    return false;   // the mod's own marks are drawn on the 3D shapes instead
-                }
-                return lifted ? DrawLifted(__instance) : true;
+                return !st.damage3D;   // the mod's own marks are drawn on the 3D shapes instead
             }
             if (kind == 2)
             {
@@ -1229,15 +1208,9 @@ namespace IsoRim
                     if (sm.finalized && !sm.disabled)
                     {
                         Material lid = sm.material == MatBases.FogOfWar ? IsoCellMap.FogFor(sm.material) : null;
-                        Graphics.DrawMesh(sm.mesh, lifted ? Floors.sectionMatrix : Matrix4x4.identity, lid ?? sm.material, sm.renderLayer);
+                        Graphics.DrawMesh(sm.mesh, Matrix4x4.identity, lid ?? sm.material, sm.renderLayer);
                     }
                 }
-                return false;
-            }
-            if (lifted)
-            {
-                // Not on upper floors: the sheet covers the open air between floors too, and would darken the
-                // ground under it a second time at night.
                 return false;
             }
             if (!st.lightingFix)
@@ -1260,26 +1233,6 @@ namespace IsoRim
                 {
                     Material mat = sm.material == MatBases.LightOverlay ? IsoGlow.OverlayFor(sm.material) : sm.material;
                     Graphics.DrawMesh(sm.mesh, m, mat, sm.renderLayer);   // 1.7 vanilla passes renderLayer
-                }
-            }
-            return false;
-        }
-
-        // The game's MapDrawLayer.DrawLayer with a floor's matrix instead of identity (always returns false: drawn).
-        private static bool DrawLifted(SectionLayer layer)
-        {
-            if (!layer.Visible)
-            {
-                return false;
-            }
-            Matrix4x4 m = Floors.sectionMatrix;
-            List<LayerSubMesh> subs = layer.subMeshes;
-            for (int i = 0; i < subs.Count; i++)
-            {
-                LayerSubMesh sm = subs[i];
-                if (sm.finalized && !sm.disabled)
-                {
-                    Graphics.DrawMesh(sm.mesh, m, sm.material, sm.renderLayer);
                 }
             }
             return false;
@@ -2399,10 +2352,7 @@ namespace IsoRim
                 DrawScope scope = default(DrawScope);
                 Vector3 at = __0.TrueCenter();
                 BeginBillboard(ref scope, Interaction.PickHeight(__0) + IconGap, true, at);
-                if (Floors.On && __0.Spawned && __0.Map == Find.CurrentMap)
-                {
-                    Floors.BeginFor(__0, __0.Position, ref scope);
-                }
+                Floors.BeginFor(__0, __0.Position, __0.Map, ref scope);
                 DrawHook.DrawMesh(MeshPool.plane05, Matrix4x4.TRS(new Vector3(at.x, AltitudeLayer.MetaOverlays.AltitudeFor(), at.z), Quaternion.identity, Vector3.one), forbiddenMat, 0);
                 Scope_Finalizer(scope);
                 return false;
@@ -2471,10 +2421,7 @@ namespace IsoRim
                 }
                 Vector3 anchor = target.HasThing ? target.Thing.TrueCenter() : target.Cell.ToVector3Shifted();
                 BeginBillboard(ref __state, h + IconGap, true, anchor);
-                if (Floors.On && map != null && map == Find.CurrentMap)
-                {
-                    Floors.BeginFor(target.HasThing && target.Thing.Spawned ? target.Thing : null, target.Cell, ref __state);
-                }
+                Floors.BeginFor(target.HasThing && target.Thing.Spawned ? target.Thing : null, target.Cell, map, ref __state);
             }
             catch (Exception e)
             {
@@ -2521,20 +2468,12 @@ namespace IsoRim
                 Log.ErrorOnce("[IsoRim] Finding the height for a status icon failed: " + e, 93611191);
             }
             BeginBillboard(ref __state, h + IconGap, true, __0.TrueCenter());
-            if (Floors.On && __0.Spawned && __0.Map == Find.CurrentMap)
-            {
-                Floors.BeginFor(__0, __0.Position, ref __state);
-            }
+            Floors.BeginFor(__0, __0.Position, __0.Map, ref __state);
         }
 
         public static void Scope_Finalizer(DrawScope __state)
         {
-            if (__state.floorChanged)
-            {
-                DrawHook.floor = __state.wasFloor;
-                DrawHook.floorMatrix = __state.wasFloorMatrix;
-                DrawHook.skip = __state.wasSkip;
-            }
+            Floors.EndFor(__state);
             if (__state.changed)
             {
                 DrawHook.active = __state.wasActive;

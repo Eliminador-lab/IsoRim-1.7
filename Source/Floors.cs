@@ -243,6 +243,17 @@ namespace IsoRim
             return DrawHook.floor ? DrawHook.floorMatrix * m : m;
         }
 
+        // Drawn-space offset of a thing (culling boxes, name labels); zero without floors.
+        public static Vector3 DrawnOffset(Thing t)
+        {
+            if (!On || t == null || !t.Spawned)
+            {
+                return Vector3.zero;
+            }
+            Vector3 o = ThingOffset(t);
+            return new Vector3(o.x, o.y / View3D.Squash, o.z);
+        }
+
         // True-space offset of a thing (for culling boxes and labels).
         public static Vector3 ThingOffset(Thing t)
         {
@@ -270,6 +281,17 @@ namespace IsoRim
             }
             height = heights[pointer];
             zShift = shifts[pointer];
+        }
+
+        // The map position under a screen pixel: on the ground, or with floors on the floor the pointer works on.
+        public static Vector3 ScreenToMap(Vector2 px)
+        {
+            if (!On || pointer <= 0)
+            {
+                return View3D.ScreenToGround(px);
+            }
+            Vector3 p = View3D.ScreenToHeight(px, heights[pointer]);
+            return new Vector3(p.x, 0f, p.z + shifts[pointer]);
         }
 
         // ---- the view rectangle: the ground's, and the same ground seen raised on each shown floor
@@ -337,23 +359,52 @@ namespace IsoRim
             sectionLifted = false;
         }
 
-        // Whether a section can show, with its shift (Cull.SectionOverlaps): the view test on the cells below it.
-        public static bool SectionShift(Section section, out Vector3 shift, out bool hidden)
+        // Cull.SectionOverlaps: false for a section on a hidden floor (or between floors); otherwise true, with the
+        // drawn-space shift of its box (zero on the ground and without floors).
+        public static bool SectionDrawShift(Section section, out Vector3 shift)
         {
             shift = Vector3.zero;
-            hidden = false;
             if (!On || section.botLeft.z < groundRows)
             {
-                return false;
+                return true;
             }
             int k = FloorOfRow(section.botLeft.z);
             if (k <= 0 || !shown[k])
             {
-                hidden = true;
-                return true;
+                return false;
             }
             shift = new Vector3(0f, heights[k] / View3D.Squash, -shifts[k]);
             return true;
+        }
+
+        // A layer of a section on an upper floor (Patches.DrawLayer_Section, only while sectionLifted): drawn here with
+        // the floor's matrix. kind as there: 0 normal, 1 lighting overlay, 2 fog, 3 the game's building damage.
+        // Always returns false (the game's own drawing is skipped).
+        public static bool DrawLayer(SectionLayer layer, int kind)
+        {
+            IsoRimSettings st = IsoRimMod.Settings;
+            if (kind == 1 || kind == 3 && st.damage3D || !layer.Visible)
+            {
+                // No lighting overlay on upper floors: the sheet covers the open air between floors too and would
+                // darken the ground under it a second time at night. Damage: IsoRim's own marks are on the shapes.
+                return false;
+            }
+            if (kind == 0)
+            {
+                IsoGlow.DrawLayerMarks(layer, sectionMatrix);
+            }
+            bool fogLid = kind == 2 && st.fogLid;
+            List<LayerSubMesh> subs = layer.subMeshes;
+            for (int i = 0; i < subs.Count; i++)
+            {
+                LayerSubMesh sm = subs[i];
+                if (sm.finalized && !sm.disabled)
+                {
+                    Material mat = fogLid && sm.material == MatBases.FogOfWar ? IsoCellMap.FogFor(sm.material) ?? sm.material : sm.material;
+                    Graphics.DrawMesh(sm.mesh, sectionMatrix, mat, sm.renderLayer);
+                }
+            }
+            return false;
         }
 
         // ---- things drawn every frame
@@ -389,13 +440,13 @@ namespace IsoRim
             }
         }
 
-        // Sets the floor for what is drawn next for a thing or cell (status icons, designations), saving what was there.
-        // Returns false when that floor is hidden (nothing should be drawn).
-        public static bool BeginFor(Thing t, IntVec3 cell, ref Patches.DrawScope state)
+        // Sets the floor for what is drawn next for a thing or cell of a map (status icons, designations), saving what
+        // was there; nothing happens without floors or off the current map. A hidden floor skips the drawing.
+        public static void BeginFor(Thing t, IntVec3 cell, Map map, ref Patches.DrawScope state)
         {
-            if (!On)
+            if (!On || map == null || map != frameMap || t != null && !t.Spawned)
             {
-                return true;
+                return;
             }
             Matrix4x4 m;
             bool visible = t != null ? ThingMatrix(t, out m) : RowMatrix(cell.z, out m);
@@ -409,7 +460,17 @@ namespace IsoRim
             {
                 DrawHook.skip = true;
             }
-            return visible;
+        }
+
+        // Puts back what BeginFor changed (Patches.Scope_Finalizer).
+        public static void EndFor(Patches.DrawScope state)
+        {
+            if (state.floorChanged)
+            {
+                DrawHook.floor = state.wasFloor;
+                DrawHook.floorMatrix = state.wasFloorMatrix;
+                DrawHook.skip = state.wasSkip;
+            }
         }
     }
 }

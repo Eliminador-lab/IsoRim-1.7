@@ -274,11 +274,7 @@ namespace IsoRim
             {
                 Sweep();
             }
-            if (DrawHook.floor)
-            {
-                // A thing on an upper floor (Floors), before culling so the part is tested where it shows.
-                matrix = DrawHook.floorMatrix * matrix;
-            }
+            matrix = Floors.InScope(matrix);   // a thing on an upper floor: before culling, tested where it shows
             bool outlines = IsoRimMod.Settings.outlines;
             for (int i = 0; i < parts.Count; i++)
             {

@@ -230,13 +230,7 @@ namespace IsoRim
         {
             float s = squash;
             Vector3 min, max;
-            // On an upper floor (Floors): the box where the thing shows, over the ground.
-            Vector3 lift = Vector3.zero;
-            if (Floors.On)
-            {
-                Vector3 o = Floors.ThingOffset(t);
-                lift = new Vector3(o.x, o.y / s, o.z);
-            }
+            Vector3 lift = Floors.DrawnOffset(t);   // on an upper floor (Floors): where it shows
             if (t is Pawn)
             {
                 Pawn pawn = (Pawn)t;
@@ -304,9 +298,8 @@ namespace IsoRim
         public static bool SectionOverlaps(ref CellRect view, Section section)
         {
             // A block of an upper floor (Floors) is drawn moved over the ground: tested where it shows.
-            Vector3 shift = Vector3.zero;
-            bool hidden;
-            if (Floors.On && Floors.SectionShift(section, out shift, out hidden) && hidden)
+            Vector3 shift;
+            if (!Floors.SectionDrawShift(section, out shift))
             {
                 return false;
             }
