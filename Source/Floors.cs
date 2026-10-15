@@ -48,6 +48,28 @@ namespace IsoRim
                 IsoRim.Floors.Registered();
             }
         }
+
+        // Roofs the addon keeps for the game's rules but that are not drawn (ProjectZ's stairwell: the room under it
+        // stays indoors, the opening above stays open). Null: every roof is drawn.
+        public static Predicate<RoofDef> HiddenRoof;
+
+        public static bool RoofHidden(RoofDef roof)
+        {
+            return roof != null && HiddenRoof != null && HiddenRoof(roof);
+        }
+
+        // How tall a thing of this kind is drawn from its model, in cells (ModelEntry.DrawnHeight: the tallest model
+        // times scale and footprint fit); 0 for things not drawn from a model (walls, doors and automatic shapes
+        // follow the wall height).
+        public static float ModelHeight(ThingDef def)
+        {
+            ModelEntry entry;
+            if (def == null || !ModelLibrary.TryGet(def, out entry) || entry.def.flat || !entry.HasModel)
+            {
+                return 0f;
+            }
+            return entry.DrawnHeight(def);
+        }
     }
 
     public static class Floors
@@ -252,9 +274,16 @@ namespace IsoRim
             return true;
         }
 
-        // The same as a value (culling, lighting lookups): the matrix where it shows (unchanged when hidden).
+        // The same as a value, for IsoRim's own 3D drawing of a thing (figures, models, solid sprites; culling and lighting
+        // lookups test it too): the matrix where it shows (unchanged when hidden), with the thing's extra offset from the
+        // layout (a pawn on a stair step, ThingOffset) while that thing is drawn. The game's own drawing gets that offset
+        // in DrawHook; these draws do not go through DrawHook.
         public static Matrix4x4 DrawnMatrix(Matrix4x4 m)
         {
+            if (DrawHook.floor)
+            {
+                m = DrawHook.floorMatrix * m;
+            }
             Drawn(ref m);
             return m;
         }

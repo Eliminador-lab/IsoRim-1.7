@@ -1495,9 +1495,11 @@ namespace IsoRim
 
             float height = View3D.WallHeight;
             bool cut = false;
+            bool slab = false;
             foreach (IntVec3 c in door.OccupiedRect())
             {
                 cut |= WallBoxes.CellCut(map, c);
+                slab |= Floors.SlabOver(map, c);   // a stacked floor right above: no room for the arch
             }
             if (cut)
             {
@@ -1509,7 +1511,7 @@ namespace IsoRim
             string swatch = R3DTextures.StuffSwatch(door);
 
             DynamicModels.DrawLocal(entry.variants[0], centre, yaw, sized, tint, swatch);
-            if (entry.doorTop != null && !cut)
+            if (entry.doorTop != null && !cut && !slab)
             {
                 DynamicModels.DrawLocal(entry.doorTop, centre, yaw, sized, tint, swatch);
             }

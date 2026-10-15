@@ -831,6 +831,10 @@ namespace IsoRim
                 return FloorLid;
             }
             RoofDef roof = map.roofGrid.RoofAt(c);
+            if (Api.RoofHidden(roof))
+            {
+                roof = null;   // kept for the rules, not drawn (an addon's stairwell)
+            }
             Building b = c.GetEdifice(map);
             bool solidBlock = b != null && Forms.For(b.def).form == Form3D.Block;
             bool natural = solidBlock && b.def.building != null && b.def.building.isNaturalRock;
@@ -857,7 +861,7 @@ namespace IsoRim
                 if (n.InBounds(map))
                 {
                     RoofDef r = map.roofGrid.RoofAt(n);
-                    if (r != null && !r.isNatural && !Floors.SlabOver(map, n))   // a floor above is no roof to carry
+                    if (r != null && !r.isNatural && !Api.RoofHidden(r) && !Floors.SlabOver(map, n))   // a floor above is no roof to carry
                     {
                         bool shipRoof = ShipRoofs.IsShip(map, n);
                         if (shipWall && shipRoof)

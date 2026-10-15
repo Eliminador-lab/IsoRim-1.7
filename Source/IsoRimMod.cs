@@ -412,7 +412,18 @@ namespace IsoRim
                 {
                     st.pitch = Slider(l, "Camera angle", st.pitch, View3D.MinPitch, View3D.MaxPitch, st.pitch.ToString("0") + "°", "90 looks straight down.");
                 }
-                st.wallHeight = Slider(l, "Wall height", st.wallHeight, 0.5f, 4f, st.wallHeight.ToString("0.0") + " cells");
+                if (View3D.LockedWallHeight > 0f)
+                {
+                    // Fixed by an addon (ProjectZ): greyed out, with who fixed it.
+                    GUI.color = Muted;
+                    Slider(l, "Wall height", View3D.LockedWallHeight, 0.5f, 4f, View3D.LockedWallHeight.ToString("0.00") + " cells");
+                    GUI.color = Color.white;
+                    Note(l, "Fixed by " + View3D.LockedBy + ".");
+                }
+                else
+                {
+                    st.wallHeight = Slider(l, "Wall height", st.wallHeight, 0.5f, 4f, st.wallHeight.ToString("0.0") + " cells");
+                }
 
             }
             if (r != null)
