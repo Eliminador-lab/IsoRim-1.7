@@ -49,6 +49,8 @@ namespace IsoRim
             public bool pads;
             public bool visor;
             public bool faceHidden;   // the game leaves out the eyes (skip flag Eyes): no face, eyes or scars
+            public bool headHidden;   // the game leaves out the whole head (skip flag Head, the burka): its covering (hat) instead
+            public bool bedHidesHat;  // in a bed that hides headgear when this look was worked out (People.BedHidesHeadgear)
             public Color skin = Color.white;
             public Color hairColor = Color.white;
             public Color upperColor = Color.white;
@@ -108,7 +110,7 @@ namespace IsoRim
             {
                 return o != null && size == o.size && headWide == o.headWide && shoulders == o.shoulders && bodyScale == o.bodyScale && lower == o.lower && upper == o.upper
                     && coat == o.coat && hair == o.hair && hairTop == o.hairTop && beard == o.beard && hat == o.hat && pads == o.pads && visor == o.visor
-                    && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden
+                    && legArmour == o.legArmour && legArmourColor == o.legArmourColor && faceHidden == o.faceHidden && headHidden == o.headHidden
                     && skin == o.skin && hairColor == o.hairColor && upperColor == o.upperColor && lowerColor == o.lowerColor
                     && coatColor == o.coatColor && hatColor == o.hatColor && ownHead == o.ownHead && ownFace == o.ownFace && eyeLeft == o.eyeLeft
                     && eyeRight == o.eyeRight && scars == o.scars && skinOverlay == o.skinOverlay && barbs == o.barbs && plating == o.plating
@@ -146,7 +148,11 @@ namespace IsoRim
             {
                 Matrix4x4 headPlace = Matrix4x4.Scale(new Vector3(look.headWide, 1f, 1f));
                 Color skin = dead ? Color.Lerp(look.skin, new Color(0.55f, 0.58f, 0.52f), 0.35f) : look.skin;
-                if (look.ownHead != null)
+                if (look.headHidden)
+                {
+                    // No head at all, as the game draws it: the covering (look.hat) takes its place.
+                }
+                else if (look.ownHead != null)
                 {
                     AddPart(look.ownHead, Matrix4x4.identity, Color.white);   // its skin colour is in the model
                 }
@@ -439,7 +445,7 @@ namespace IsoRim
                 + (pawn.style != null ? HairParts.Beard(pawn.style.beardDef) ?? "none" : "none") + (l.beard != null ? "" : " (not drawn)") + ", body " + (pawn.story.bodyType != null ? pawn.story.bodyType.defName : "?")
                 + ", ownHead " + (l.ownHead != null) + ", ownFace " + (l.ownFace != null) + ", eyes " + (l.eyeLeft != null) + "/" + (l.eyeRight != null)
                 + ", scars " + (l.scars != null) + ", overlay " + (l.skinOverlay != null) + ", barbs " + (l.barbs != null) + ", plating " + (l.plating != null)
-                + ", ownHair " + l.ownHair + ", hat " + (l.hatKind ?? "-") + ", faceHidden " + l.faceHidden + ", skips " + SkipNames(VanillaSkips(pawn)) + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
+                + ", ownHair " + l.ownHair + ", hat " + (l.hatKind ?? "-") + ", faceHidden " + l.faceHidden + ", headHidden " + l.headHidden + ", skips " + SkipNames(VanillaSkips(pawn)) + ", skin " + l.skin + ", faceTint " + l.faceTint + ", drawn " + Patches.DrawnAsModel(pawn);
         }
 
         // The races drawn as figures: people, and creepjoiners (people in all but race).
@@ -482,7 +488,8 @@ namespace IsoRim
         {
             Look look;
             int frame = Time.frameCount;
-            if (looks.TryGetValue(pawn.thingIDNumber, out look) && frame - look.frame < RefreshFrames)
+            // Worked out again at once on getting into or out of a bed that hides headgear.
+            if (looks.TryGetValue(pawn.thingIDNumber, out look) && frame - look.frame < RefreshFrames && look.bedHidesHat == BedHidesHeadgear(pawn))
             {
                 return look;
             }
@@ -556,9 +563,28 @@ namespace IsoRim
 
             string hatKind = Dress(look, build, pawn.apparel != null ? pawn.apparel.WornApparel : null, look.skin, null);
 
-            // Hair, beard and eyes show under headgear exactly when the game draws them (its own skip flags).
+            // Headgear is left out where the game leaves it out (in a bed that hides the sleeper's body); then
+            // hair, beard and eyes show under it exactly when the game draws them (its own skip flags).
+            look.bedHidesHat = BedHidesHeadgear(pawn);
+            PawnDrawParms parms = DrawParms(pawn);
+            if (!PawnRenderNodeWorker_Apparel_Head.HeadgearVisible(parms))
+            {
+                hatKind = null;
+                look.hat = null;
+                look.visor = false;
+            }
+            ulong skip = VanillaSkips(pawn, parms);
+            // A garment that hides the whole head (skip flag Head: the burka): no head, a closed covering in its colour.
+            Apparel hidesHead = (skip & RenderSkipFlagDefOf.Head) != 0 ? HeadHider(pawn) : null;
+            if (hidesHead != null)
+            {
+                look.headHidden = true;
+                look.hat = Part("person_hat_burka");
+                look.hatColor = ApparelColour(hidesHead);
+                look.visor = false;
+                hatKind = "burka";
+            }
             look.hatKind = hatKind;
-            ulong skip = VanillaSkips(pawn);
             look.hairShown = !Skips(skip, RenderSkipFlagDefOf.Hair);
             if (hairKind != null && look.hairShown)
             {
@@ -580,12 +606,56 @@ namespace IsoRim
         // The game's own choice of what to leave out of a person's head (PawnRenderTree.AdjustParms: each worn
         // apparel's renderSkipFlags, or for apparel without them Hair under an UpperHead piece and Hair, Beard and
         // Eyes under a FullHead piece, the eyes put back for facings in forceEyesVisibleForRotations), as the
-        // person stands on the map facing south (the side the figure's face is on). Patches to it apply too.
+        // person is on the map facing south (the side the figure's face is on), in their bed if any (no flags at all
+        // where the bed hides headgear). Patches to it apply too.
         private delegate void AdjustParmsCall(PawnRenderTree tree, ref PawnDrawParms parms);
         private static AdjustParmsCall adjustParms;
         private static bool adjustParmsLooked;
 
         internal static ulong VanillaSkips(Pawn pawn)
+        {
+            return VanillaSkips(pawn, DrawParms(pawn));
+        }
+
+        // The game's draw parameters that matter for headgear (PawnRenderer.GetDrawParms on the map): the person,
+        // dead or not, posture and the bed they lie in, facing south.
+        private static PawnDrawParms DrawParms(Pawn pawn)
+        {
+            PawnDrawParms parms = PawnDrawParms.Default;
+            parms.pawn = pawn;
+            parms.dead = pawn.Dead;
+            parms.posture = pawn.GetPosture();
+            parms.bed = pawn.CurrentBed();
+            return parms;
+        }
+
+        // True while the person lies in a bed that hides headgear (PawnRenderNodeWorker_Apparel_Head.HeadgearVisible:
+        // a bed without bed_showSleeperBody).
+        internal static bool BedHidesHeadgear(Pawn pawn)
+        {
+            if (pawn.Dead || pawn.GetPosture() == PawnPosture.Standing)
+            {
+                return false;
+            }
+            Building_Bed bed = pawn.CurrentBed();
+            return bed != null && bed.def.building != null && !bed.def.building.bed_showSleeperBody;
+        }
+
+        // The worn garment that hides the whole head (renderSkipFlags Head), or null.
+        private static Apparel HeadHider(Pawn pawn)
+        {
+            List<Apparel> worn = pawn.apparel != null ? pawn.apparel.WornApparel : null;
+            for (int i = 0; worn != null && i < worn.Count; i++)
+            {
+                if (worn[i].def.apparel != null && worn[i].def.apparel.renderSkipFlags.NotNullAndContains(RenderSkipFlagDefOf.Head))
+                {
+                    return worn[i];
+                }
+            }
+            return null;
+        }
+
+        private static ulong VanillaSkips(Pawn pawn, PawnDrawParms parms)
         {
             if (!adjustParmsLooked)
             {
@@ -605,9 +675,6 @@ namespace IsoRim
             {
                 return 0;
             }
-            PawnDrawParms parms = PawnDrawParms.Default;
-            parms.pawn = pawn;
-            parms.dead = pawn.Dead;
             adjustParms(tree, ref parms);
             return parms.skipFlags;
         }
