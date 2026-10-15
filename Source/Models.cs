@@ -908,6 +908,7 @@ namespace IsoRim
         private static readonly char[] Separators = { ' ', '\t' };
         private static readonly Color DefaultColor = new Color(0.8f, 0.8f, 0.8f);
         private const float OutlineWidth = 0.03f;   // in cells
+        private const float MitreLimit = 1.5f;      // longest outline corner offset, in outline widths
         private static int nextId = 1;
 
         // A copy of a model whose faces of one material give off light (unlit, see ModelMaterial.glow),
@@ -1670,8 +1671,17 @@ namespace IsoRim
             return m;
         }
 
-        // For the outline, each corner moves away from all the faces that meet there. Corners
-        // that share a position move together, so the enlarged copy stays closed.
+        private static Vector3Int HullKey(Vector3 p)
+        {
+            return new Vector3Int(Mathf.RoundToInt(p.x * 10000f), Mathf.RoundToInt(p.y * 10000f), Mathf.RoundToInt(p.z * 10000f));
+        }
+
+        // Each welded corner moves by the shortest offset that puts every face meeting there at
+        // least `width` further out (offset · normal >= width for each distinct face normal): the
+        // true mitre, whatever number of triangles each side has. Where that offset would be longer
+        // than MitreLimit × width (sharp corners) it is cut to that, so a tip gets a thinner line
+        // instead of a spike. Where no such offset exists (faces back to back: thin sheets, needle
+        // tips) the corner moves width along the mean normal.
         private static Vector3[] BuildHull(Vector3[] positions, Vector3[] normals, float width)
         {
             Dictionary<Vector3Int, List<Vector3>> facesAt = new Dictionary<Vector3Int, List<Vector3>>();
@@ -1684,10 +1694,20 @@ namespace IsoRim
                     list = new List<Vector3>();
                     facesAt[key] = list;
                 }
+                Vector3 n = normals[i];
+                if (positions[i].y < 0.001f)
+                {
+                    n.y = 0f;   // corners on the ground only move sideways
+                    if (n.sqrMagnitude < 0.01f)
+                    {
+                        continue;
+                    }
+                    n.Normalize();
+                }
                 bool known = false;
                 for (int k = 0; k < list.Count; k++)
                 {
-                    if (Vector3.Dot(list[k], normals[i]) > 0.999f)
+                    if (Vector3.Dot(list[k], n) > 0.999f)
                     {
                         known = true;
                         break;
@@ -1695,43 +1715,97 @@ namespace IsoRim
                 }
                 if (!known)
                 {
-                    list.Add(normals[i]);
+                    list.Add(n);
                 }
+            }
+
+            Dictionary<Vector3Int, Vector3> offsetAt = new Dictionary<Vector3Int, Vector3>();
+            foreach (KeyValuePair<Vector3Int, List<Vector3>> kv in facesAt)
+            {
+                List<Vector3> l = kv.Value;
+                Vector3 d;
+                if (!ShortestMitre(l, out d))
+                {
+                    Vector3 sum = Vector3.zero;
+                    for (int k = 0; k < l.Count; k++)
+                    {
+                        sum += l[k];
+                    }
+                    d = sum.sqrMagnitude < 1e-6f ? Vector3.zero : sum.normalized;
+                }
+                if (d.magnitude > MitreLimit)
+                {
+                    d = d.normalized * MitreLimit;
+                }
+                offsetAt[kv.Key] = d * width;
             }
 
             Vector3[] hull = new Vector3[positions.Length];
             for (int i = 0; i < positions.Length; i++)
             {
-                List<Vector3> list = facesAt[HullKey(positions[i])];
-                Vector3 sum = Vector3.zero;
-                for (int k = 0; k < list.Count; k++)
-                {
-                    sum += list[k];
-                }
-                if (positions[i].y < 0.001f)
-                {
-                    sum.y = 0f;   // corners on the ground only move sideways
-                }
-                if (sum.sqrMagnitude < 1e-8f)
-                {
-                    hull[i] = Vector3.zero;
-                    continue;
-                }
-
-                Vector3 dir = sum.normalized;
-                float least = 1f;
-                for (int k = 0; k < list.Count; k++)
-                {
-                    least = Mathf.Min(least, Vector3.Dot(dir, list[k]));
-                }
-                hull[i] = dir * (width / Mathf.Clamp(least, 0.4f, 1f));
+                hull[i] = offsetAt[HullKey(positions[i])];
             }
             return hull;
         }
 
-        private static Vector3Int HullKey(Vector3 p)
+        // The shortest d with d · n >= 1 for every n (unit normals), if there is one. The answer
+        // touches at most three of the planes d · n = 1, so every set of one to three is tried.
+        private static bool ShortestMitre(List<Vector3> n, out Vector3 best)
         {
-            return new Vector3Int(Mathf.RoundToInt(p.x * 10000f), Mathf.RoundToInt(p.y * 10000f), Mathf.RoundToInt(p.z * 10000f));
+            best = Vector3.zero;
+            float bestSq = float.MaxValue;
+            int c = n.Count;
+            if (c == 0)
+            {
+                return false;
+            }
+            for (int a = 0; a < c; a++)
+            {
+                TryMitre(n, n[a], ref best, ref bestSq);
+                for (int b = a + 1; b < c; b++)
+                {
+                    float ab = Vector3.Dot(n[a], n[b]);
+                    if (ab > -0.9999f && ab < 0.9999f)
+                    {
+                        TryMitre(n, (n[a] + n[b]) / (1f + ab), ref best, ref bestSq);
+                    }
+                    for (int e = b + 1; e < c; e++)
+                    {
+                        // d = x n[a] + y n[b] + z n[e] with d · each = 1: Gram system.
+                        float ae = Vector3.Dot(n[a], n[e]), be = Vector3.Dot(n[b], n[e]);
+                        Vector3 r0 = new Vector3(1f, ab, ae), r1 = new Vector3(ab, 1f, be), r2 = new Vector3(ae, be, 1f);
+                        float det = Vector3.Dot(r0, Vector3.Cross(r1, r2));
+                        if (Mathf.Abs(det) < 1e-5f)
+                        {
+                            continue;
+                        }
+                        Vector3 one = Vector3.one;
+                        float x = Vector3.Dot(one, Vector3.Cross(r1, r2)) / det;
+                        float y = Vector3.Dot(r0, Vector3.Cross(one, r2)) / det;
+                        float z = Vector3.Dot(r0, Vector3.Cross(r1, one)) / det;
+                        TryMitre(n, n[a] * x + n[b] * y + n[e] * z, ref best, ref bestSq);
+                    }
+                }
+            }
+            return bestSq < float.MaxValue;
+        }
+
+        private static void TryMitre(List<Vector3> n, Vector3 d, ref Vector3 best, ref float bestSq)
+        {
+            float sq = d.sqrMagnitude;
+            if (sq >= bestSq)
+            {
+                return;
+            }
+            for (int k = 0; k < n.Count; k++)
+            {
+                if (Vector3.Dot(d, n[k]) < 0.999f)
+                {
+                    return;
+                }
+            }
+            best = d;
+            bestSq = sq;
         }
 
         private static void ReadMaterials(string path, List<ModelMaterial> materials, Dictionary<string, int> materialIndex)
