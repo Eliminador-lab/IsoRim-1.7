@@ -28,6 +28,7 @@ namespace IsoRim
         public bool autoExtrude = true;
         public bool thickItems = true;
         public bool itemsFromArt = true;
+        public bool rawModels = true;    // raw materials (steel, wood, blocks ...) keep the mod's 3D models even with itemsFromArt
         public bool ghosts3D = true;
         public bool cutRock = true;
         public bool mapEdge3D = true;
@@ -93,6 +94,7 @@ namespace IsoRim
             Scribe_Values.Look(ref autoExtrude, "autoExtrude", true);
             Scribe_Values.Look(ref thickItems, "thickItems", true);
             Scribe_Values.Look(ref itemsFromArt, "itemsFromArt", true);
+            Scribe_Values.Look(ref rawModels, "rawModels", true);
             Scribe_Values.Look(ref ghosts3D, "ghosts3D", true);
             Scribe_Values.Look(ref cutRock, "cutRock", true);
             Scribe_Values.Look(ref mapEdge3D, "mapEdge3D", true);
@@ -621,6 +623,7 @@ namespace IsoRim
                 }
                 Check(l, "Items and weapons use the game's art", ref st.itemsFromArt,
                     "Items, weapons and clothing are made solid from their own game sprites, so they look exactly like RimWorld. Off: the mod's hand-made item models.");
+                Check(l, "3D raw materials", ref st.rawModels, "Steel, wood, blocks, cloth, leather and other resources as 3D models, by stack size.");
                 Check(l, "Other plants stand upright", ref st.uprightPlants);
                 Check(l, "Map edge cut through the earth", ref st.mapEdge3D, "The edge of the map shows layers of soil and rock, like a diorama.");
             }

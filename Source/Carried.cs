@@ -110,7 +110,8 @@ namespace IsoRim
                 if (form.form == Form3D.Model && form.model != null && form.model.HasModel)
                 {
                     Model m = form.model.Pick(t);
-                    DynamicModels.Draw(m, hold, yaw + form.model.def.rotation, Vector3.one * form.model.def.scale * ItemScale, t.DrawColor, R3DTextures.StuffSwatch(t));
+                    DynamicModels.Draw(m, hold, yaw + form.model.def.rotation, Vector3.one * form.model.def.scale * ItemScale,
+                        form.model.def.spriteTint ? SpriteColors.MeanFor(t) : t.DrawColor, R3DTextures.StuffSwatch(t));
                     return;
                 }
                 float thick = Mathf.Clamp(Forms.ItemThickness(t.def), 0.04f, 0.2f);

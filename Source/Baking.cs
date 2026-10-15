@@ -84,7 +84,7 @@ namespace IsoRim
             {
                 return f;
             }
-            if (def.category == ThingCategory.Item && st.itemsFromArt && !IsChunk(def))
+            if (def.category == ThingCategory.Item && st.itemsFromArt && !IsChunk(def) && !OverArt(listed ? entry : null))
             {
                 // Items are made solid from their own game sprite, so they read exactly as
                 // they do in the game. (Chunks keep their rock and scrap models.)
@@ -146,6 +146,14 @@ namespace IsoRim
                 f.height = (setHeight > 0f ? setHeight : (def.fillPercent > 0.3f ? 0.3f : 0.12f)) * Mathf.Clamp01(st.itemThickness);
             }
             return f;
+        }
+
+        // An item whose model is used even while items are made from the game's art (raw materials, with
+        // the "3D raw materials" setting on).
+        public static bool OverArt(ModelEntry entry)
+        {
+            IsoRimSettings st = IsoRimMod.Settings;
+            return entry != null && entry.def.overArt && entry.HasModel && st.rawModels && st.models3D;
         }
 
         public static bool IsChunk(ThingDef def)
@@ -1825,6 +1833,10 @@ namespace IsoRim
             }
 
             Vector3 fit = entry.Fit(thing.def) * scale;
+            if (def.overArt && thing.MultipleItemsPerCellDrawn())
+            {
+                fit *= 0.8f;   // as the game draws several items in one cell (a shelf) at 0.8 size
+            }
             if (!Write(layer, thing, m, center, turn, lay, layLift, fit, offset, baseHeight, tint, bare, def.outline))
             {
                 return false;

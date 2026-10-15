@@ -47,7 +47,8 @@ namespace IsoRim
                 string how = ModelLibrary.HowBound(def);
                 bool hasModel = listed && entry.HasModel;
                 bool flat = listed && entry.def.flat;
-                string file = listed ? (entry.def.model ?? (entry.def.models != null ? string.Join(",", entry.def.models) : "")) : "";
+                string file = listed ? (entry.def.model ?? (entry.def.models != null ? string.Join(",", entry.def.models)
+                    : entry.def.stackModels != null ? string.Join(",", entry.def.stackModels) : "")) : "";
 
                 string drawnBy = "sprite";
                 if (form.form == Form3D.Model)
@@ -86,7 +87,7 @@ namespace IsoRim
                     && (def.plant != null && def.plant.IsTree ? !st.trees3D : !st.smallPlants3D);
                 if (hasModel && !flat && form.form != Form3D.Model && !door && st.models3D && !plantOff)
                 {
-                    if (item && st.itemsFromArt && !Forms.IsChunk(def))
+                    if (item && st.itemsFromArt && !Forms.IsChunk(def) && !Forms.OverArt(entry))
                     {
                         flags.Add("ITEM_ART");
                     }
@@ -95,7 +96,7 @@ namespace IsoRim
                         flags.Add("NOT_DRAWN");
                     }
                 }
-                if (listed && !hasModel && (!entry.def.model.NullOrEmpty() || entry.def.models != null))
+                if (listed && !hasModel && (!entry.def.model.NullOrEmpty() || entry.def.models != null || entry.def.stackModels != null))
                 {
                     flags.Add("MISSING_FILE");
                 }

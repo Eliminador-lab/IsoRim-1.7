@@ -36,6 +36,10 @@ namespace IsoRim
         public bool flat = false;           // true keeps the thing as a flat sprite
 
         public List<string> models;         // several models: each thing picks one and keeps it
+        public List<string> stackModels;    // items: one model per stack sprite (a, b, c), picked by stack count as
+                                            // the game's Graphic_StackCount: 1 / more / a full stack
+        public bool overArt = false;        // items: drawn with this model even while items use the game's art
+                                            // (setting "3D raw materials")
         public List<AppearanceModel> byAppearance;  // a different model for things made of stuff of this look (the
                                             // game's Graphic_Appearances: Planks, Bricks, Smooth ...); others use model
         public List<StyleModel> byStyle;    // a different model for things of this style (Ideology's ThingStyleDef):
@@ -441,6 +445,7 @@ namespace IsoRim
     {
         public ModelDef def;
         public Model[] variants;
+        public Model[] stack;     // stackModels (a, b, c), or null
         public Dictionary<string, Model> byAppearance;   // StuffAppearanceDef defName -> model; null if none
         public Dictionary<string, Model> byStyle;        // ThingStyleDef defName -> model; null if none
         public Model leg;   // animals only
@@ -516,12 +521,27 @@ namespace IsoRim
                     return own;
                 }
             }
+            if (stack != null && stack.Length > 0)
+            {
+                return stack[StackIndex(t)];
+            }
             int n = t != null ? t.thingIDNumber : 0;
             if (n < 0)
             {
                 n = -n;
             }
             return variants[n % variants.Length];
+        }
+
+        // Which of the stack models a stack of this size uses: Graphic_StackCount's rule for 1-3 sprites.
+        private int StackIndex(Thing t)
+        {
+            int n = stack.Length;
+            if (t == null || n == 1 || t.stackCount <= 1)
+            {
+                return 0;
+            }
+            return n >= 3 && t.stackCount >= t.def.stackLimit ? n - 1 : 1;
         }
 
         // The style a thing is built in (a blueprint: will be built in); null for none.
@@ -684,6 +704,28 @@ namespace IsoRim
             ModelEntry entry = new ModelEntry();
             entry.def = md;
             entry.variants = loaded.ToArray();
+            if (md.stackModels != null && md.stackModels.Count > 0 && md.modContentPack != null)
+            {
+                List<Model> stack = new List<Model>();
+                for (int i = 0; i < md.stackModels.Count; i++)
+                {
+                    Model m = LoadFile(Path.Combine(md.modContentPack.RootDir, md.stackModels[i]));
+                    if (m == null)
+                    {
+                        stack = null;   // a missing file: not used at all
+                        break;
+                    }
+                    stack.Add(m);
+                }
+                if (stack != null)
+                {
+                    entry.stack = stack.ToArray();
+                    if (entry.variants.Length == 0)
+                    {
+                        entry.variants = new[] { entry.stack[entry.stack.Length - 1] };   // the full stack: its height
+                    }
+                }
+            }
             if (md.byAppearance != null && md.modContentPack != null)
             {
                 for (int i = 0; i < md.byAppearance.Count; i++)

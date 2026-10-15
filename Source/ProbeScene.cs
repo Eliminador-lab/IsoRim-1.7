@@ -20,6 +20,8 @@ namespace IsoRim
     //   snow=<depth>,x0,z0,x1,z1     snow over a rectangle
     //   terrain=<Def>,x0,z0,x1,z1    terrain over a rectangle
     //   spawn=<Def>,x,z[,<Stuff>|-[,<count>]]  a thing (the player's), optionally a stack
+    //   stack=x,z,<count>            the first item in the cell brought to that count the game's way: split off
+    //                                (and the rest destroyed) or a new stack absorbed (TryAbsorbStack)
     //   grow=x0,z0,x1,z1,<0-1>       every plant in the rectangle set to that growth (map mesh redrawn)
     //   roof=0|1,x0,z0,x1,z1         built roof off or on over a rectangle
     //   active=0|1                   the 3D view off or on
@@ -270,6 +272,29 @@ namespace IsoRim
                         t.SetFaction(Faction.OfPlayer);
                     }
                     GenSpawn.Spawn(t, new IntVec3(I(a[1]), 0, I(a[2])), map, Rot4.North);
+                    break;
+                }
+                case "stack":
+                {
+                    Thing item = new IntVec3(I(a[0]), 0, I(a[1])).GetFirstItem(map);
+                    int want = I(a[2]);
+                    if (item == null || want < 1)
+                    {
+                        Log.Warning("[IsoRim probe] stack: no item at " + a[0] + "," + a[1]);
+                        break;
+                    }
+                    int had = item.stackCount;
+                    if (want < had)
+                    {
+                        item.SplitOff(had - want).Destroy();
+                    }
+                    else if (want > had)
+                    {
+                        Thing more = ThingMaker.MakeThing(item.def, item.Stuff);
+                        more.stackCount = Mathf.Min(want - had, item.def.stackLimit);
+                        item.TryAbsorbStack(more, true);
+                    }
+                    Log.Message("[IsoRim probe] stack " + item.def.defName + " at " + a[0] + "," + a[1] + ": " + had + " -> " + item.stackCount);
                     break;
                 }
                 case "roof":
