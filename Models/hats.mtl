@@ -1,0 +1,4 @@
+# IsoRim everyday hats (Claude, tools/make_hats.py)
+# stuff_hat_band: hat bands, visors and seams vanilla paints darker; still takes the hat's stuff / dye colour
+newmtl stuff_hat_band
+Kd 0.420 0.420 0.420

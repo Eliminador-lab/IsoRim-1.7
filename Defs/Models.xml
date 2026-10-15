@@ -2423,19 +2423,34 @@
   <IsoRim.ModelDef>
     <defName>R3D_MedicineHerbal</defName>
     <thingDef>MedicineHerbal</thingDef>
-    <model>Models/item_medicine_herbal.obj</model>
+    <stackModels>
+      <li>Models/item_medicine_herbal_a.obj</li>
+      <li>Models/item_medicine_herbal_b.obj</li>
+      <li>Models/item_medicine_herbal_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_MedicineIndustrial</defName>
     <thingDef>MedicineIndustrial</thingDef>
-    <model>Models/item_medicine.obj</model>
+    <stackModels>
+      <li>Models/item_medicine_industrial_a.obj</li>
+      <li>Models/item_medicine_industrial_b.obj</li>
+      <li>Models/item_medicine_industrial_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
     <defName>R3D_MedicineUltratech</defName>
     <thingDef>MedicineUltratech</thingDef>
-    <model>Models/item_medicine_glitter.obj</model>
+    <stackModels>
+      <li>Models/item_medicine_ultratech_a.obj</li>
+      <li>Models/item_medicine_ultratech_b.obj</li>
+      <li>Models/item_medicine_ultratech_c.obj</li>
+    </stackModels>
+    <overArt>true</overArt>
   </IsoRim.ModelDef>
 
   <IsoRim.ModelDef>
